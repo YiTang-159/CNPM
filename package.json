@@ -1,0 +1,14 @@
+{
+  "name": "dubchef",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Dubchef - thuyết minh tự động đa ngôn ngữ (Việt, Anh, Trung) cho video nấu ăn",
+  "scripts": {
+    "sync": "node scripts/sync-shared.mjs",
+    "test:shared": "node --test shared/i18n.test.mjs",
+    "test": "npm run test:shared && npm --prefix web test && npm --prefix mobile test",
+    "web": "npm --prefix web run dev",
+    "mobile": "npm --prefix mobile run start",
+    "lint": "npm --prefix web run lint && npm --prefix mobile run lint"
+  }
+}

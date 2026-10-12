@@ -319,7 +319,6 @@ export default function Demo() {
           <div className="player" ref={playerRef}>
             <div>
               <div className="stage">
-                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                 <video
                   ref={videoRef}
                   src={videoSrc}

@@ -90,12 +90,15 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     expect(document.querySelector('video')).toBeInTheDocument();
     // Câu này hiện cả ở phụ đề trên video lẫn trong danh sách bước, nên có thể khớp nhiều chỗ
     expect(screen.getAllByText('Đập trứng vào bát.').length).toBeGreaterThan(0);
-    expect(screen.getByText(/mon-an\.mp4/)).toBeInTheDocument();
+    // Tên file hiện cả ở phần "đã chọn" lẫn tiêu đề khu vực kết quả, nên có thể khớp nhiều chỗ
+    expect(screen.getAllByText(/mon-an\.mp4/).length).toBeGreaterThan(0);
   });
 
   it('dịch lỗi (mất mạng) thì hiện thông báo lỗi, không hiện trình phát', async () => {
-    const { translateLines } = await import('../shared/translate.js');
-    translateLines.mockRejectedValueOnce(Object.assign(new Error('net'), { code: 'net' }));
+    const { translateLines, TranslateError } = await import('../shared/translate.js');
+    // Phải dùng đúng class TranslateError (không phải Error thường) vì Demo.jsx chỉ nhận diện
+    // loại lỗi (net/server/limit) qua `e instanceof TranslateError`.
+    translateLines.mockRejectedValueOnce(new TranslateError('net'));
 
     const user = userEvent.setup();
     renderApp('/demo');

@@ -88,7 +88,8 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
 
     expect(await screen.findByText(vi_('d_done'))).toBeInTheDocument();
     expect(document.querySelector('video')).toBeInTheDocument();
-    expect(screen.getByText('Đập trứng vào bát.')).toBeInTheDocument();
+    // Câu này hiện cả ở phụ đề trên video lẫn trong danh sách bước, nên có thể khớp nhiều chỗ
+    expect(screen.getAllByText('Đập trứng vào bát.').length).toBeGreaterThan(0);
     expect(screen.getByText(/mon-an\.mp4/)).toBeInTheDocument();
   });
 

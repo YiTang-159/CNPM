@@ -32,6 +32,11 @@ jest.mock('../utils/sttNative', () => {
 beforeEach(async () => {
   await AsyncStorage.clear();
   DocumentPicker.getDocumentAsync.mockResolvedValue({ canceled: true });
+  // Reset về trạng thái mặc định (chưa build native) trước mỗi test, tránh 1 test
+  // gọi mockReturnValue(true) rồi làm "rò rỉ" sang các test chạy sau nó.
+  const sttNative = require('../utils/sttNative');
+  sttNative.isNativeSTTAvailable.mockReset().mockReturnValue(false);
+  sttNative.transcribeVideoFile.mockReset();
 });
 
 describe('Ứng dụng di động Dubchef', () => {
@@ -91,7 +96,8 @@ describe('Ứng dụng di động Dubchef', () => {
     fireEvent.press(screen.getByRole('button', { name: vi('d_translate_btn') }));
 
     expect(await screen.findByText(vi('d_done'))).toBeTruthy();
-    expect(screen.getByText('Đập trứng vào bát.')).toBeTruthy();
+    // Câu này hiện cả ở phụ đề trên video lẫn trong danh sách bước, nên có thể khớp nhiều chỗ
+    expect(screen.getAllByText('Đập trứng vào bát.').length).toBeGreaterThan(0);
     expect(screen.getByTestId('mock-video')).toBeTruthy();
   });
 
@@ -113,7 +119,7 @@ describe('Ứng dụng di động Dubchef', () => {
     fireEvent.press(await screen.findByRole('button', { name: vi('d_translate_btn') }));
 
     expect(await screen.findByText(vi('d_done'))).toBeTruthy();
-    expect(screen.getByText('Đập trứng vào bát.')).toBeTruthy();
+    expect(screen.getAllByText('Đập trứng vào bát.').length).toBeGreaterThan(0);
     expect(sttNative.transcribeVideoFile).toHaveBeenCalledWith('file:///mon-an.mp4', expect.any(String), expect.any(Function));
   });
 

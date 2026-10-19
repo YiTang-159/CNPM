@@ -60,22 +60,6 @@ Sau lần `npm install` đầu tiên hãy commit các tệp `package-lock.json` 
   - **Trên mobile**: cùng tính năng này được làm bằng thư viện native `whisper.rn` (tách âm thanh bằng `ffmpeg-kit-react-native`, model Whisper tải về máy). Đây là module native thật nên **không chạy được qua Expo Go** — phải `npx expo prebuild` rồi build app thật (xem `mobile/WHISPER_SETUP.md`). Nếu app mobile chưa được build theo cách này, màn Trải nghiệm vẫn hoạt động bình thường ở chế độ gõ tay lời thoại, chỉ riêng chế độ tự nhận diện sẽ báo "chưa khả dụng" thay vì chạy thật. Code: `mobile/src/utils/sttNative.js`.
 - Đăng ký, đăng nhập, gửi liên hệ có kiểm tra dữ liệu, báo lỗi theo ngôn ngữ, giữ phiên đăng nhập.
 - Hỗ trợ chế độ sáng/tối, bàn phím, trình đọc màn hình, giảm chuyển động.
-
-## Kết nối Backend (yêu cầu 2 và 3)
-
-Lớp gọi API nằm ở `web/src/api/client.js` và `mobile/src/api/client.js`.
-
-- **Chưa đặt địa chỉ Backend:** dữ liệu đăng ký, đăng nhập, liên hệ được lưu tạm ngay trên thiết bị (chỉ để demo).
-- **Đã đặt địa chỉ Backend:** tạo `web/.env` với `VITE_API_URL=http://localhost:3000` (mobile dùng `EXPO_PUBLIC_API_URL`). Giao diện sẽ gọi:
-
-| Phương thức | Đường dẫn | Gửi lên | Trả về khi thành công |
-|---|---|---|---|
-| POST | `/api/auth/register` | `{ name, email, password }` | `{ user: { name, email } }` |
-| POST | `/api/auth/login` | `{ email, password }` | `{ user: { name, email } }` |
-| POST | `/api/contact` | `{ name, email, message }` | `{ ok: true }` |
-
-Khi lỗi, trả mã HTTP 4xx/5xx kèm `{ "code": "exists" }` (email đã đăng ký) hoặc `{ "code": "invalid" }` (sai email/mật khẩu).
-
 ## Kiểm thử và ESLint
 
 | Nơi | Công cụ | Nội dung kiểm tra |

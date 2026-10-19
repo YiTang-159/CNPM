@@ -23,6 +23,15 @@ jobs:
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-      - run: npm install
+      - run: npm ci
       - name: Build APK (chạy trên máy chủ Expo)
-        run: eas build --platform android --profile preview --non-interactive --no-wait
+        run: |
+          eas build --platform android --profile preview --non-interactive --no-wait --json | tee eas-build.json
+      - name: Ghi liên kết bản build vào tóm tắt của lần chạy
+        run: |
+          {
+            echo "### Bản build Android (EAS)"
+            echo "- Mã build: $(jq -r '.[0].id' eas-build.json)"
+            echo "- Xem tiến trình và tải APK: $(jq -r '.[0].buildDetailsPageUrl // empty' eas-build.json)"
+          } >> "$GITHUB_STEP_SUMMARY"
+

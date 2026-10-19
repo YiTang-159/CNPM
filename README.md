@@ -1,5 +1,9 @@
 # Dubchef: thuyết minh tự động đa ngôn ngữ (Việt, Anh, Trung) cho video nấu ăn
 
+[![CI](https://github.com/YiTang-159/CNPM/actions/workflows/ci.yml/badge.svg)](https://github.com/YiTang-159/CNPM/actions/workflows/ci.yml)
+[![CD Web](https://github.com/YiTang-159/CNPM/actions/workflows/cd-web.yml/badge.svg)](https://github.com/YiTang-159/CNPM/actions/workflows/cd-web.yml)
+[![CD Mobile](https://github.com/YiTang-159/CNPM/actions/workflows/cd-mobile.yml/badge.svg)](https://github.com/YiTang-159/CNPM/actions/workflows/cd-mobile.yml)
+
 Đồ án Công nghệ phần mềm. Phần này thực hiện **yêu cầu 1: FE Dev (React.js + React Native) xử lý giao diện trên Web và Mobile, gồm CI/CD**.
 
 | Yêu cầu 1 | Nằm ở đâu |
@@ -95,3 +99,8 @@ Các cảnh báo (warning) của ESLint chỉ hiện ra, không làm CI đỏ. C
 ## Lưu ý phiên bản
 
 Dự án mobile ghim theo Expo SDK 51. Nếu muốn dùng SDK mới hơn, chạy `npx expo install --fix` trong `mobile/` để Expo tự chỉnh phiên bản các thư viện cho khớp.
+
+
+## Quy trình làm việc nhóm
+
+Xem `CONTRIBUTING.md` (nhánh, Pull Request, phát hành mobile, phân công) và mẫu PR trong `.github/pull_request_template.md`.

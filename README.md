@@ -18,10 +18,10 @@
 
 ```
 dubchef/
-├─ shared/            Nội dung 3 ngôn ngữ, giá, hàm định dạng (NGUỒN DUY NHẤT) + test
+├─ shared/            Nội dung 3 ngôn ngữ, giá, tính giá theo số video (pricing.js), hàm định dạng (NGUỒN DUY NHẤT) + test
 ├─ scripts/           sync-shared.mjs: chép shared/ vào web và mobile
-├─ web/               React.js: Trang chủ, Tính năng, Trải nghiệm, Giới thiệu, FAQ, Liên hệ,
-│                     Đăng nhập, Đăng ký, Điều khoản, Bảo mật, 404 (không có Bảng giá trên web)
+├─ web/               React.js: Trang chủ, Tính năng, Trải nghiệm, Bảng giá, Giới thiệu, FAQ, Liên hệ,
+│                     Đăng nhập, Đăng ký, Điều khoản, Bảo mật, 404
 ├─ mobile/            React Native: 5 tab (Trang chủ, Trải nghiệm, Bảng giá, Thông tin, Tài khoản)
 └─ .github/workflows/ CI/CD
 ```
@@ -53,6 +53,7 @@ Sau lần `npm install` đầu tiên hãy commit các tệp `package-lock.json` 
 ## Tính năng giao diện
 
 - Đổi ngôn ngữ giao diện Việt / Anh / Trung, nhớ lựa chọn cho lần sau.
+- Trang Bảng giá (web: `/pricing`, mobile: tab Bảng giá): người đăng video nấu ăn nhập **số video đăng lên** và **số video dịch ra** để xem giá tạm tính, kèm 4 **gói mẫu** (Bếp nhà, Blogger ẩm thực, Kênh ẩm thực, Nhà hàng và thương hiệu) bấm vào là điền sẵn số lượng. Công thức (giá minh họa): `giá = số video đăng lên × phí đăng + số video dịch ra × phí dịch` — 20.000 ₫ / 0,8 USD / 6 ¥ mỗi video đăng lên và 10.000 ₫ / 0,4 USD / 3 ¥ mỗi video dịch ra. Mỗi video đăng lên được dịch ra tối đa 3 ngôn ngữ nên số video dịch ra không quá 3 lần số video đăng lên; mỗi ô nhập từ 0 đến 500. Logic ở `shared/pricing.js` (dùng chung web và mobile), các gói theo tháng cũ vẫn giữ bên dưới.
 - Trang Trải nghiệm: tải video của bạn lên (hoặc dán liên kết), dịch **thật** sang 3 ngôn ngữ (dịch vụ MyMemory, miễn phí, không cần khóa API — xem `shared/translate.js`), rồi phát **chính video đó** kèm phụ đề và **giọng đọc thật** (web: Web Speech API, mobile: `expo-speech`), bật/tắt phụ đề từng ngôn ngữ, chỉnh tốc độ phát.
   - **Tự nhận diện giọng nói (Speech-to-Text) ngay trên web, không cần Backend:** nếu tải file video lên máy (không phải dán liên kết) và để trống ô lời thoại, hệ thống tự chạy model **Whisper** (`Xenova/whisper-base`) ngay trong trình duyệt bằng `@xenova/transformers` (WebAssembly) để nghe và tách lời thoại kèm mốc thời gian thật, rồi dịch + đọc như bình thường — không gửi video lên server nào. Xem `web/src/workers/whisper.worker.js`, `web/src/utils/audio.js`, `web/src/utils/whisper.js`.
   - Video dán bằng liên kết vẫn phải tự gõ lời thoại tay (trình duyệt không đọc được âm thanh của một trang khác vì lý do bảo mật CORS).
@@ -64,11 +65,11 @@ Sau lần `npm install` đầu tiên hãy commit các tệp `package-lock.json` 
 
 | Nơi | Công cụ | Nội dung kiểm tra |
 |---|---|---|
-| `shared/` | `node --test` | Mọi khóa đều có đủ 3 bản dịch, giá, định dạng tiền |
+| `shared/` | `node --test` | Mọi khóa đều có đủ 3 bản dịch, giá, định dạng tiền, tính giá theo số video và các gói mẫu |
 | `web/` | **ESLint 9** (React + React Hooks) | Lỗi cú pháp, biến thừa, sai quy tắc Hooks, thiếu `key` |
-| `web/` | **Vitest + Testing Library** (giả lập trình duyệt jsdom) | Test API; test **giao diện**: đổi ngôn ngữ, điều hướng, tiêu đề trang, bảng giá theo năm, mọi trang có đúng 1 `h1` và không lộ khóa dịch ở cả 3 ngôn ngữ, biểu mẫu Đăng ký / Đăng nhập / Liên hệ, trang Trải nghiệm |
+| `web/` | **Vitest + Testing Library** (giả lập trình duyệt jsdom) | Test API; test **giao diện**: đổi ngôn ngữ, điều hướng, tiêu đề trang, bảng giá theo năm, tính giá theo số video và gói mẫu, mọi trang có đúng 1 `h1` và không lộ khóa dịch ở cả 3 ngôn ngữ, biểu mẫu Đăng ký / Đăng nhập / Liên hệ, trang Trải nghiệm |
 | `mobile/` | **ESLint 9** | Như web |
-| `mobile/` | **Jest + React Native Testing Library** (`jest-expo`) | Test giao diện: trang chủ, đổi ngôn ngữ, bảng giá, trang Trải nghiệm, đăng ký |
+| `mobile/` | **Jest + React Native Testing Library** (`jest-expo`) | Test giao diện: trang chủ, đổi ngôn ngữ, bảng giá (gồm tính giá theo số video và gói mẫu), trang Trải nghiệm, đăng ký |
 
 Test giao diện thao tác như người dùng thật (bấm nút, gõ chữ, tìm phần tử theo vai trò và nhãn) chứ không chỉ kiểm tra hàm, nên cũng kiểm tra được khả năng truy cập (nhãn ô nhập, tên nút, vùng điều hướng).
 

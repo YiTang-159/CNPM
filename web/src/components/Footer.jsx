@@ -19,6 +19,7 @@ export default function Footer() {
             <ul>
               <li><Link to="/features">{t('nav_features')}</Link></li>
               <li><Link to="/demo">{t('nav_demo')}</Link></li>
+              <li><Link to="/pricing">{t('nav_pricing')}</Link></li>
             </ul>
           </div>
           <div>

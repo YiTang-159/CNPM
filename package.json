@@ -5,7 +5,7 @@
   "description": "Dubchef - thuyết minh tự động đa ngôn ngữ (Việt, Anh, Trung) cho video nấu ăn",
   "scripts": {
     "sync": "node scripts/sync-shared.mjs",
-    "test:shared": "node --test shared/i18n.test.mjs",
+    "test:shared": "node --test shared/i18n.test.mjs shared/pricing.test.mjs",
     "test": "npm run test:shared && npm --prefix web test && npm --prefix mobile test",
     "web": "npm --prefix web run dev",
     "mobile": "npm --prefix mobile run start",

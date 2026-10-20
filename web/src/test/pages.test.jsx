@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderApp } from './utils.jsx';
 
-const ROUTES = ['/', '/features', '/demo', '/about', '/faq', '/contact', '/login', '/register', '/terms', '/privacy', '/khong-co'];
+const ROUTES = ['/', '/features', '/demo', '/pricing', '/about', '/faq', '/contact', '/login', '/register', '/terms', '/privacy', '/khong-co'];
 const LANGS = ['vi', 'en', 'zh'];
 
 describe('Mọi trang', () => {

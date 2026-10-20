@@ -3,6 +3,7 @@ import Layout from './components/Layout.jsx';
 import Home from './pages/Home.jsx';
 import Features from './pages/Features.jsx';
 import Demo from './pages/Demo.jsx';
+import Pricing from './pages/Pricing.jsx';
 import About from './pages/About.jsx';
 import Faq from './pages/Faq.jsx';
 import Contact from './pages/Contact.jsx';
@@ -18,6 +19,7 @@ export default function App() {
         <Route index element={<Home />} />
         <Route path="features" element={<Features />} />
         <Route path="demo" element={<Demo />} />
+        <Route path="pricing" element={<Pricing />} />
         <Route path="about" element={<About />} />
         <Route path="faq" element={<Faq />} />
         <Route path="contact" element={<Contact />} />

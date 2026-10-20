@@ -63,6 +63,37 @@ describe('Ứng dụng di động Dubchef', () => {
     expect(await screen.findByText(/200\.000/)).toBeTruthy();
   });
 
+  it('bảng giá: tính giá theo số video đăng lên và số video dịch ra', async () => {
+    render(<App />);
+    fireEvent.press(screen.getByText(vi('nav_pricing')));
+    // mặc định 3 video đăng lên, 3 video dịch ra: 3 × 20.000 + 3 × 10.000
+    expect((await screen.findByTestId('pc-total')).props.children).toMatch(/90\.000/);
+
+    fireEvent.changeText(screen.getByLabelText(vi('pc_up')), '10');
+    fireEvent.changeText(screen.getByLabelText(vi('pc_out')), '20');
+    expect(screen.getByTestId('pc-total').props.children).toMatch(/400\.000/);
+  });
+
+  it('bảng giá: số video dịch ra quá 3 lần số video đăng lên thì báo lỗi và không hiện giá', async () => {
+    render(<App />);
+    fireEvent.press(screen.getByText(vi('nav_pricing')));
+    fireEvent.changeText(await screen.findByLabelText(vi('pc_up')), '2');
+    fireEvent.changeText(screen.getByLabelText(vi('pc_out')), '7');
+    expect(await screen.findByText(vi('pc_over'))).toBeTruthy();
+    expect(screen.queryByTestId('pc-total')).toBeNull();
+  });
+
+  it('bảng giá: bấm gói mẫu thì điền sẵn số video vào phần tính giá', async () => {
+    render(<App />);
+    fireEvent.press(screen.getByText(vi('nav_pricing')));
+    const buttons = await screen.findAllByText(vi('pk_use'));
+    fireEvent.press(buttons[2]); // gói "Kênh ẩm thực": 30 video đăng lên, 90 video dịch ra
+    expect(screen.getByLabelText(vi('pc_up')).props.value).toBe('30');
+    expect(screen.getByLabelText(vi('pc_out')).props.value).toBe('90');
+    expect(screen.getByTestId('pc-total').props.children).toMatch(/1\.500\.000/);
+    expect(await screen.findByText(vi('pk_filled'))).toBeTruthy();
+  });
+
   it('trải nghiệm: bấm dịch khi chưa chọn video thì báo lỗi', async () => {
     render(<App />);
     fireEvent.press(screen.getByText(vi('nav_demo')));

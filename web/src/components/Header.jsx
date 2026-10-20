@@ -7,6 +7,7 @@ import { LANGS } from '../shared/i18n.js';
 const LINKS = [
   ['/features', 'nav_features'],
   ['/demo', 'nav_demo'],
+  ['/pricing', 'nav_pricing'],
   ['/about', 'nav_about'],
   ['/contact', 'nav_contact'],
 ];

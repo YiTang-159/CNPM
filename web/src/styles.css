@@ -264,3 +264,16 @@ footer{border-top:1px solid var(--line);background:var(--panel);padding:56px 0 3
 .auth-note{margin-top:18px;color:var(--muted);font-size:.9rem}
 .btn:disabled{opacity:.55}
 @media (prefers-reduced-motion:reduce){.cap.enter{animation:none}}
+
+/* ---- trang Bảng giá: tính giá theo video và gói mẫu ---- */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.calc{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:24px;align-items:start}
+@media (max-width:960px){.calc{grid-template-columns:1fr}}
+.quote{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.quote th,.quote td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--line);font-size:.95rem}
+.quote th[scope="row"],.quote thead th:first-child{text-align:left;font-weight:600}
+.quote thead th{color:var(--muted);font-weight:600;font-size:.85rem}
+.packs{grid-template-columns:repeat(4,1fr)}
+.packs .price{font-size:1.8rem}
+@media (max-width:1100px){.packs{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:620px){.packs{grid-template-columns:1fr}}

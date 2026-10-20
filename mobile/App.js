@@ -1,183 +1,56 @@
-import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TouchableOpacity, 
-  SafeAreaView, 
-  StatusBar,
-  ActivityIndicator,
-  Alert
-} from 'react-native';
+import React from 'react';
+import { Text } from 'react-native';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { I18nProvider, useI18n } from './src/context/I18nContext';
+import { AuthProvider } from './src/context/AuthContext';
+import { useTheme } from './src/theme';
+import HomeScreen from './src/screens/HomeScreen';
+import DemoScreen from './src/screens/DemoScreen';
+import PricingScreen from './src/screens/PricingScreen';
+import InfoScreen from './src/screens/InfoScreen';
+import AccountScreen from './src/screens/AccountScreen';
 
-export default function App() {
-  const [selectedLanguage, setSelectedLanguage] = useState('Tiếng Anh');
-  const [loading, setLoading] = useState(false);
+const Tab = createBottomTabNavigator();
+const icon = (emoji) => ({ focused }) => <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>{emoji}</Text>;
 
-  const handleSelectVideo = () => {
-    Alert.alert('Chọn Video', 'Đã mở thư viện để chọn video thuyết minh!');
+function Tabs() {
+  const { t } = useI18n();
+  const c = useTheme();
+  const navTheme = {
+    ...DefaultTheme,
+    dark: c.dark,
+    colors: { ...DefaultTheme.colors, primary: c.accent, background: c.bg, card: c.panel, text: c.ink, border: c.line },
   };
-
-  const handleStartDubbing = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      Alert.alert('Thành công', 'Đã thuyết minh tự động xong!');
-    }, 2000);
-  };
-
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Dubchef</Text>
-        <Text style={styles.subtitle}>Thuyết minh tự động đa ngôn ngữ</Text>
-      </View>
-
-      {/* Main Content */}
-      <View style={styles.content}>
-        {/* Khung chọn Video */}
-        <TouchableOpacity style={styles.uploadCard} onPress={handleSelectVideo}>
-          <Text style={styles.uploadIcon}>🎬</Text>
-          <Text style={styles.uploadText}>Nhấn để tải lên Video</Text>
-          <Text style={styles.uploadSubtext}>Hỗ trợ MP4, MOV (Tối đa 50MB)</Text>
-        </TouchableOpacity>
-
-        {/* Khung chọn Ngôn ngữ */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Chọn ngôn ngữ thuyết minh:</Text>
-          <View style={styles.langContainer}>
-            {['Tiếng Anh', 'Tiếng Nhật', 'Tiếng Hàn', 'Tiếng Trung'].map((lang) => (
-              <TouchableOpacity
-                key={lang}
-                style={[
-                  styles.langBadge,
-                  selectedLanguage === lang && styles.activeLangBadge
-                ]}
-                onPress={() => setSelectedLanguage(lang)}
-              >
-                <Text
-                  style={[
-                    styles.langText,
-                    selectedLanguage === lang && styles.activeLangText
-                  ]}
-                >
-                  {lang}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Nút bấm Dịch & Thuyết minh */}
-        <TouchableOpacity 
-          style={styles.dubButton} 
-          onPress={handleStartDubbing}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.dubButtonText}>Bắt đầu Thuyết minh ({selectedLanguage})</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    <NavigationContainer theme={navTheme}>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: c.ink,
+          tabBarInactiveTintColor: c.muted,
+          tabBarStyle: { backgroundColor: c.panel, borderTopColor: c.line },
+        }}
+      >
+        <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: t('tab_home'), tabBarIcon: icon('🍳') }} />
+        <Tab.Screen name="Demo" component={DemoScreen} options={{ tabBarLabel: t('nav_demo'), tabBarIcon: icon('🎧') }} />
+        <Tab.Screen name="Pricing" component={PricingScreen} options={{ tabBarLabel: t('nav_pricing'), tabBarIcon: icon('💳') }} />
+        <Tab.Screen name="Info" component={InfoScreen} options={{ tabBarLabel: t('tab_info'), tabBarIcon: icon('ℹ️') }} />
+        <Tab.Screen name="Account" component={AccountScreen} options={{ tabBarLabel: t('tab_account'), tabBarIcon: icon('👤') }} />
+      </Tab.Navigator>
+    </NavigationContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  header: {
-    padding: 20,
-    backgroundColor: '#007aff',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#e0e0e0',
-    marginTop: 4,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'space-between',
-  },
-  uploadCard: {
-    backgroundColor: '#ffffff',
-    borderWidth: 2,
-    borderColor: '#007aff',
-    borderStyle: 'dashed',
-    borderRadius: 16,
-    padding: 30,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  uploadIcon: {
-    fontSize: 40,
-    marginBottom: 10,
-  },
-  uploadText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  uploadSubtext: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 4,
-  },
-  section: {
-    marginVertical: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: '#333',
-  },
-  langContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  langBadge: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: '#e9ecef',
-  },
-  activeLangBadge: {
-    backgroundColor: '#007aff',
-  },
-  langText: {
-    fontSize: 14,
-    color: '#495057',
-  },
-  activeLangText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
-  dubButton: {
-    backgroundColor: '#28a745',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  dubButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <I18nProvider>
+        <AuthProvider>
+          <Tabs />
+        </AuthProvider>
+      </I18nProvider>
+    </SafeAreaProvider>
+  );
+}

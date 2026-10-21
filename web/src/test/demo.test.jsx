@@ -73,11 +73,11 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     await user.upload(document.querySelector('input[type="file"]'), file);
     await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
 
-    expect(await screen.findByText(vi_('d_done'))).toBeInTheDocument();
+    expect(await screen.findByText(vi_('d_done_dub'))).toBeInTheDocument();
     expect(document.querySelector('video')).toBeInTheDocument();
+    // Hai mảnh ngắn của Whisper được gộp thành một câu trọn vẹn
     const list = within(screen.getByRole('list', { name: vi_('d_steps') }));
-    expect(list.getByRole('button', { name: 'Đập trứng vào bát.' })).toBeInTheDocument();
-    expect(list.getByRole('button', { name: 'Xào cùng cà chua.' })).toBeInTheDocument();
+    expect(list.getByRole('button', { name: 'Đập trứng vào bát. Xào cùng cà chua.' })).toBeInTheDocument();
   });
 
   it('đủ video và lời thoại tự gõ: dịch xong thì hiện video thật, phụ đề và bản dịch', async () => {
@@ -86,7 +86,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     await fillMinimal(user);
     await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
 
-    expect(await screen.findByText(vi_('d_done'))).toBeInTheDocument();
+    expect(await screen.findByText(vi_('d_done_dub'))).toBeInTheDocument();
     expect(document.querySelector('video')).toBeInTheDocument();
     // Câu này hiện cả ở phụ đề trên video lẫn trong danh sách bước, nên có thể khớp nhiều chỗ
     expect(screen.getAllByText('Đập trứng vào bát.').length).toBeGreaterThan(0);
@@ -130,7 +130,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     renderApp('/demo');
     await fillMinimal(user);
     await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
-    await screen.findByText(vi_('d_done'));
+    await screen.findByText(vi_('d_done_dub'));
 
     const list = within(screen.getByRole('list', { name: vi_('d_steps') }));
     await user.click(list.getByRole('button', { name: 'Xào cùng cà chua.' }));

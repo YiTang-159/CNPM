@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import { translateLines, TranslateError } from '../shared/translate.js';
-import { LANGCODE, availableVoiceLangs, firstAvailableVoice, fitRate, hasSpeech, speakQueue, stopSpeech, voiceFor, voicesLoaded } from '../utils/speech.js';
+import { availableVoiceLangs, firstAvailableVoice, fitRate, hasSpeech, speakQueue, stopSpeech, voiceFor, voicesLoaded } from '../utils/speech.js';
 import { mergeChunks } from '../utils/segments.js';
 import { fileToWhisperAudio, AudioExtractError } from '../utils/audio.js';
 import { transcribeVideoAudio } from '../utils/whisper.js';

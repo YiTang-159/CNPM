@@ -54,7 +54,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
   it('bấm dịch khi chưa chọn video thì báo lỗi', async () => {
     const user = userEvent.setup();
     renderApp('/demo');
-    await user.click(screen.getByRole('button', { name: vi_('d_translate_btn') }));
+    await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
     expect(await screen.findByText(vi_('d_need'))).toBeInTheDocument();
   });
 
@@ -62,7 +62,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     const user = userEvent.setup();
     renderApp('/demo');
     await user.type(screen.getByLabelText(vi_('d_url')), 'https://example.com/video.mp4');
-    await user.click(screen.getByRole('button', { name: vi_('d_translate_btn') }));
+    await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
     expect(await screen.findByText(vi_('d_need_script'))).toBeInTheDocument();
   });
 
@@ -71,7 +71,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     renderApp('/demo');
     const file = new File(['nội dung giả'], 'mon-an.mp4', { type: 'video/mp4' });
     await user.upload(document.querySelector('input[type="file"]'), file);
-    await user.click(screen.getByRole('button', { name: vi_('d_translate_btn') }));
+    await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
 
     expect(await screen.findByText(vi_('d_done'))).toBeInTheDocument();
     expect(document.querySelector('video')).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     const user = userEvent.setup();
     renderApp('/demo');
     await fillMinimal(user);
-    await user.click(screen.getByRole('button', { name: vi_('d_translate_btn') }));
+    await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
 
     expect(await screen.findByText(vi_('d_done'))).toBeInTheDocument();
     expect(document.querySelector('video')).toBeInTheDocument();
@@ -103,6 +103,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     const user = userEvent.setup();
     renderApp('/demo');
     await fillMinimal(user);
+    await user.click(screen.getByLabelText(vi_('d_opt_translate')));
     await user.click(screen.getByRole('button', { name: vi_('d_translate_btn') }));
 
     expect(await screen.findByText(vi_('e_net'))).toBeInTheDocument();
@@ -113,6 +114,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     const user = userEvent.setup();
     renderApp('/demo');
     await fillMinimal(user);
+    await user.click(screen.getByLabelText(vi_('d_opt_translate')));
     await user.click(screen.getByRole('button', { name: vi_('d_translate_btn') }));
     await screen.findByText(vi_('d_done'));
 
@@ -127,11 +129,26 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     const user = userEvent.setup();
     renderApp('/demo');
     await fillMinimal(user);
-    await user.click(screen.getByRole('button', { name: vi_('d_translate_btn') }));
+    await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
     await screen.findByText(vi_('d_done'));
 
     const list = within(screen.getByRole('list', { name: vi_('d_steps') }));
     await user.click(list.getByRole('button', { name: 'Xào cùng cà chua.' }));
     expect(list.getByRole('button', { name: 'Xào cùng cà chua.' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('mặc định chỉ lồng tiếng, không dịch: chỉ có ngôn ngữ gốc, không gọi dịch vụ dịch', async () => {
+    const { translateLines } = await import('../shared/translate.js');
+    translateLines.mockClear();
+    const user = userEvent.setup();
+    renderApp('/demo');
+    await fillMinimal(user);
+    await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
+    expect(await screen.findByText(vi_('d_done_dub'))).toBeInTheDocument();
+
+    expect(translateLines).not.toHaveBeenCalled();
+    const subsGroup = within(screen.getByRole('group', { name: vi_('d_subs') }));
+    expect(subsGroup.getByRole('button', { name: 'VI' })).toBeInTheDocument();
+    expect(subsGroup.queryByRole('button', { name: 'EN' })).toBeNull();
   });
 });

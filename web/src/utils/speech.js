@@ -28,6 +28,36 @@ export function firstAvailableVoice(preferred, order = ['vi', 'en', 'zh']) {
   return found || 'off';
 }
 
+// Giữ tham chiếu tới các câu đang chờ đọc — Chrome có lỗi tự thu gom bộ nhớ làm giọng đọc đứng giữa chừng.
+let held = [];
+
+// Tốc độ nói tự nhiên (ký tự/giây) ở rate 1, dùng để ước lượng câu đọc mất bao lâu.
+const CPS = { vi: 14, en: 15, zh: 4.5 };
+
+/** Chọn rate sao cho câu đọc vừa khung thời gian [start, end] của nó trong video (không nén quá 1.6×). */
+export function fitRate(text, lang, seg, speed = 1) {
+  if (!seg || seg.start == null || seg.end == null || seg.end <= seg.start) return speed;
+  const natural = String(text).length / (CPS[lang] || 14);
+  const need = natural / (seg.end - seg.start);
+  return Math.min(1.6, Math.max(0.9, need)) * speed;
+}
+
+/** Đọc liền mạch một dãy câu: xếp hàng tất cả ngay từ đầu, không câu nào bị cắt ngang khi sang câu kế.
+ *  onStart(k) báo câu thứ k (trong items) bắt đầu được đọc. */
+export function speakQueue(items, { lang, voice, onStart }) {
+  stopSpeech();
+  if (!hasSpeech || !voice) return;
+  held = items.map(({ text, rate }, k) => {
+    const u = new window.SpeechSynthesisUtterance(text);
+    u.lang = LANGCODE[lang];
+    u.voice = voice;
+    u.rate = rate;
+    u.onstart = () => { if (onStart) onStart(k); };
+    return u;
+  });
+  held.forEach((u) => { try { window.speechSynthesis.speak(u); } catch (e) { /* bỏ qua */ } });
+}
+
 export function stopSpeech() {
   if (hasSpeech) {
     try { window.speechSynthesis.cancel(); } catch (e) { /* bỏ qua */ }

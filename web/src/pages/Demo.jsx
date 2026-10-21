@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import { translateLines, TranslateError } from '../shared/translate.js';
-import { LANGCODE, availableVoiceLangs, firstAvailableVoice, hasSpeech, stopSpeech, voiceFor, voicesLoaded } from '../utils/speech.js';
+import { LANGCODE, availableVoiceLangs, firstAvailableVoice, fitRate, hasSpeech, speakQueue, stopSpeech, voiceFor, voicesLoaded } from '../utils/speech.js';
+import { mergeChunks } from '../utils/segments.js';
 import { fileToWhisperAudio, AudioExtractError } from '../utils/audio.js';
 import { transcribeVideoAudio } from '../utils/whisper.js';
 
 const STAGES_MANUAL = ['dp1', 'dp2', 'dp3', 'dp4'];
-const STAGES_AUTO = ['dp0', 'dp1', 'dp2', 'dp3', 'dp4'];
 const LANG_TAG = { vi: 'VI', en: 'EN', zh: '中文' };
 const ERR_KEY = { net: 'e_net', server: 'd_translate_err', empty: 'd_translate_err', limit: 'd_translate_limit' };
 
@@ -27,6 +27,8 @@ export default function Demo() {
   const [over, setOver] = useState(false);
 
   // --- quy trình dịch thật ---
+  const [translate, setTranslate] = useState(false); // false = chỉ lồng tiếng đúng ngôn ngữ gốc, không dịch
+  const [stageKeys, setStageKeys] = useState(STAGES_MANUAL);
   const [autoMode, setAutoMode] = useState(false); // true = đang/đã tự nhận diện giọng nói (Whisper), không cần gõ tay
   const [sttPhase, setSttPhase] = useState(''); // 'model' | 'listening' | ''
   const [showPipe, setShowPipe] = useState(false);
@@ -70,39 +72,80 @@ export default function Demo() {
     v.muted = voice !== 'off';
   }, [speed, voice, segments]);
 
-  // Video phát tới đoạn nào thì đổi phụ đề/giọng đọc theo đoạn đó.
-  // Có mốc thời gian thật (Whisper) -> khớp theo mốc thật. Không có (gõ tay) -> chia đều thời lượng.
-  const onTimeUpdate = () => {
-    const v = videoRef.current;
-    if (!v || !segments || !segments.length) return;
+  const segFromTime = (v) => {
+    if (!segments || !segments.length) return 0;
     if (segments[0].start != null) {
-      const t2 = v.currentTime;
       let seg = 0;
       for (let n = 0; n < segments.length; n += 1) {
-        if (t2 >= segments[n].start) seg = n; else break;
+        if (v.currentTime >= segments[n].start) seg = n; else break;
       }
-      if (seg !== i) setI(seg);
-      return;
+      return seg;
     }
-    if (!v.duration) return;
-    const seg = Math.min(segments.length - 1, Math.floor((v.currentTime / v.duration) * segments.length));
+    if (!v.duration) return 0;
+    return Math.min(segments.length - 1, Math.floor((v.currentTime / v.duration) * segments.length));
+  };
+
+  // Khi có giọng đọc thì giọng đọc "cầm lái" (phụ đề chạy theo giọng); khi tắt tiếng / máy thiếu giọng thì theo thời gian video.
+  const voiceDriven = voice !== 'off' && !!voiceFor(voice);
+  const resyncRef = useRef(false); // true khi chính mình vừa đặt lại currentTime (không coi là người dùng tua)
+  const jumpRef = useRef(null);
+
+  // Đọc LIỀN MẠCH từ đoạn `from` tới hết: xếp hàng cả dãy, câu nào đọc xong mới sang câu kế, không bị cắt ngang.
+  const speakFrom = (from) => {
+    if (!segments || voice === 'off') return;
+    const vc = voiceFor(voice);
+    if (!vc) return;
+    const items = segments.slice(from).map((seg) => ({ text: seg[voice], rate: fitRate(seg[voice], voice, seg, speed) }));
+    speakQueue(items, {
+      lang: voice,
+      voice: vc,
+      onStart: (k) => {
+        const n = from + k;
+        setI(n);
+        const vid = videoRef.current;
+        const seg = segments[n];
+        // Giọng và hình lệch quá 2 giây thì kéo hình về đúng chỗ (bỏ qua câu đầu: người dùng vừa chủ động tua tới đó)
+        if (k > 0 && vid && seg.start != null && Math.abs(vid.currentTime - seg.start) > 2) {
+          resyncRef.current = true;
+          vid.currentTime = seg.start;
+        }
+      },
+    });
+  };
+
+  const onTimeUpdate = () => {
+    const v = videoRef.current;
+    if (!v || !segments || voiceDriven) return;
+    const seg = segFromTime(v);
     if (seg !== i) setI(seg);
   };
 
-  // Đọc thuyết minh khi sang đoạn mới (chỉ khi có chọn giọng và video đang phát)
+  const onPlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    const seg = segFromTime(v);
+    setI(seg);
+    speakFrom(seg);
+  };
+
+  const onSeeked = () => {
+    const v = videoRef.current;
+    if (!v || !segments) return;
+    if (resyncRef.current) { resyncRef.current = false; return; }
+    const seg = jumpRef.current != null ? jumpRef.current : segFromTime(v);
+    jumpRef.current = null;
+    setI(seg);
+    if (!v.paused) speakFrom(seg);
+  };
+
+  // Đổi giọng/tốc độ khi đang phát thì đọc lại liền mạch từ đoạn hiện tại
   useEffect(() => {
-    if (!segments || voice === 'off' || !videoRef.current || videoRef.current.paused) return undefined;
-    const v = voiceFor(voice);
-    if (!v) return undefined;
-    stopSpeech();
-    const u = new window.SpeechSynthesisUtterance(segments[i][voice]);
-    u.lang = LANGCODE[voice];
-    u.rate = speed;
-    u.voice = v;
-    try { window.speechSynthesis.speak(u); } catch (e) { /* bỏ qua */ }
+    const v = videoRef.current;
+    if (!segments || !v) return undefined;
+    if (voice === 'off' || v.paused) stopSpeech(); else speakFrom(i);
     return () => stopSpeech();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i, voice, segments]);
+  }, [voice, speed, segments]);
 
   const pickFile = (f) => {
     if (!f) return;
@@ -118,6 +161,7 @@ export default function Demo() {
     setI(n);
     const v = videoRef.current;
     if (!v || !segments || !segments.length) return;
+    jumpRef.current = n;
     if (segments[n].start != null) {
       v.currentTime = segments[n].start;
     } else {
@@ -165,13 +209,14 @@ export default function Demo() {
 
     // Chỉ số từng bước khớp với STAGES_AUTO ['dp0','dp1','dp2','dp3','dp4'] hoặc
     // STAGES_MANUAL ['dp1','dp2','dp3','dp4'] — auto có thêm bước "nhận diện giọng nói" ở đầu.
-    const sttIdx = isAuto ? 0 : -1;
-    const readyIdx = isAuto ? 1 : 0;
-    const tIdx = isAuto ? 2 : 1;
-    const vIdx = isAuto ? 3 : 2;
-    const doneIdx = isAuto ? 4 : 3;
-    const STAGE = isAuto ? STAGES_AUTO : STAGES_MANUAL;
-    setStages(runStage(STAGE.map(() => 'wait'), readyIdx, 'done')); // video đã có sẵn từ trước khi bấm Dịch
+    const STAGE = [...(isAuto ? ['dp0'] : []), 'dp1', ...(translate ? ['dp2'] : []), 'dp3', 'dp4'];
+    const at = (k) => STAGE.indexOf(k);
+    const sttIdx = at('dp0');
+    const tIdx = at('dp2');
+    const vIdx = at('dp3');
+    const doneIdx = at('dp4');
+    setStageKeys(STAGE);
+    setStages(runStage(STAGE.map(() => 'wait'), at('dp1'), 'done')); // video đã có sẵn từ trước khi bấm Dịch
 
     try {
       let lines;
@@ -184,22 +229,26 @@ export default function Demo() {
         const chunks = (output.chunks && output.chunks.length)
           ? output.chunks
           : [{ text: output.text || '', timestamp: [0, videoRef.current?.duration || null] }];
-        lines = chunks.map((c) => (c.text || '').trim());
-        chunkTimes = chunks.map((c) => ({ start: c.timestamp?.[0] ?? 0, end: c.timestamp?.[1] ?? null }));
-        // Loại bỏ đoạn rỗng (Whisper thỉnh thoảng trả câu trống ở đầu/cuối)
-        const kept = lines.map((text, n) => ({ text, time: chunkTimes[n] })).filter((x) => x.text);
-        lines = kept.map((x) => x.text);
-        chunkTimes = kept.map((x) => x.time);
+        // Gộp các mảnh ngắn của Whisper thành câu trọn vẹn (đồng thời bỏ mảnh rỗng) để đọc liền mạch
+        const merged = mergeChunks(chunks);
+        lines = merged.map((x) => x.text);
+        chunkTimes = merged.map((x) => ({ start: x.start, end: x.end }));
         if (!lines.length) throw new TranslateError('empty');
         setStages((s) => runStage(s, sttIdx, 'done'));
       } else {
-        lines = script.split('\n');
+        lines = script.split('\n').map((l) => l.trim()).filter(Boolean);
       }
 
-      setStages((s) => runStage(s, tIdx, 'run'));
-      const translated = await translateLines(lines, sourceLang);
+      let translated;
+      if (translate) {
+        setStages((s) => runStage(s, tIdx, 'run'));
+        translated = await translateLines(lines, sourceLang);
+        setStages((s) => runStage(s, tIdx, 'done'));
+      } else {
+        // Không dịch: mỗi đoạn chỉ có đúng ngôn ngữ gốc
+        translated = lines.map((text) => ({ [sourceLang]: text }));
+      }
       if (!translated.length) throw new TranslateError('empty');
-      setStages((s) => runStage(s, tIdx, 'done'));
 
       setStages((s) => runStage(s, vIdx, 'run'));
       if (hasSpeech && !voicesLoaded()) await new Promise((r) => setTimeout(r, 200));
@@ -210,8 +259,10 @@ export default function Demo() {
 
       setSegments(withTime);
       setI(0);
-      setVoice(firstAvailableVoice(lang));
-      setSubs({ [lang]: true });
+      const outLangs = translate ? ['vi', 'en', 'zh'] : [sourceLang];
+      const wanted = translate ? lang : sourceLang;
+      setVoice(firstAvailableVoice(wanted, outLangs));
+      setSubs({ [wanted]: true });
       setStages((s) => runStage(s, vIdx, 'done'));
       setStages((s) => runStage(s, doneIdx, 'done'));
       setDone(true);
@@ -229,12 +280,14 @@ export default function Demo() {
     }
   };
 
-  const shownSubs = segments ? ['vi', 'en', 'zh'].filter((l) => subs[l]) : [];
+  const segLangs = segments ? ['vi', 'en', 'zh'].filter((l) => segments[0][l] != null) : [];
+  const listLang = segLangs.includes(lang) ? lang : segLangs[0];
+  const shownSubs = segLangs.filter((l) => subs[l]);
   const voiceMissing = segments && voice !== 'off' && (!hasSpeech || (voicesLoaded() && !voiceFor(voice)));
   const avail = segments ? availableVoiceLangs() : null; // null = chưa tải xong danh sách giọng, chưa vội khoá
-  const anyLocked = avail && ['vi', 'en', 'zh'].some((l) => !avail[l]);
+  const anyLocked = avail && segLangs.some((l) => !avail[l]);
   const videoSrc = objectUrl || url.trim();
-  const activeStages = autoMode ? STAGES_AUTO : STAGES_MANUAL;
+  const activeStages = stageKeys;
   const sttRunning = running && autoMode && stages[0] === 'run';
 
   return (
@@ -288,8 +341,12 @@ export default function Demo() {
               <option value="zh">中文</option>
             </select>
           </div>
+          <label className="ctl-group" style={{ fontSize: '.9rem', fontWeight: 600, gap: 8 }}>
+            <input type="checkbox" checked={translate} onChange={(e) => setTranslate(e.target.checked)} />
+            {t('d_opt_translate')}
+          </label>
           <button className="btn btn-primary" type="button" onClick={start} disabled={running}>
-            {running ? t('d_translating') : t('d_translate_btn')}
+            {running ? t(translate ? 'd_translating' : 'd_dubbing') : t(translate ? 'd_translate_btn' : 'd_dub_btn')}
           </button>
         </div>
 
@@ -313,7 +370,7 @@ export default function Demo() {
             ) : null}
           </>
         ) : null}
-        {done ? <p className="ok" role="status" style={{ marginTop: 16 }}>{t('d_done')}</p> : null}
+        {done ? <p className="ok" role="status" style={{ marginTop: 16 }}>{t(translate ? 'd_done' : 'd_done_dub')}</p> : null}
 
         {segments ? (
           <div className="player" ref={playerRef}>
@@ -324,6 +381,10 @@ export default function Demo() {
                   src={videoSrc}
                   controls
                   onTimeUpdate={onTimeUpdate}
+                  onPlay={onPlay}
+                  onPause={stopSpeech}
+                  onEnded={stopSpeech}
+                  onSeeked={onSeeked}
                   style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
                 />
                 {shownSubs.length > 0 ? (
@@ -354,7 +415,7 @@ export default function Demo() {
                   <div className="ctl-group">
                     <span>{t('d_voice')}</span>
                     <div className="chips" role="group" aria-label={t('d_voice')}>
-                      {['vi', 'en', 'zh'].map((l) => {
+                      {segLangs.map((l) => {
                         const locked = avail && !avail[l];
                         return (
                           <button
@@ -380,7 +441,7 @@ export default function Demo() {
                   <div className="ctl-group">
                     <span>{t('d_subs')}</span>
                     <div className="chips" role="group" aria-label={t('d_subs')}>
-                      {['vi', 'en', 'zh'].map((l) => (
+                      {segLangs.map((l) => (
                         <button key={l} type="button" className="chip" aria-pressed={!!subs[l]} onClick={() => toggleSub(l)}>{LANG_TAG[l]}</button>
                       ))}
                     </div>
@@ -403,7 +464,7 @@ export default function Demo() {
               <ol className="cue-list" aria-label={t('d_steps')}>
                 {segments.map((seg, n) => (
                   <li key={n}>
-                    <button type="button" aria-current={n === i ? 'true' : undefined} onClick={() => jump(n)}>{seg[lang]}</button>
+                    <button type="button" aria-current={n === i ? 'true' : undefined} onClick={() => jump(n)}>{seg[listLang]}</button>
                   </li>
                 ))}
               </ol>

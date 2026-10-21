@@ -15,7 +15,7 @@ describe('mergeChunks', () => {
   });
 
   it('bỏ mảnh rỗng và tự cắt khi đoạn quá dài dù không có dấu câu', () => {
-    const long = 'từ '.repeat(20).trim();
+    const long = 'từ '.repeat(40).trim(); // 119 ký tự > maxLen 110
     const out = mergeChunks([{ text: '  ', timestamp: [0, 1] }, { text: long, timestamp: [1, 5] }, { text: long, timestamp: [5, 9] }]);
     expect(out.length).toBe(2);
   });

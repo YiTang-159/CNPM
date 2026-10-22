@@ -59,42 +59,52 @@ export function addVisit(data, { id, path, lang, at }) {
   return data;
 }
 
-/** Tổng hợp số liệu cho trang Admin (hàm thuần). */
-export function summarize(data, now = new Date(), span = 7) {
+/** Số người (không trùng) và lượt xem của các ngày [offset, offset+span) tính lùi từ hôm nay. */
+function windowStats(data, now, span, offset) {
   const series = [];
-  const weekIds = new Set();
-  let weekViews = 0;
-  for (let i = span - 1; i >= 0; i--) {
+  const ids = new Set();
+  let views = 0;
+  for (let i = offset + span - 1; i >= offset; i--) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
     const day = data.days[dayKey(d)];
     series.push({ date: dayKey(d), visitors: day ? day.ids.length : 0, views: day ? day.views : 0 });
     if (day) {
-      day.ids.forEach((x) => weekIds.add(x));
-      weekViews += day.views;
+      day.ids.forEach((x) => ids.add(x));
+      views += day.views;
     }
   }
-  const pages = {};
-  const langs = {};
+  return { series, visitors: ids.size, views };
+}
+
+/** Tổng hợp số liệu cho trang Admin trong `span` ngày gần nhất (hàm thuần). */
+export function summarize(data, now = new Date(), span = 7) {
+  const cur = windowStats(data, now, span, 0);
+  const prev = windowStats(data, now, span, span);
+  const yesterday = windowStats(data, now, 1, 1);
+  const today = cur.series[cur.series.length - 1];
   let totalViews = 0;
-  for (const day of Object.values(data.days)) {
-    totalViews += day.views;
-    for (const [p, n] of Object.entries(day.pages)) pages[p] = (pages[p] || 0) + n;
-    for (const [l, n] of Object.entries(day.langs)) langs[l] = (langs[l] || 0) + n;
-  }
+  for (const day of Object.values(data.days)) totalViews += day.views;
   const since = now.getTime() - ACTIVE_MINUTES * 60000;
-  const today = series[series.length - 1];
+  const peak = cur.series.reduce((a, b) => (b.visitors > a.visitors ? b : a), cur.series[0]);
   return {
+    span,
     today: { visitors: today.visitors, views: today.views },
-    week: { visitors: weekIds.size, views: weekViews },
+    yesterday: { visitors: yesterday.visitors, views: yesterday.views },
+    period: { visitors: cur.visitors, views: cur.views },
+    prev: { visitors: prev.visitors, views: prev.views },
     total: { visitors: Object.keys(data.visitors).length, views: totalViews },
     activeNow: Object.values(data.visitors).filter((v) => v.last >= since).length,
-    series,
-    topPages: Object.entries(pages).map(([path, views]) => ({ path, views })).sort((a, b) => b.views - a.views).slice(0, 6),
-    langs: { vi: langs.vi || 0, en: langs.en || 0, zh: langs.zh || 0 },
+    series: cur.series,
+    peak: { date: peak.date, visitors: peak.visitors },
   };
 }
 
-/** Dữ liệu mẫu 14 ngày để thử giao diện (id bắt đầu bằng "demo-"). Cùng một kết quả mỗi lần. */
+/** Phần trăm thay đổi so với kỳ trước; null nếu kỳ trước bằng 0 (không so sánh được). */
+export function change(cur, prev) {
+  return prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null;
+}
+
+/** Dữ liệu mẫu 60 ngày để thử giao diện (id bắt đầu bằng "demo-"). Cùng một kết quả mỗi lần. */
 export function sampleData(now = new Date()) {
   const data = EMPTY();
   const paths = ['/', '/features', '/demo', '/pricing', '/about', '/contact', '/faq'];
@@ -104,8 +114,8 @@ export function sampleData(now = new Date()) {
     seed = (seed * 9301 + 49297) % 233280;
     return Math.floor((seed / 233280) * n);
   };
-  for (let back = 13; back >= 0; back--) {
-    const visitors = 12 + rnd(30) + (13 - back) * 2; // tăng dần theo thời gian
+  for (let back = 59; back >= 0; back--) {
+    const visitors = 8 + rnd(20) + (59 - back); // tăng dần theo thời gian
     for (let n = 0; n < visitors; n++) {
       const id = 'demo-' + rnd(260);
       const views = 1 + rnd(4);
@@ -134,21 +144,14 @@ export function trackVisit(path, lang) {
 }
 
 export const stats = {
-  /** Số liệu tổng hợp. Có Backend: GET /api/admin/overview -> { stats, users, messages }. */
-  async load(user) {
+  /** Số liệu tổng hợp. Có Backend: GET /api/admin/overview?days=N -> { stats }. */
+  async load(user, span = 7) {
     if (BASE) {
-      const res = await fetch(BASE + '/api/admin/overview', { headers: { 'X-User-Email': user.email } });
+      const res = await fetch(BASE + '/api/admin/overview?days=' + span, { headers: { 'X-User-Email': user.email } });
       if (!res.ok) throw new Error('server');
       return res.json();
     }
-    const list = (key) => {
-      try { return JSON.parse(localStorage.getItem(key)) || []; } catch (e) { return []; }
-    };
-    return {
-      stats: summarize(read()),
-      users: list('dubchef-users').map(({ name, email }) => ({ name, email })),
-      messages: list('dubchef-messages'),
-    };
+    return { stats: summarize(read(), new Date(), span) };
   },
   /** Nạp dữ liệu mẫu (chỉ ở chế độ lưu tạm). */
   seed() {

@@ -21,7 +21,6 @@ export default function Header() {
   const { pathname } = useLocation();
 
   useEffect(() => setOpen(false), [pathname]);
-  const onAdmin = pathname.startsWith('/admin');
 
   return (
     <header className="site-header">
@@ -41,11 +40,10 @@ export default function Header() {
           <span />
         </button>
         <nav id="nav" className={'nav' + (open ? ' open' : '')} aria-label={t('navlabel')}>
-          {/* Trang quản trị chỉ có số liệu, không hiện menu của trang chính */}
-          {onAdmin ? null : LINKS.map(([to, key]) => (
+          {LINKS.map(([to, key]) => (
             <NavLink key={to} to={to}>{t(key)}</NavLink>
           ))}
-          {isAdmin(user) && !onAdmin ? <NavLink to="/admin">{t('nav_admin')}</NavLink> : null}
+          {isAdmin(user) ? <NavLink to="/admin">{t('nav_admin')}</NavLink> : null}
           <div className="nav-end">
             <div className="lang" role="group" aria-label={t('langlabel')}>
               {LANGS.map((code, n) => (

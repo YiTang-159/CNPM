@@ -23,6 +23,7 @@ export function errorKey(err) {
   const c = err && err.code;
   if (c === 'exists') return 'e_exists';
   if (c === 'invalid') return 'e_login';
+  if (c === 'locked') return 'e_locked';
   return 'e_net';
 }
 
@@ -79,7 +80,7 @@ export const api = {
     const users = read(K_USERS, []);
     if (norm(email) === norm(ADMIN_EMAIL) || users.some((u) => u.email === norm(email))) throw new ApiError('exists');
     const user = { name: name.trim(), email: norm(email) };
-    users.push({ ...user, hash: await hash(password) });
+    users.push({ ...user, hash: await hash(password), at: new Date().toISOString(), status: 'active' });
     write(K_USERS, users);
     return { user };
   },
@@ -92,6 +93,7 @@ export const api = {
     }
     const found = read(K_USERS, []).find((u) => u.email === norm(email));
     if (!found || found.hash !== (await hash(password))) throw new ApiError('invalid');
+    if (found.status === 'locked') throw new ApiError('locked');
     return { user: { name: found.name, email: found.email } };
   },
 

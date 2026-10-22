@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from './utils.jsx';
 import { I } from '../shared/i18n.js';
-import { ADMIN_EMAIL } from '../api/client.js';
+import { ADMIN_EMAIL, ADMIN_PASSWORD, api } from '../api/client.js';
 import { addVisit, sampleData, summarize } from '../api/analytics.js';
 
 const at = (d, h = 10) => new Date(2026, 9, d, h, 0);
@@ -49,6 +49,13 @@ describe('Trang /admin', () => {
     renderApp('/admin');
     expect(screen.getByRole('alert')).toHaveTextContent(I.ad_denied[0]);
     expect(screen.queryByRole('link', { name: I.nav_admin[0] })).toBeNull();
+  });
+
+  it('đăng nhập được bằng tài khoản admin có sẵn, không cần đăng ký', async () => {
+    const res = await api.login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+    expect(res.user.role).toBe('admin');
+    await expect(api.login({ email: ADMIN_EMAIL, password: 'sai-mat-khau' })).rejects.toMatchObject({ code: 'invalid' });
+    await expect(api.register({ name: 'X', email: ADMIN_EMAIL, password: 'matkhau123' })).rejects.toMatchObject({ code: 'exists' });
   });
 
   it('quản trị viên thấy số người truy cập sau khi nạp dữ liệu mẫu', async () => {

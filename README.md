@@ -98,7 +98,7 @@ Trang dành cho quản trị viên, hiện **số người truy cập hệ thố
 - Biểu đồ cột người truy cập 7 ngày gần nhất, các trang được xem nhiều, ngôn ngữ người dùng chọn.
 - Danh sách người dùng đã đăng ký và tin nhắn liên hệ.
 
-**Cách vào:** đăng ký tài khoản bằng email `admin@dubchef.vn` (đổi bằng biến `VITE_ADMIN_EMAIL` trong `web/.env`), rồi bấm mục **Quản trị** trên menu. Tài khoản khác không vào được.
+**Cách vào:** bấm **Đăng nhập**, dùng tài khoản quản trị có sẵn (không cần đăng ký): email `admin@dubchef.vn`, mật khẩu `admin12345` (đổi bằng `VITE_ADMIN_EMAIL`, `VITE_ADMIN_PASSWORD` trong `web/.env`). Rồi bấm mục **Quản trị** trên menu. Tài khoản khác không vào được. Khi nối Backend thì dùng tài khoản của Backend (có `role: 'admin'`).
 
 **Cách đếm:** mỗi lần mở một trang, `Layout` gọi `trackVisit` (`web/src/api/analytics.js`). Mỗi trình duyệt có một mã khách (`dubchef-vid`), nên một người mở nhiều trang vẫn chỉ tính là 1 người truy cập trong ngày.
 

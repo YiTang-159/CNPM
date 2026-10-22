@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
-import { ADMIN_EMAIL, HAS_API, isAdmin } from '../api/client.js';
+import { ADMIN_EMAIL, ADMIN_PASSWORD, HAS_API, isAdmin } from '../api/client.js';
 import { stats as statsApi } from '../api/analytics.js';
 import { LANGS } from '../shared/i18n.js';
 
@@ -53,7 +53,7 @@ export default function Admin() {
         {head}
         <div className="wrap" style={{ paddingBottom: 96 }}>
           <p role="alert">{t('ad_need_login')}</p>
-          <p className="fine">{t('ad_hint')} <strong>{ADMIN_EMAIL}</strong></p>
+          <p className="fine">{t('ad_hint')} <strong>{ADMIN_EMAIL}</strong>{!HAS_API ? <> {t('ad_pass')} <strong>{ADMIN_PASSWORD}</strong></> : null}</p>
           <p style={{ marginTop: 20 }}><Link className="btn btn-primary" to="/login">{t('nav_login')}</Link></p>
         </div>
       </>
@@ -65,7 +65,7 @@ export default function Admin() {
         {head}
         <div className="wrap" style={{ paddingBottom: 96 }}>
           <p role="alert">{t('ad_denied')}</p>
-          <p className="fine">{t('ad_hint')} <strong>{ADMIN_EMAIL}</strong></p>
+          <p className="fine">{t('ad_hint')} <strong>{ADMIN_EMAIL}</strong>{!HAS_API ? <> {t('ad_pass')} <strong>{ADMIN_PASSWORD}</strong></> : null}</p>
         </div>
       </>
     );

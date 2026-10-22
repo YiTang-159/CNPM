@@ -69,13 +69,15 @@ const norm = (s) => s.trim().toLowerCase();
 
 /** Email của quản trị viên. Đăng ký tài khoản bằng email này để vào trang /admin. */
 export const ADMIN_EMAIL = (import.meta.env && import.meta.env.VITE_ADMIN_EMAIL) || 'admin@dubchef.vn';
+/** Mật khẩu của tài khoản quản trị có sẵn (chỉ dùng khi chưa có Backend, để demo). */
+export const ADMIN_PASSWORD = (import.meta.env && import.meta.env.VITE_ADMIN_PASSWORD) || 'admin12345';
 export const isAdmin = (user) => Boolean(user) && (user.role === 'admin' || norm(user.email || '') === norm(ADMIN_EMAIL));
 
 export const api = {
   async register({ name, email, password }) {
     if (BASE) return remote('/api/auth/register', { name, email, password });
     const users = read(K_USERS, []);
-    if (users.some((u) => u.email === norm(email))) throw new ApiError('exists');
+    if (norm(email) === norm(ADMIN_EMAIL) || users.some((u) => u.email === norm(email))) throw new ApiError('exists');
     const user = { name: name.trim(), email: norm(email) };
     users.push({ ...user, hash: await hash(password) });
     write(K_USERS, users);
@@ -84,6 +86,10 @@ export const api = {
 
   async login({ email, password }) {
     if (BASE) return remote('/api/auth/login', { email, password });
+    // Tài khoản quản trị có sẵn, không cần đăng ký.
+    if (norm(email) === norm(ADMIN_EMAIL) && password === ADMIN_PASSWORD) {
+      return { user: { name: 'Admin', email: norm(ADMIN_EMAIL), role: 'admin' } };
+    }
     const found = read(K_USERS, []).find((u) => u.email === norm(email));
     if (!found || found.hash !== (await hash(password))) throw new ApiError('invalid');
     return { user: { name: found.name, email: found.email } };

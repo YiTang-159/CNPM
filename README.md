@@ -118,3 +118,29 @@ Bảng điều khiển riêng cho quản trị viên (có thanh bên, không dù
 | `GET /api/admin/users` | trả `{ users: [{name, email, at, status}] }`, `status` là `active` hoặc `locked` |
 | `PATCH /api/admin/users` | nhận `{email, status}` để khóa / mở khóa |
 | `DELETE /api/admin/users?email=...` | xóa người dùng |
+
+## Thanh toán ở trang Bảng giá + SQL Server (Docker)
+
+Ở phần **Tính giá theo số video**, khi số video hợp lệ sẽ có nút **Thanh toán**: chọn phương thức (thẻ, MoMo, chuyển khoản), xác nhận, nhận mã đơn và mã giao dịch. Đây là **thanh toán giả lập**: không nhập và không lưu số thẻ.
+
+**Kiến trúc:** web (React) → API Node.js (`server/`) → SQL Server trong Docker (`db/`).
+
+| Thư mục / file | Vai trò |
+|---|---|
+| `docker-compose.yml` | chạy 2 container: `db` (SQL Server 2022) và `api` (Node.js) |
+| `db/01-create-database.sql`, `db/02-schema.sql` | tạo CSDL `DubchefDB`, bảng `Orders`, `Payments`, view `vw_DoanhThuNgay` (API tự chạy khi khởi động, chạy lại không sao) |
+| `db/queries.sql` | vài câu truy vấn mẫu để xem dữ liệu |
+| `server/src/orders.js` | luật đơn hàng, **giá tính lại ở máy chủ** bằng `shared/pricing.js` (không tin số tiền trình duyệt gửi) |
+| `server/src/app.js`, `db.js` | các API và câu lệnh SQL |
+| `web/src/components/Checkout.jsx`, `web/src/api/orders.js` | nút và khung thanh toán |
+
+**Chạy:**
+1. Cài Docker Desktop, mở lên và chờ nó báo Running.
+2. Ở thư mục gốc dự án: `docker compose up -d --build` (lần đầu tải vài GB, chờ 3 đến 5 phút).
+3. Kiểm tra: mở `http://localhost:3000/api/health`, thấy `{"ok":true,"db":true}` là xong.
+4. Tạo file `web/.env` với dòng `VITE_PAYMENT_API_URL=http://localhost:3000`, rồi chạy lại `npm run dev` trong `web`.
+5. Mở `/#/pricing`, đăng nhập, bấm **Thanh toán**. Xem dữ liệu bằng Azure Data Studio hoặc SSMS: server `localhost,1433`, user `sa`, mật khẩu `Dubchef@12345` (đổi bằng biến `DB_PASSWORD`), mở `db/queries.sql`.
+
+Không đặt `VITE_PAYMENT_API_URL` thì thanh toán vẫn chạy nhưng đơn chỉ lưu trong trình duyệt.
+
+**API:** `GET /api/health`, `POST /api/orders` (`{name,email,uploads,outs,L}`), `POST /api/orders/:id/pay` (`{method}`), `GET /api/orders?email=`. Bản demo chưa có xác thực; làm thật thì cần kiểm tra đăng nhập ở máy chủ.

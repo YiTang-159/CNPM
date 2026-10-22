@@ -26,6 +26,17 @@ jobs:
           node scripts/sync-shared.mjs
           test -z "$(git status --porcelain)" || (echo "Chạy 'npm run sync' rồi commit lại"; git status --short; exit 1)
 
+  server:
+    name: API thanh toán (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test luật đơn hàng và cách tính giá ở máy chủ
+        run: node --test server/test/orders.test.mjs
+
   web:
     name: Web (React.js)
     runs-on: ubuntu-latest

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import Field from '../components/Field.jsx';
+import Checkout from '../components/Checkout.jsx';
 import { formatMoney, planPrice } from '../shared/format.js';
 import { calcPrice, checkCounts, parseCount, SAMPLE_PACKS, unitPrice } from '../shared/pricing.js';
 
@@ -102,6 +103,7 @@ export default function Pricing() {
             )}
           </div>
         </div>
+        {price ? <Checkout uploads={u} outs={o} total={price.total} /> : null}
       </div>
 
       <div className="section">

@@ -1,0 +1,39 @@
+# Chạy CSDL SQL Server và API thanh toán:  docker compose up -d --build
+# Dừng:  docker compose down      Xóa luôn dữ liệu:  docker compose down -v
+name: dubchef
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: dubchef-db
+    environment:
+      ACCEPT_EULA: "Y"
+      # Mật khẩu phải có chữ hoa, chữ thường, số, ký hiệu, từ 8 ký tự. Đổi bằng biến DB_PASSWORD.
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD:-Dubchef@12345}
+    ports:
+      - "1433:1433"
+    volumes:
+      - dubchef-data:/var/opt/mssql
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: dubchef-api
+    depends_on:
+      - db
+    environment:
+      PORT: "3000"
+      DB_HOST: db
+      DB_PORT: "1433"
+      DB_USER: sa
+      DB_PASSWORD: ${DB_PASSWORD:-Dubchef@12345}
+      DB_NAME: DubchefDB
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "3000:3000"
+    restart: on-failure
+
+volumes:
+  dubchef-data:

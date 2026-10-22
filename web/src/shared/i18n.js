@@ -253,7 +253,7 @@ m_pick:["Chọn video từ điện thoại","Choose a video from your phone","�
 d_sub_m:["Chạy thử quy trình với video của bạn hoặc nghe video mẫu bên dưới. Đây là bản demo giao diện: video không được tải lên máy chủ.","Run the workflow with your own video or listen to the sample below. This is an interface demo: the video is not uploaded to a server.","用你自己的视频试运行流程，或收听下方示例。这是界面演示：视频不会上传到服务器。"],
 nav_admin:["Quản trị","Admin","管理"],
 ad_title:["Trang quản trị","Admin dashboard","管理后台"],
-ad_sub:["Theo dõi số người truy cập hệ thống, các trang được xem nhiều, người dùng đã đăng ký và tin nhắn liên hệ.","Track how many people visit the system, the most viewed pages, registered users and contact messages.","查看访问系统的人数、热门页面、已注册用户和联系留言。"],
+ad_sub:["Theo dõi số người truy cập hệ thống và danh sách người dùng đã đăng ký.","Track how many people visit the system and the list of registered users.","查看访问系统的人数和已注册用户列表。"],
 ad_need_login:["Bạn cần đăng nhập bằng tài khoản quản trị để xem trang này.","Log in with the admin account to see this page.","请使用管理员账号登录后查看此页面。"],
 ad_denied:["Tài khoản của bạn không có quyền quản trị.","Your account does not have admin access.","你的账号没有管理权限。"],
 ad_hint:["Đăng nhập bằng tài khoản quản trị có sẵn. Email:","Log in with the built-in admin account. Email:","请使用内置管理员账号登录。邮箱："],

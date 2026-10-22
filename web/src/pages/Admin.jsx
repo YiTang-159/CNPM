@@ -5,9 +5,6 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import { ADMIN_EMAIL, ADMIN_PASSWORD, HAS_API, isAdmin } from '../api/client.js';
 import { stats as statsApi } from '../api/analytics.js';
-import { LANGS } from '../shared/i18n.js';
-
-const LANG_LABEL = { vi: 'Tiếng Việt', en: 'English', zh: '中文' };
 
 /** Định dạng số theo ngôn ngữ đang chọn (1.234 / 1,234). */
 const num = (L, n) => new Intl.NumberFormat(['vi-VN', 'en-US', 'zh-CN'][L]).format(n);
@@ -73,7 +70,6 @@ export default function Admin() {
 
   const st = data && data.stats;
   const max = st ? Math.max(1, ...st.series.map((d) => d.visitors)) : 1;
-  const langTotal = st ? Math.max(1, st.langs.vi + st.langs.en + st.langs.zh) : 1;
 
   return (
     <>
@@ -122,37 +118,6 @@ export default function Admin() {
               </tbody>
             </table>
 
-            <div className="admin-two">
-              <section aria-labelledby="ad-top">
-                <h2 className="sec sub" id="ad-top">{t('ad_top')}</h2>
-                {st.topPages.length ? (
-                  <table className="quote tbl">
-                    <thead><tr><th scope="col">{t('ad_page')}</th><th scope="col">{t('ad_views')}</th></tr></thead>
-                    <tbody>
-                      {st.topPages.map((p) => (
-                        <tr key={p.path}><th scope="row">{p.path}</th><td>{num(L, p.views)}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : <p className="fine">{t('ad_none')}</p>}
-              </section>
-              <section aria-labelledby="ad-langs">
-                <h2 className="sec sub" id="ad-langs">{t('ad_langs')}</h2>
-                <ul className="lang-bars">
-                  {LANGS.map((code) => {
-                    const pct = Math.round((st.langs[code] / langTotal) * 100);
-                    return (
-                      <li key={code}>
-                        <span>{LANG_LABEL[code]}</span>
-                        <span className={'lbar ' + code} role="img" aria-label={pct + '%'}><i style={{ width: pct + '%' }} /></span>
-                        <span className="pct">{pct}%</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            </div>
-
             <h2 className="sec sub">{t('ad_users')} ({data.users.length})</h2>
             {data.users.length ? (
               <table className="quote tbl">
@@ -161,18 +126,6 @@ export default function Admin() {
                   {data.users.map((u) => <tr key={u.email}><th scope="row">{u.name}</th><td>{u.email}</td></tr>)}
                 </tbody>
               </table>
-            ) : <p className="fine">{t('ad_none')}</p>}
-
-            <h2 className="sec sub">{t('ad_msgs')} ({data.messages.length})</h2>
-            {data.messages.length ? (
-              <ul className="msgs">
-                {data.messages.slice().reverse().map((m, n) => (
-                  <li key={n}>
-                    <strong>{m.name}</strong> <span className="fine-i">{m.email}</span>
-                    <p>{m.message}</p>
-                  </li>
-                ))}
-              </ul>
             ) : <p className="fine">{t('ad_none')}</p>}
           </>
         ) : null}

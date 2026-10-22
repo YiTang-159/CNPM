@@ -6,7 +6,7 @@
   "description": "API thanh toán Dubchef (Node.js + SQL Server)",
   "scripts": {
     "start": "node src/index.js",
-    "test": "node --test test/orders.test.mjs"
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

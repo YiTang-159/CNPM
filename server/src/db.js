@@ -3,6 +3,8 @@ import sql from 'mssql';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ACTIVE_MINUTES, dayKey } from './stats.js';
+import { hashPassword } from './auth.js';
 
 const DB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db');
 
@@ -54,6 +56,15 @@ const mapOrder = (r) => ({
   ref: r.TransactionRef || null,
 });
 
+const mapUser = (r) => ({
+  name: r.Name,
+  email: r.Email,
+  role: r.Role,
+  status: r.Status,
+  at: new Date(r.CreatedAt).toISOString(),
+  hash: r.PasswordHash,
+});
+
 /** Tạo CSDL + bảng (nếu chưa có) rồi trả về các hàm thao tác dữ liệu. */
 export async function openRepo() {
   const master = await connect('master');
@@ -64,7 +75,7 @@ export async function openRepo() {
   await runScript(pool, '02-schema.sql');
   console.log('SQL Server sẵn sàng.');
 
-  return {
+  const repo = {
     async ping() {
       await pool.request().query('SELECT 1 AS ok');
     },
@@ -123,5 +134,107 @@ export async function openRepo() {
                 ORDER BY o.CreatedAt DESC, o.OrderId DESC`);
       return r.recordset.map(mapOrder);
     },
+
+    // ---- Tài khoản ----
+    async findUser(email) {
+      const r = await pool.request().input('email', sql.NVarChar(254), email)
+        .query('SELECT * FROM dbo.Users WHERE Email = @email');
+      return r.recordset[0] ? mapUser(r.recordset[0]) : null;
+    },
+
+    /** Trả null nếu email đã có. */
+    async createUser({ name, email, passwordHash, role = 'user' }) {
+      try {
+        const r = await pool.request()
+          .input('name', sql.NVarChar(100), name)
+          .input('email', sql.NVarChar(254), email)
+          .input('hash', sql.VarChar(200), passwordHash)
+          .input('role', sql.VarChar(10), role)
+          .query(`INSERT INTO dbo.Users (Name, Email, PasswordHash, Role) OUTPUT inserted.*
+                  VALUES (@name, @email, @hash, @role)`);
+        return mapUser(r.recordset[0]);
+      } catch (e) {
+        if (e.number === 2627 || e.number === 2601) return null; // trùng UNIQUE
+        throw e;
+      }
+    },
+
+    async listUsers() {
+      const r = await pool.request().query('SELECT * FROM dbo.Users ORDER BY CreatedAt DESC, UserId DESC');
+      return r.recordset.map(mapUser);
+    },
+
+    /** Chỉ đổi người dùng thường (không đụng tới quản trị viên). Trả true nếu có dòng được đổi. */
+    async setUserStatus(email, status) {
+      const r = await pool.request()
+        .input('email', sql.NVarChar(254), email)
+        .input('st', sql.VarChar(10), status)
+        .query(`UPDATE dbo.Users SET Status = @st WHERE Email = @email AND Role = 'user'`);
+      return r.rowsAffected[0] > 0;
+    },
+
+    async deleteUser(email) {
+      const r = await pool.request().input('email', sql.NVarChar(254), email)
+        .query(`DELETE FROM dbo.Users WHERE Email = @email AND Role = 'user'`);
+      return r.rowsAffected[0] > 0;
+    },
+
+    /** Tạo tài khoản quản trị nếu chưa có (đọc từ biến môi trường khi khởi động). */
+    async ensureAdmin(email, password) {
+      if (await repo.findUser(email)) return false;
+      await repo.createUser({ name: 'Admin', email, passwordHash: hashPassword(password), role: 'admin' });
+      return true;
+    },
+
+    async addMessage({ name, email, body }) {
+      await pool.request()
+        .input('name', sql.NVarChar(100), name)
+        .input('email', sql.NVarChar(254), email)
+        .input('body', sql.NVarChar(2000), body)
+        .query('INSERT INTO dbo.Messages (Name, Email, Body) VALUES (@name, @email, @body)');
+    },
+
+    // ---- Lượt truy cập ----
+    async addVisit({ visitorId, path, lang }) {
+      await pool.request()
+        .input('vid', sql.VarChar(64), visitorId)
+        .input('path', sql.NVarChar(200), path)
+        .input('lang', sql.VarChar(8), lang)
+        .query('INSERT INTO dbo.Visits (VisitorId, Path, Lang) VALUES (@vid, @path, @lang)');
+    },
+
+    /** Số liệu thô cho trang Admin: theo ngày, kỳ này / kỳ trước, tổng, đang online. Ngày tính theo múi giờ `tz`. */
+    async visitStats(span, tz, now = Date.now()) {
+      const DAY = 86400000;
+      const key = (i) => dayKey(now - i * DAY, tz);
+      const from = new Date(now - (span * 2 + 1) * DAY);
+      const k = "CONVERT(char(10), DATEADD(HOUR, @tz, VisitedAt), 23)";
+      const days = await pool.request()
+        .input('tz', sql.Int, tz).input('from', sql.DateTime2, from)
+        .query(`SELECT ${k} AS d, COUNT(DISTINCT VisitorId) AS visitors, COUNT(*) AS views
+                FROM dbo.Visits WHERE VisitedAt >= @from GROUP BY ${k}`);
+      const win = await pool.request()
+        .input('tz', sql.Int, tz).input('from', sql.DateTime2, from)
+        .input('c0', sql.Char(10), key(span - 1)).input('c1', sql.Char(10), key(0))
+        .input('p0', sql.Char(10), key(span * 2 - 1)).input('p1', sql.Char(10), key(span))
+        .query(`SELECT
+                  COUNT(DISTINCT CASE WHEN d BETWEEN @c0 AND @c1 THEN VisitorId END) AS cv,
+                  SUM(CASE WHEN d BETWEEN @c0 AND @c1 THEN 1 ELSE 0 END) AS cw,
+                  COUNT(DISTINCT CASE WHEN d BETWEEN @p0 AND @p1 THEN VisitorId END) AS pv,
+                  SUM(CASE WHEN d BETWEEN @p0 AND @p1 THEN 1 ELSE 0 END) AS pw
+                FROM (SELECT VisitorId, ${k} AS d FROM dbo.Visits WHERE VisitedAt >= @from) x`);
+      const tot = await pool.request().query('SELECT COUNT(DISTINCT VisitorId) AS visitors, COUNT(*) AS views FROM dbo.Visits');
+      const act = await pool.request().input('m', sql.Int, ACTIVE_MINUTES)
+        .query('SELECT COUNT(DISTINCT VisitorId) AS n FROM dbo.Visits WHERE VisitedAt >= DATEADD(MINUTE, -@m, SYSUTCDATETIME())');
+      const w = win.recordset[0];
+      return {
+        days: days.recordset.map((r) => ({ date: r.d, visitors: r.visitors, views: r.views })),
+        period: { visitors: w.cv || 0, views: w.cw || 0 },
+        prev: { visitors: w.pv || 0, views: w.pw || 0 },
+        totals: { visitors: tot.recordset[0].visitors, views: tot.recordset[0].views },
+        activeNow: act.recordset[0].n,
+      };
+    },
   };
+  return repo;
 }

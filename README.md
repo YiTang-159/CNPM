@@ -109,7 +109,7 @@ Bảng điều khiển riêng cho quản trị viên (có thanh bên, không dù
 
 **Dữ liệu thật hay mẫu**
 - Chưa có Backend (không đặt `VITE_API_URL`): số liệu lưu trong `localStorage`, chỉ đếm trình duyệt này. Nút **Nạp dữ liệu mẫu** thêm 60 ngày truy cập giả và 12 người dùng mẫu (email `demo-N@example.com`); nút xóa kế bên gỡ chúng đi.
-- Có Backend: đặt `VITE_API_URL`, web gọi các API sau (đều gửi header `X-User-Email`; Backend phải tự kiểm tra quyền quản trị):
+- Có Backend (**dữ liệu thật**): xem mục *Dùng dữ liệu thật cho trang Admin* bên dưới. Web gọi các API sau (các API `/api/admin/*` gửi `Authorization: Bearer <token>`, Backend kiểm tra token và quyền admin):
 
 | API | Nội dung |
 |---|---|
@@ -118,6 +118,15 @@ Bảng điều khiển riêng cho quản trị viên (có thanh bên, không dù
 | `GET /api/admin/users` | trả `{ users: [{name, email, at, status}] }`, `status` là `active` hoặc `locked` |
 | `PATCH /api/admin/users` | nhận `{email, status}` để khóa / mở khóa |
 | `DELETE /api/admin/users?email=...` | xóa người dùng |
+
+### Dùng dữ liệu thật cho trang Admin
+
+1. Chạy CSDL + API: `docker compose up -d --build` (lần đầu tự tạo các bảng `Users`, `Visits`, `Messages` và tài khoản quản trị từ `ADMIN_EMAIL` / `ADMIN_PASSWORD`, mặc định `admin@dubchef.vn` / `admin12345`).
+2. Tạo `web/.env` với dòng `VITE_API_URL=http://localhost:3000`, rồi chạy lại `npm run dev` trong `web` (đổi biến `.env` phải khởi động lại).
+3. Đăng nhập bằng tài khoản admin ở trên, vào `/#/admin`. Các nút "Nạp dữ liệu mẫu" sẽ biến mất vì số liệu giờ là thật: người dùng đăng ký và lượt truy cập đều lưu trong SQL Server. Xem trực tiếp: `SELECT * FROM dbo.Users; SELECT TOP 50 * FROM dbo.Visits ORDER BY VisitId DESC;`
+4. Trước khi đưa lên mạng: đổi `ADMIN_PASSWORD`, đặt `TOKEN_SECRET` là chuỗi ngẫu nhiên dài, đặt `CORS_ORIGIN` đúng địa chỉ web. Ngày thống kê tính theo múi giờ UTC+7 (đổi bằng `STATS_TZ_HOURS`).
+
+Lưu ý: người dùng tạo trước đó ở chế độ lưu tạm (localStorage) không tự sang CSDL; họ cần đăng ký lại. Mã nguồn: `server/src/auth.js` (băm mật khẩu scrypt, token), `stats.js` (tổng hợp), `app.js` (API), `db.js` (SQL).
 
 ## Thanh toán ở trang Bảng giá + SQL Server (Docker)
 

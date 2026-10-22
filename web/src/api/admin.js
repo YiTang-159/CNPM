@@ -17,7 +17,7 @@ function write(list) {
 async function call(method, path, user, body) {
   const res = await fetch(BASE + path, {
     method,
-    headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email },
+    headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email, ...(user.token ? { Authorization: 'Bearer ' + user.token } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) throw new Error('server');

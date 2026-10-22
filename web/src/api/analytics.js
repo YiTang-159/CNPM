@@ -147,7 +147,7 @@ export const stats = {
   /** Số liệu tổng hợp. Có Backend: GET /api/admin/overview?days=N -> { stats }. */
   async load(user, span = 7) {
     if (BASE) {
-      const res = await fetch(BASE + '/api/admin/overview?days=' + span, { headers: { 'X-User-Email': user.email } });
+      const res = await fetch(BASE + '/api/admin/overview?days=' + span, { headers: { 'X-User-Email': user.email, ...(user.token ? { Authorization: 'Bearer ' + user.token } : {}) } });
       if (!res.ok) throw new Error('server');
       return res.json();
     }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { isAdmin } from '../api/client.js';
 import { LANGS } from '../shared/i18n.js';
 
 const LINKS = [
@@ -42,6 +43,7 @@ export default function Header() {
           {LINKS.map(([to, key]) => (
             <NavLink key={to} to={to}>{t(key)}</NavLink>
           ))}
+          {isAdmin(user) ? <NavLink to="/admin">{t('nav_admin')}</NavLink> : null}
           <div className="nav-end">
             <div className="lang" role="group" aria-label={t('langlabel')}>
               {LANGS.map((code, n) => (

@@ -67,6 +67,10 @@ async function remote(path, body) {
 
 const norm = (s) => s.trim().toLowerCase();
 
+/** Email của quản trị viên. Đăng ký tài khoản bằng email này để vào trang /admin. */
+export const ADMIN_EMAIL = (import.meta.env && import.meta.env.VITE_ADMIN_EMAIL) || 'admin@dubchef.vn';
+export const isAdmin = (user) => Boolean(user) && (user.role === 'admin' || norm(user.email || '') === norm(ADMIN_EMAIL));
+
 export const api = {
   async register({ name, email, password }) {
     if (BASE) return remote('/api/auth/register', { name, email, password });

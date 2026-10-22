@@ -89,3 +89,18 @@ Dự án mobile ghim theo Expo SDK 51. Nếu muốn dùng SDK mới hơn, chạy
 ## Quy trình làm việc nhóm
 
 Xem `CONTRIBUTING.md` (nhánh, Pull Request, phát hành mobile, phân công) và mẫu PR trong `.github/pull_request_template.md`.
+
+## Trang quản trị (`/#/admin`)
+
+Trang dành cho quản trị viên, hiện **số người truy cập hệ thống**:
+
+- **Đang truy cập** (hoạt động trong 5 phút gần nhất), **hôm nay**, **7 ngày qua**, **tổng cộng** (mỗi mục có số người và số lượt xem).
+- Biểu đồ cột người truy cập 7 ngày gần nhất, các trang được xem nhiều, ngôn ngữ người dùng chọn.
+- Danh sách người dùng đã đăng ký và tin nhắn liên hệ.
+
+**Cách vào:** đăng ký tài khoản bằng email `admin@dubchef.vn` (đổi bằng biến `VITE_ADMIN_EMAIL` trong `web/.env`), rồi bấm mục **Quản trị** trên menu. Tài khoản khác không vào được.
+
+**Cách đếm:** mỗi lần mở một trang, `Layout` gọi `trackVisit` (`web/src/api/analytics.js`). Mỗi trình duyệt có một mã khách (`dubchef-vid`), nên một người mở nhiều trang vẫn chỉ tính là 1 người truy cập trong ngày.
+
+- Chưa có Backend (không đặt `VITE_API_URL`): số liệu lưu trong `localStorage`, chỉ đếm trình duyệt này. Trang Admin có nút **Nạp dữ liệu mẫu** để xem thử biểu đồ.
+- Có Backend: web gửi `POST /api/track` `{visitorId, path, lang}`; trang Admin đọc `GET /api/admin/overview` (header `X-User-Email`) trả về `{ stats, users, messages }`, trong đó `stats` có dạng của hàm `summarize` (`today`, `week`, `total`, `activeNow`, `series`, `topPages`, `langs`). Backend cần tự kiểm tra quyền quản trị.

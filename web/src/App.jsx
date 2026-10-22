@@ -10,6 +10,7 @@ import Contact from './pages/Contact.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import { Terms, Privacy } from './pages/Legal.jsx';
+import Admin from './pages/Admin.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="contact" element={<Contact />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
+        <Route path="admin" element={<Admin />} />
         <Route path="terms" element={<Terms />} />
         <Route path="privacy" element={<Privacy />} />
         <Route path="*" element={<NotFound />} />

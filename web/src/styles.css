@@ -277,3 +277,32 @@ footer{border-top:1px solid var(--line);background:var(--panel);padding:56px 0 3
 .packs .price{font-size:1.8rem}
 @media (max-width:1100px){.packs{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:620px){.packs{grid-template-columns:1fr}}
+
+/* trang quản trị */
+.admin-tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:24px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px}
+.kpi-label{color:var(--muted);font-weight:600;font-size:.92rem}
+.kpi-num{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:2.6rem;line-height:1.1;margin:6px 0;font-variant-numeric:tabular-nums}
+.kpi-note{color:var(--muted);font-size:.9rem}
+h2.sec.sub{font-size:1.35rem;margin:40px 0 16px}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;align-items:end;height:220px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+.bar-col{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%}
+.bar-fill{display:block;width:100%;max-width:56px;min-height:3px;background:var(--en);border-radius:6px 6px 0 0}
+.bar-val{font-size:.85rem;font-weight:600;font-variant-numeric:tabular-nums}
+.bar-day{font-size:.8rem;color:var(--muted)}
+.admin-two{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.tbl{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tbl th,.tbl td{padding:10px 14px}
+.tbl td{text-align:right}
+.lang-bars{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.lang-bars li{display:grid;grid-template-columns:96px 1fr 44px;gap:12px;align-items:center}
+.lbar{display:block;height:12px;background:var(--line);border-radius:6px;overflow:hidden}
+.lbar i{display:block;height:100%;background:var(--c)}
+.lbar.vi{--c:var(--vi)}.lbar.en{--c:var(--en)}.lbar.zh{--c:var(--zh)}
+.pct{text-align:right;font-variant-numeric:tabular-nums}
+.msgs{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.msgs li{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.fine-i{color:var(--muted);font-size:.9rem}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.admin-two{grid-template-columns:1fr}}
+@media (max-width:520px){.kpis{grid-template-columns:1fr}.bars{gap:6px;padding:12px 8px}.bar-val{font-size:.75rem}}

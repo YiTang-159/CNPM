@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from './utils.jsx';
-import { CUES, I } from '../shared/i18n.js';
+import { I } from '../shared/i18n.js';
 
 describe('Ngôn ngữ và điều hướng', () => {
   it('đổi ngôn ngữ giao diện Việt / Anh / Trung', async () => {
@@ -44,18 +44,10 @@ describe('Ngôn ngữ và điều hướng', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(I.nf_title[0]);
   });
 
-  it('trang chủ hiện 3 track lồng tiếng và đổi bước khi bấm thanh tiến độ', async () => {
-    const user = userEvent.setup();
+  it('trang chủ hiện tiêu đề và hai nút kêu gọi hành động', () => {
     renderApp('/');
-    expect(screen.getByText(CUES[0].vi)).toBeInTheDocument();
-    expect(screen.getByText(CUES[0].en)).toBeInTheDocument();
-    expect(screen.getByText(CUES[0].zh)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: I.step[0] + ' 2' }));
-
-    expect(screen.getByText(CUES[1].vi)).toBeInTheDocument();
-    expect(screen.getByText(CUES[1].en)).toBeInTheDocument();
-    expect(screen.getByText(CUES[1].zh)).toBeInTheDocument();
-    expect(screen.queryByText(CUES[0].vi)).toBeNull();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(I.h_title[0]);
+    expect(screen.getByRole('link', { name: I.h_cta1[0] })).toHaveAttribute('href', '/demo');
+    expect(screen.getByRole('link', { name: I.h_cta2[0] })).toHaveAttribute('href', '/features');
   });
 });

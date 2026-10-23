@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { formatMoney } from '../shared/format.js';
 import { CURRENCIES, HAS_PAYMENT_API, METHODS, orderAmount, orders } from '../api/orders.js';
 
 /** Nút Thanh toán và khung thanh toán cho số video đang chọn ở phần tính giá. */
-export default function Checkout({ uploads, outs, total }) {
+export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   const { t, L } = useI18n();
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  const [open, setOpen] = useState(autoOpen);
   const [method, setMethod] = useState('card');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -61,7 +62,7 @@ export default function Checkout({ uploads, outs, total }) {
         <>
           <p role="alert">{t('co_need_login')}</p>
           <p style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <Link className="btn btn-primary" to="/login">{t('nav_login')}</Link>
+            <Link className="btn btn-primary" to="/login" state={{ from: pathname, resume: { uploads, outs } }}>{t('nav_login')}</Link>
             <button type="button" className="btn" onClick={close}>{t('co_close')}</button>
           </p>
         </>

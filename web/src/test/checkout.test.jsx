@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { renderApp } from './utils.jsx';
 import { I } from '../shared/i18n.js';
 import { orderAmount, orders } from '../api/orders.js';
+import { api } from '../api/client.js';
 
 const login = () => localStorage.setItem('dubchef-session', JSON.stringify({ name: 'An', email: 'An@Example.com' }));
 const saved = () => JSON.parse(localStorage.getItem('dubchef-orders') || '[]');
@@ -34,6 +35,27 @@ describe('Nút Thanh toán ở trang Bảng giá', () => {
     await user.click(screen.getByRole('button', { name: I.co_btn[0] }));
     expect(screen.getByRole('alert')).toHaveTextContent(I.co_need_login[0]);
     expect(saved()).toHaveLength(0);
+  });
+
+  it('đăng nhập xong quay lại Bảng giá, giữ số video và mở sẵn khung thanh toán', async () => {
+    await api.register({ name: 'An', email: 'an@example.com', password: 'matkhau123' });
+    const user = userEvent.setup();
+    renderApp('/pricing');
+    await user.clear(screen.getByLabelText(I.pc_up[0]));
+    await user.type(screen.getByLabelText(I.pc_up[0]), '5');
+    await user.clear(screen.getByLabelText(I.pc_out[0]));
+    await user.type(screen.getByLabelText(I.pc_out[0]), '4');
+    await user.click(screen.getByRole('button', { name: I.co_btn[0] }));
+    // Có hai liên kết "Đăng nhập" (menu và khung thanh toán); lấy cái trong khung thanh toán.
+    const links = screen.getAllByRole('link', { name: I.nav_login[0] });
+    await user.click(links[links.length - 1]);
+    expect(await screen.findByText(I.co_resume[0])).toBeInTheDocument();
+    await user.type(screen.getByLabelText(I.f_email[0]), 'an@example.com');
+    await user.type(screen.getByLabelText(I.f_pass[0]), 'matkhau123');
+    await user.click(screen.getByRole('button', { name: I.nav_login[0] }));
+    expect(await screen.findByTestId('co-total')).toBeInTheDocument();
+    expect(screen.getByLabelText(I.pc_up[0])).toHaveValue('5');
+    expect(screen.getByLabelText(I.pc_out[0])).toHaveValue('4');
   });
 
   it('đăng nhập rồi thanh toán thành công và lưu đơn đã trả', async () => {

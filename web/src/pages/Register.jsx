@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import { errorKey, HAS_API } from '../api/client.js';
 import Field from '../components/Field.jsx';
+import { returnTarget } from '../utils/returnTo.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -12,6 +13,8 @@ export default function Register() {
   const { t } = useI18n();
   const { register } = useAuth();
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const back = returnTarget(state);
   usePageTitle('rg_title');
   const [v, setV] = useState({ name: '', email: '', pass: '', pass2: '', agree: false });
   const [errs, setErrs] = useState({});
@@ -38,7 +41,8 @@ export default function Register() {
     setBusy(true);
     try {
       await register({ name: v.name, email: v.email, password: v.pass });
-      navigate('/');
+      if (back) navigate(back.to, { replace: true, state: back.state });
+      else navigate('/');
     } catch (x) {
       setSrvErr(errorKey(x));
     } finally {
@@ -73,7 +77,7 @@ export default function Register() {
         </div>
         <button className="btn btn-primary" type="submit" style={{ width: '100%' }} disabled={busy}>{t('rg_btn')}</button>
       </form>
-      <p className="alt">{t('rg_have')} <Link to="/login">{t('nav_login')}</Link></p>
+      <p className="alt">{t('rg_have')} <Link to="/login" state={state}>{t('nav_login')}</Link></p>
       {!HAS_API ? <p className="auth-note">{t('auth_demo')}</p> : null}
     </div>
   );

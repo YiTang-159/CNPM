@@ -317,6 +317,7 @@ e_locked:["Tài khoản này đã bị khóa. Hãy liên hệ quản trị viên
 co_btn:["Thanh toán","Pay now","立即支付"],
 co_title:["Thanh toán đơn hàng","Pay for your order","订单支付"],
 co_need_login:["Bạn cần đăng nhập để thanh toán.","Please log in to pay.","请先登录再支付。"],
+co_resume:["Đăng nhập hoặc tạo tài khoản để tiếp tục thanh toán. Lựa chọn của bạn sẽ được giữ nguyên.","Log in or sign up to continue to payment. Your selection will be kept.","登录或注册后继续支付，您的选择会保留。"],
 co_sum:["Đơn hàng","Order","订单"],
 co_sum_line:["video đăng lên, dịch ra","videos uploaded, translated out","个上传视频，翻译输出"],
 co_method:["Phương thức thanh toán","Payment method","支付方式"],

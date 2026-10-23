@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import Field from '../components/Field.jsx';
@@ -12,8 +12,12 @@ const PLANS = [1, 2, 3];
 export default function Pricing() {
   const { t, L } = useI18n();
   usePageTitle('pr_title');
-  const [uploads, setUploads] = useState('3');
-  const [outs, setOuts] = useState('3');
+  // Quay lại từ trang đăng nhập/đăng ký: khôi phục số video đã chọn và mở lại khung thanh toán.
+  const { state } = useLocation();
+  const resume = state && state.resume;
+  const initial = (n) => (Number.isInteger(n) && n > 0 ? String(n) : '3');
+  const [uploads, setUploads] = useState(() => initial(resume && resume.uploads));
+  const [outs, setOuts] = useState(() => initial(resume && resume.outs));
   const [yearly, setYearly] = useState(false);
 
   const u = parseCount(uploads);
@@ -103,7 +107,7 @@ export default function Pricing() {
             )}
           </div>
         </div>
-        {price ? <Checkout uploads={u} outs={o} total={price.total} /> : null}
+        {price ? <Checkout uploads={u} outs={o} total={price.total} autoOpen={Boolean(resume)} /> : null}
       </div>
 
       <div className="section">

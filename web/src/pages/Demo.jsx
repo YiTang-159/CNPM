@@ -287,7 +287,6 @@ export default function Demo() {
   };
 
   const segLangs = segments ? ['vi', 'en', 'zh'].filter((l) => segments[0][l] != null) : [];
-  const listLang = segLangs.includes(lang) ? lang : segLangs[0];
   const shownSubs = segLangs.filter((l) => subs[l]);
   const voiceMissing = segments && voice !== 'off' && (!hasSpeech || (voicesLoaded() && !voiceFor(voice)));
   const avail = segments ? availableVoiceLangs() : null; // null = chưa tải xong danh sách giọng, chưa vội khoá

@@ -57,10 +57,8 @@ export async function translateLines(lines, from, fetchImpl = fetch) {
   const clean = lines.map((l) => l.trim()).filter(Boolean);
   const out = [];
   for (let n = 0; n < clean.length; n += 1) {
-    // eslint-disable-next-line no-await-in-loop
     out.push(await translateToAll(clean[n], from, fetchImpl));
     if (n < clean.length - 1) {
-      // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => setTimeout(r, 250));
     }
   }

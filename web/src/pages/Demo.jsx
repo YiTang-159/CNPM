@@ -7,7 +7,7 @@ import { mergeChunks } from '../utils/segments.js';
 import { fileToWhisperAudio, AudioExtractError } from '../utils/audio.js';
 import { transcribeVideoAudio } from '../utils/whisper.js';
 
-const STAGES_MANUAL = ['dp1', 'dp2', 'dp3', 'dp4'];
+const STAGES_INIT = ['dp0', 'dp1', 'dp3', 'dp4'];
 const LANG_TAG = { vi: 'VI', en: 'EN', zh: '中文' };
 const ERR_KEY = { net: 'e_net', server: 'd_translate_err', empty: 'd_translate_err', limit: 'd_translate_limit' };
 
@@ -19,20 +19,16 @@ export default function Demo() {
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState('');
   const [objectUrl, setObjectUrl] = useState('');
-  const [url, setUrl] = useState('');
-  const [script, setScript] = useState('');
   const [sourceLang, setSourceLang] = useState(lang);
   const [needInput, setNeedInput] = useState(false);
-  const [needScript, setNeedScript] = useState(false);
   const [over, setOver] = useState(false);
 
   // --- quy trình dịch thật ---
   const [translate, setTranslate] = useState(false); // false = chỉ lồng tiếng đúng ngôn ngữ gốc, không dịch
-  const [stageKeys, setStageKeys] = useState(STAGES_MANUAL);
-  const [autoMode, setAutoMode] = useState(false); // true = đang/đã tự nhận diện giọng nói (Whisper), không cần gõ tay
+  const [stageKeys, setStageKeys] = useState(STAGES_INIT);
   const [sttPhase, setSttPhase] = useState(''); // 'model' | 'listening' | ''
   const [showPipe, setShowPipe] = useState(false);
-  const [stages, setStages] = useState(STAGES_MANUAL.map(() => 'wait'));
+  const [stages, setStages] = useState(STAGES_INIT.map(() => 'wait'));
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
   const [translateErr, setTranslateErr] = useState('');
@@ -164,7 +160,6 @@ export default function Demo() {
     setFileName(f.name);
     setObjectUrl(URL.createObjectURL(f));
     setNeedInput(false);
-    setNeedScript(false);
   };
 
   const jump = (n) => {
@@ -212,25 +207,17 @@ export default function Demo() {
 
   const start = async () => {
     if (running) return;
-    const hasVideo = Boolean(file || url.trim());
-    const hasScript = script.trim().length > 0;
-    // Tự nhận diện giọng nói chỉ chạy được với file tải lên thật (đọc được dữ liệu âm thanh);
-    // video dán bằng liên kết thì trình duyệt không có quyền đọc âm thanh, buộc phải gõ tay lời thoại.
-    const isAuto = Boolean(file) && !hasScript;
-    setNeedInput(!hasVideo);
-    setNeedScript(hasVideo && !hasScript && !file);
-    if (!hasVideo || (!hasScript && !file)) return;
+    // Lời thoại luôn được tự nhận diện (Whisper chạy ngay trong trình duyệt) từ video tải lên.
+    setNeedInput(!file);
+    if (!file) return;
 
-    setAutoMode(isAuto);
     setTranslateErr('');
     setDone(false);
     setShowPipe(true);
     setRunning(true);
     setSttPhase('');
 
-    // Chỉ số từng bước khớp với STAGES_AUTO ['dp0','dp1','dp2','dp3','dp4'] hoặc
-    // STAGES_MANUAL ['dp1','dp2','dp3','dp4'] — auto có thêm bước "nhận diện giọng nói" ở đầu.
-    const STAGE = [...(isAuto ? ['dp0'] : []), 'dp1', ...(translate ? ['dp2'] : []), 'dp3', 'dp4'];
+    const STAGE = ['dp0', 'dp1', ...(translate ? ['dp2'] : []), 'dp3', 'dp4'];
     const at = (k) => STAGE.indexOf(k);
     const sttIdx = at('dp0');
     const tIdx = at('dp2');
@@ -243,7 +230,7 @@ export default function Demo() {
       let lines;
       let chunkTimes = null;
 
-      if (isAuto) {
+      {
         setStages((s) => runStage(s, sttIdx, 'run'));
         const { audio } = await fileToWhisperAudio(file);
         const output = await transcribeVideoAudio(audio, sourceLang, setSttPhase);
@@ -256,8 +243,6 @@ export default function Demo() {
         chunkTimes = merged.map((x) => ({ start: x.start, end: x.end }));
         if (!lines.length) throw new TranslateError('empty');
         setStages((s) => runStage(s, sttIdx, 'done'));
-      } else {
-        lines = script.split('\n').map((l) => l.trim()).filter(Boolean);
       }
 
       let translated;
@@ -292,7 +277,7 @@ export default function Demo() {
       let key = 'd_translate_err';
       if (e instanceof TranslateError) key = ERR_KEY[e.code] || 'd_translate_err';
       else if (e instanceof AudioExtractError) key = 'd_stt_err';
-      else if (isAuto) key = 'd_stt_err';
+      else key = 'd_stt_err';
       setTranslateErr(key);
       setStages((s) => s.map((v) => (v === 'run' ? 'wait' : v)));
     } finally {
@@ -307,9 +292,9 @@ export default function Demo() {
   const voiceMissing = segments && voice !== 'off' && (!hasSpeech || (voicesLoaded() && !voiceFor(voice)));
   const avail = segments ? availableVoiceLangs() : null; // null = chưa tải xong danh sách giọng, chưa vội khoá
   const anyLocked = avail && segLangs.some((l) => !avail[l]);
-  const videoSrc = objectUrl || url.trim();
+  const videoSrc = objectUrl;
   const activeStages = stageKeys;
-  const sttRunning = running && autoMode && stages[0] === 'run';
+  const sttRunning = running && stages[0] === 'run';
 
   return (
     <>
@@ -318,42 +303,26 @@ export default function Demo() {
         <p>{t('d_sub')}</p>
       </div>
       <div className="wrap">
-        <div className="up">
-          <label
-            className={'drop' + (over ? ' over' : '')}
-            onDragEnter={(e) => { e.preventDefault(); setOver(true); }}
-            onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-            onDragLeave={(e) => { e.preventDefault(); setOver(false); }}
-            onDrop={(e) => { e.preventDefault(); setOver(false); pickFile(e.dataTransfer.files[0]); }}
-          >
-            <input type="file" accept="video/*" onChange={(e) => pickFile(e.target.files[0])} />
+        <label
+          className={'drop' + (over ? ' over' : '') + (file ? ' has-file' : '')}
+          onDragEnter={(e) => { e.preventDefault(); setOver(true); }}
+          onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+          onDragLeave={(e) => { e.preventDefault(); setOver(false); }}
+          onDrop={(e) => { e.preventDefault(); setOver(false); pickFile(e.dataTransfer.files[0]); }}
+        >
+          <input type="file" accept="video/*" onChange={(e) => pickFile(e.target.files[0])} />
+          {file ? (
+            <>
+              <strong className="drop-name">{t('d_chosen')}{fileName}</strong>
+              <small>{t('d_change')}</small>
+            </>
+          ) : (
             <strong>{t('d_drop')}</strong>
-            <small>{fileName ? t('d_chosen') + fileName : ''}</small>
-          </label>
-          <div>
-            <div className="field">
-              <label htmlFor="url">{t('d_url')}</label>
-              <input id="url" type="url" inputMode="url" placeholder="https://" value={url} onChange={(e) => { setUrl(e.target.value); setNeedInput(false); }} />
-            </div>
-            <p className="note" style={{ marginBottom: 16 }}>{t('d_preview_note')}</p>
-            {needInput ? <p className="err" role="alert" style={{ marginBottom: 12 }}>{t('d_need')}</p> : null}
-          </div>
-        </div>
+          )}
+        </label>
+        {needInput ? <p className="err" role="alert" style={{ marginTop: 10 }}>{t('d_need')}</p> : null}
 
-        <div className="field" style={{ marginTop: 8 }}>
-          <label htmlFor="script">{t('d_script_label')}</label>
-          <textarea
-            id="script"
-            value={script}
-            onChange={(e) => { setScript(e.target.value); setNeedScript(false); }}
-            placeholder={t('d_script_placeholder')}
-            style={{ minHeight: 160 }}
-          />
-          <p className="note">{t('d_auto_hint')}</p>
-          {needScript ? <p className="err" role="alert">{t('d_need_script')}</p> : null}
-        </div>
-
-        <div className="ctl-row" style={{ marginTop: 4, marginBottom: 20 }}>
+        <div className="run-bar">
           <div className="ctl-group">
             <label htmlFor="src-lang" style={{ fontSize: '.9rem', fontWeight: 600 }}>{t('d_source_lang')}</label>
             <select id="src-lang" value={sourceLang} onChange={(e) => setSourceLang(e.target.value)}>
@@ -370,8 +339,9 @@ export default function Demo() {
             {running ? t(translate ? 'd_translating' : 'd_dubbing') : t(translate ? 'd_translate_btn' : 'd_dub_btn')}
           </button>
         </div>
+        <p className="note" style={{ marginTop: 10 }}>{t('d_auto_hint')}</p>
 
-        {translateErr ? <p className="err" role="alert" style={{ marginBottom: 16 }}>{t(translateErr)}</p> : null}
+        {translateErr ? <p className="err" role="alert" style={{ marginTop: 16 }}>{t(translateErr)}</p> : null}
 
         {showPipe ? (
           <>

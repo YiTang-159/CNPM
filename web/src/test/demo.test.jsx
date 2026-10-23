@@ -45,9 +45,7 @@ vi.mock('../utils/whisper.js', () => ({
 
 async function fillMinimal(user) {
   const file = new File(['nội dung giả'], 'mon-an.mp4', { type: 'video/mp4' });
-  const input = document.querySelector('input[type="file"]');
-  await user.upload(input, file);
-  await user.type(screen.getByLabelText(vi_('d_script_label')), 'Đập trứng vào bát.\nXào cùng cà chua.');
+  await user.upload(document.querySelector('input[type="file"]'), file);
 }
 
 describe('Trang Trải nghiệm (luồng dịch thật)', () => {
@@ -58,15 +56,15 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     expect(await screen.findByText(vi_('d_need'))).toBeInTheDocument();
   });
 
-  it('dán liên kết video nhưng chưa nhập lời thoại thì báo lỗi (liên kết không tự nhận diện giọng nói được)', async () => {
-    const user = userEvent.setup();
+  it('chỉ còn khung kéo thả video: không có ô dán liên kết, không có ô nhập lời thoại', () => {
     renderApp('/demo');
-    await user.type(screen.getByLabelText(vi_('d_url')), 'https://example.com/video.mp4');
-    await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
-    expect(await screen.findByText(vi_('d_need_script'))).toBeInTheDocument();
+    expect(screen.getByText(vi_('d_drop'))).toBeInTheDocument();
+    expect(screen.queryByLabelText(vi_('d_url'))).toBeNull();
+    expect(screen.queryByLabelText(vi_('d_script_label'))).toBeNull();
+    expect(document.querySelector('textarea')).toBeNull();
   });
 
-  it('tải video lên nhưng để trống lời thoại: tự nhận diện giọng nói rồi dịch xong hiện video, phụ đề', async () => {
+  it('tải video lên: tự nhận diện giọng nói rồi lồng tiếng xong hiện video, phụ đề', async () => {
     const user = userEvent.setup();
     renderApp('/demo');
     const file = new File(['nội dung giả'], 'mon-an.mp4', { type: 'video/mp4' });
@@ -81,7 +79,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     expect(screen.queryByRole('list', { name: vi_('d_steps') })).toBeNull();
   });
 
-  it('đủ video và lời thoại tự gõ: dịch xong thì hiện video thật, phụ đề và bản dịch', async () => {
+  it('tải video lên rồi lồng tiếng: hiện video thật và phụ đề', async () => {
     const user = userEvent.setup();
     renderApp('/demo');
     await fillMinimal(user);
@@ -89,7 +87,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
 
     expect(await screen.findByText(vi_('d_done_dub'))).toBeInTheDocument();
     expect(document.querySelector('video')).toBeInTheDocument();
-    expect(screen.getAllByText('Đập trứng vào bát.').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Đập trứng vào bát. Xào cùng cà chua.').length).toBeGreaterThan(0);
     // Tên file hiện cả ở phần "đã chọn" lẫn tiêu đề khu vực kết quả, nên có thể khớp nhiều chỗ
     expect(screen.getAllByText(/mon-an\.mp4/).length).toBeGreaterThan(0);
   });
@@ -122,7 +120,7 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     const en = subsGroup.getByRole('button', { name: 'EN' });
     await user.click(en);
     expect(en).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('EN: Đập trứng vào bát.')).toBeInTheDocument();
+    expect(screen.getByText('EN: Đập trứng vào bát. Xào cùng cà chua.')).toBeInTheDocument();
   });
 
   it('bấm một mốc trên thanh tiến độ thì chuyển sang đoạn đó; không còn danh sách lời thoại bên phải', async () => {
@@ -134,9 +132,10 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
 
     expect(screen.queryByRole('list', { name: vi_('d_steps') })).toBeNull();
     const marks = screen.getAllByRole('button', { name: new RegExp('^' + vi_('step') + ' \\d+$') });
-    expect(marks).toHaveLength(2);
-    await user.click(marks[1]);
-    expect(marks[1]).toHaveAttribute('aria-current', 'true');
+    // Hai mảnh ngắn của Whisper được gộp thành một đoạn → chỉ có một mốc
+    expect(marks).toHaveLength(1);
+    await user.click(marks[0]);
+    expect(marks[0]).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('button', { name: vi_('d_fullscreen') })).toBeInTheDocument();
   });
 

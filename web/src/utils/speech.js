@@ -42,6 +42,20 @@ export function fitRate(text, lang, seg, speed = 1) {
   return Math.min(1.6, Math.max(0.9, need)) * speed;
 }
 
+/** Một tốc độ đọc DUY NHẤT cho cả bài (thay vì mỗi câu một tốc độ khác nhau gây cảm giác giật cục).
+ *  Tính theo tổng thời lượng lời nói trong video, giới hạn 0.9–1.25 để nghe vẫn tự nhiên. */
+export function uniformRate(segments, lang, speed = 1) {
+  let natural = 0;
+  let slot = 0;
+  for (const seg of segments || []) {
+    if (seg.start == null || seg.end == null || seg.end <= seg.start || seg[lang] == null) continue;
+    natural += String(seg[lang]).length / (CPS[lang] || 14);
+    slot += seg.end - seg.start;
+  }
+  if (!slot) return speed;
+  return Math.min(1.25, Math.max(0.9, natural / slot)) * speed;
+}
+
 /** Đọc liền mạch một dãy câu: xếp hàng tất cả ngay từ đầu, không câu nào bị cắt ngang khi sang câu kế.
  *  onStart(k) báo câu thứ k (trong items) bắt đầu được đọc. */
 export function speakQueue(items, { lang, voice, onStart }) {

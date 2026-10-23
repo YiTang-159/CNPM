@@ -146,8 +146,10 @@ h2.sec{font-size:clamp(1.7rem,3.2vw,2.4rem);max-width:24ch}
 .pipe li[data-s="run"] .bar-t b{width:100%;transition:width 1.05s linear}
 .pipe li[data-s="done"] .bar-t b{width:100%}
 
-.player{display:grid;grid-template-columns:1.6fr 1fr;gap:28px;margin-top:20px}
-.stage{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:var(--sc-bg);border:1px solid var(--line)}
+.player{margin-top:20px}
+.stage{position:relative;aspect-ratio:16/9;max-height:82vh;width:100%;border-radius:16px;overflow:hidden;background:#000;border:1px solid var(--line)}
+.stage:fullscreen{max-height:none;border-radius:0;border:0}
+.stage:fullscreen .subs{font-size:1.2rem;padding:14px 24px 64px}
 .stage>svg{position:absolute;inset:0;width:100%;height:100%}
 .subs{position:absolute;left:0;right:0;bottom:0;padding:10px 14px 12px;background:rgba(10,28,24,.88);color:#fff;display:grid;gap:4px;font-size:.95rem;line-height:1.4}
 .subs p{display:flex;gap:10px}

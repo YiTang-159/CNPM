@@ -75,9 +75,10 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
 
     expect(await screen.findByText(vi_('d_done_dub'))).toBeInTheDocument();
     expect(document.querySelector('video')).toBeInTheDocument();
-    // Hai mảnh ngắn của Whisper được gộp thành một câu trọn vẹn
-    const list = within(screen.getByRole('list', { name: vi_('d_steps') }));
-    expect(list.getByRole('button', { name: 'Đập trứng vào bát. Xào cùng cà chua.' })).toBeInTheDocument();
+    // Hai mảnh ngắn của Whisper được gộp thành một đoạn trọn vẹn (một mốc duy nhất trên thanh tiến độ)
+    expect(screen.getAllByRole('button', { name: new RegExp('^' + vi_('step') + ' \\d+$') })).toHaveLength(1);
+    // Không còn cột lời thoại bên phải
+    expect(screen.queryByRole('list', { name: vi_('d_steps') })).toBeNull();
   });
 
   it('đủ video và lời thoại tự gõ: dịch xong thì hiện video thật, phụ đề và bản dịch', async () => {
@@ -88,7 +89,6 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
 
     expect(await screen.findByText(vi_('d_done_dub'))).toBeInTheDocument();
     expect(document.querySelector('video')).toBeInTheDocument();
-    // Câu này hiện cả ở phụ đề trên video lẫn trong danh sách bước, nên có thể khớp nhiều chỗ
     expect(screen.getAllByText('Đập trứng vào bát.').length).toBeGreaterThan(0);
     // Tên file hiện cả ở phần "đã chọn" lẫn tiêu đề khu vực kết quả, nên có thể khớp nhiều chỗ
     expect(screen.getAllByText(/mon-an\.mp4/).length).toBeGreaterThan(0);
@@ -125,16 +125,19 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
     expect(screen.getByText('EN: Đập trứng vào bát.')).toBeInTheDocument();
   });
 
-  it('bấm một đoạn trong danh sách thì chuyển sang đoạn đó', async () => {
+  it('bấm một mốc trên thanh tiến độ thì chuyển sang đoạn đó; không còn danh sách lời thoại bên phải', async () => {
     const user = userEvent.setup();
     renderApp('/demo');
     await fillMinimal(user);
     await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
     await screen.findByText(vi_('d_done_dub'));
 
-    const list = within(screen.getByRole('list', { name: vi_('d_steps') }));
-    await user.click(list.getByRole('button', { name: 'Xào cùng cà chua.' }));
-    expect(list.getByRole('button', { name: 'Xào cùng cà chua.' })).toHaveAttribute('aria-current', 'true');
+    expect(screen.queryByRole('list', { name: vi_('d_steps') })).toBeNull();
+    const marks = screen.getAllByRole('button', { name: new RegExp('^' + vi_('step') + ' \\d+$') });
+    expect(marks).toHaveLength(2);
+    await user.click(marks[1]);
+    expect(marks[1]).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('button', { name: vi_('d_fullscreen') })).toBeInTheDocument();
   });
 
   it('mặc định chỉ lồng tiếng, không dịch: chỉ có ngôn ngữ gốc, không gọi dịch vụ dịch', async () => {

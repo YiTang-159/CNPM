@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import { translateLines, TranslateError } from '../shared/translate.js';
-import { availableVoiceLangs, firstAvailableVoice, fitRate, hasSpeech, speakQueue, stopSpeech, voiceFor, voicesLoaded } from '../utils/speech.js';
+import { availableVoiceLangs, firstAvailableVoice, hasSpeech, speakQueue, stopSpeech, uniformRate, voiceFor, voicesLoaded } from '../utils/speech.js';
 import { mergeChunks } from '../utils/segments.js';
 import { fileToWhisperAudio, AudioExtractError } from '../utils/audio.js';
 import { transcribeVideoAudio } from '../utils/whisper.js';
@@ -38,6 +38,7 @@ export default function Demo() {
   const [translateErr, setTranslateErr] = useState('');
   const playerRef = useRef(null);
   const videoRef = useRef(null);
+  const stageRef = useRef(null);
 
   // --- kết quả dịch thật ---
   // segments: [{ vi, en, zh, start?, end? }, ...] hoặc null trước khi dịch.
@@ -95,7 +96,9 @@ export default function Demo() {
     if (!segments || voice === 'off') return;
     const vc = voiceFor(voice);
     if (!vc) return;
-    const items = segments.slice(from).map((seg) => ({ text: seg[voice], rate: fitRate(seg[voice], voice, seg, speed) }));
+    // Cùng một tốc độ cho mọi câu → giọng đều, không lúc nhanh lúc chậm
+    const rate = uniformRate(segments, voice, speed);
+    const items = segments.slice(from).map((seg) => ({ text: seg[voice], rate }));
     speakQueue(items, {
       lang: voice,
       voice: vc,
@@ -104,11 +107,18 @@ export default function Demo() {
         setI(n);
         const vid = videoRef.current;
         const seg = segments[n];
-        // Giọng và hình lệch quá 2 giây thì kéo hình về đúng chỗ (bỏ qua câu đầu: người dùng vừa chủ động tua tới đó)
-        if (k > 0 && vid && seg.start != null && Math.abs(vid.currentTime - seg.start) > 2) {
+        if (!vid || seg.start == null) return;
+        // Giọng và hình lệch nhau thì chỉnh NHẸ tốc độ hình (chậm lại / nhanh lên một chút) để hai bên tự khớp,
+        // không tua giật. Chỉ tua hẳn khi lệch quá 4 giây. Bỏ qua câu đầu: người dùng vừa chủ động tua tới đó.
+        if (k === 0) return;
+        const drift = vid.currentTime - seg.start; // > 0: hình đang chạy trước giọng
+        if (Math.abs(drift) > 4) {
           resyncRef.current = true;
           vid.currentTime = seg.start;
-        }
+          vid.playbackRate = speed;
+        } else if (drift > 0.4) vid.playbackRate = speed * 0.8;
+        else if (drift < -0.4) vid.playbackRate = speed * 1.25;
+        else vid.playbackRate = speed;
       },
     });
   };
@@ -166,6 +176,17 @@ export default function Demo() {
       v.currentTime = segments[n].start;
     } else {
       v.currentTime = (n / segments.length) * (v.duration || 0);
+    }
+  };
+
+  // Toàn màn hình cho cả khung (video + phụ đề), vì nút toàn màn hình gốc của video sẽ làm mất phụ đề
+  const toggleFullscreen = () => {
+    const el = stageRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else if (el.requestFullscreen) {
+      el.requestFullscreen().catch(() => {});
     }
   };
 
@@ -229,8 +250,8 @@ export default function Demo() {
         const chunks = (output.chunks && output.chunks.length)
           ? output.chunks
           : [{ text: output.text || '', timestamp: [0, videoRef.current?.duration || null] }];
-        // Gộp các mảnh ngắn của Whisper thành câu trọn vẹn (đồng thời bỏ mảnh rỗng) để đọc liền mạch
-        const merged = mergeChunks(chunks);
+        // Gộp các mảnh ngắn của Whisper thành đoạn dài hơn (đồng thời bỏ mảnh rỗng) để giọng đọc liền mạch, ít khoảng ngắt
+        const merged = mergeChunks(chunks, { minSentence: 40, maxLen: 180 });
         lines = merged.map((x) => x.text);
         chunkTimes = merged.map((x) => ({ start: x.start, end: x.end }));
         if (!lines.length) throw new TranslateError('empty');
@@ -375,11 +396,12 @@ export default function Demo() {
         {segments ? (
           <div className="player" ref={playerRef}>
             <div>
-              <div className="stage">
+              <div className="stage" ref={stageRef}>
                 <video
                   ref={videoRef}
                   src={videoSrc}
                   controls
+                  controlsList="nofullscreen"
                   onTimeUpdate={onTimeUpdate}
                   onPlay={onPlay}
                   onPause={stopSpeech}
@@ -412,6 +434,7 @@ export default function Demo() {
                 </div>
                 <div className="ctl-row">
                   <button className="btn btn-primary" type="button" onClick={togglePlay}>{t('d_play')} / {t('d_pause')}</button>
+                  <button className="btn" type="button" onClick={toggleFullscreen}>{t('d_fullscreen')}</button>
                   <div className="ctl-group">
                     <span>{t('d_voice')}</span>
                     <div className="chips" role="group" aria-label={t('d_voice')}>
@@ -458,16 +481,6 @@ export default function Demo() {
                 {voice !== 'off' ? <p className="note">{t('d_mute_note')}</p> : null}
                 {voiceMissing ? <p className="note">{t('d_nospeech')}</p> : null}
               </div>
-            </div>
-            <div>
-              <h3>{t('d_sample')}{fileName || videoSrc}</h3>
-              <ol className="cue-list" aria-label={t('d_steps')}>
-                {segments.map((seg, n) => (
-                  <li key={n}>
-                    <button type="button" aria-current={n === i ? 'true' : undefined} onClick={() => jump(n)}>{seg[listLang]}</button>
-                  </li>
-                ))}
-              </ol>
             </div>
           </div>
         ) : null}

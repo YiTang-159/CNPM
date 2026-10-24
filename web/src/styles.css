@@ -362,27 +362,3 @@ footer{border-top:1px solid var(--line);background:var(--panel);padding:56px 0 3
 .co-recent h4{margin:0 0 10px;font-size:.95rem}
 .co-recent ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .co-recent li{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-variant-numeric:tabular-nums}
-
-/* ---- hình minh họa trang chủ ---- */
-.hero-art{width:min(760px,100%);margin-top:56px}
-.hero-stage{box-shadow:0 18px 40px -18px rgba(18,48,42,.45);text-align:left}
-.hero-stage .subs{font-size:1rem}
-.live-badge{position:absolute;top:12px;left:12px;display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;background:rgba(10,28,24,.82);color:#fff;font-size:.78rem;font-weight:600;letter-spacing:.02em}
-.live-badge i{width:8px;height:8px;border-radius:50%;background:#FF6B57;animation:pulse 1.4s ease-in-out infinite}
-.hero-dots{display:flex;justify-content:center;gap:8px;margin-top:16px}
-.hero-dots i{width:28px;height:6px;border-radius:3px;background:var(--line);transition:background .3s}
-.hero-dots i.on{background:var(--ink)}
-.step-art{display:block;width:100%;height:auto;margin-bottom:18px;border-radius:14px}
-.band-body{display:grid;gap:18px}
-.band-voice{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-.band-voice>span{font-family:"Bricolage Grotesque","PingFang SC","Microsoft YaHei",sans-serif;font-weight:700;font-size:1.1rem;color:var(--c)}
-.wave{display:flex;align-items:center;gap:3px;height:48px;flex:1;min-width:200px;max-width:360px}
-.wave i{flex:1;max-width:6px;height:calc(var(--h)*100%);border-radius:3px;background:var(--c);transform-origin:center;animation:bounce 1.3s ease-in-out var(--d) infinite}
-.cta-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:48px;align-items:center}
-.cta-art{border-radius:20px;overflow:hidden;border:1px solid var(--line);box-shadow:0 18px 40px -22px rgba(18,48,42,.45)}
-.cta-art svg{display:block;width:100%;height:auto}
-@keyframes bounce{0%,100%{transform:scaleY(.45)}50%{transform:scaleY(1)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-@media (max-width:960px){.cta-grid{grid-template-columns:1fr;gap:32px}.cta-art{max-width:480px}}
-@media (max-width:620px){.hero-art{margin-top:36px}.hero-stage .subs{font-size:.85rem}.step-art{max-width:260px}}
-@media (prefers-reduced-motion:reduce){.wave i,.live-badge i{animation:none}.hero-dots i{transition:none}}

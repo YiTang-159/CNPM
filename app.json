@@ -7,6 +7,12 @@
     },
     "android": {
       "package": "com.ynhi38.dubchef"
+    },
+    "ios": {
+      "bundleIdentifier": "com.ynhi38.dubchef",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     }
   }
 }

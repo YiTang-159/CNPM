@@ -182,12 +182,12 @@ export default function DemoScreen() {
   return (
     <Screen>
       <Text accessibilityRole="header" style={s.h1}>{t('d_title')}</Text>
-      <Text style={[s.p, { marginVertical: 12 }]}>{t('d_sub_m')}</Text>
+      <Text style={[s.lead, { marginTop: 14, marginBottom: 28 }]}>{t('d_sub_m')}</Text>
 
       <Pressable
         accessibilityRole="button"
         onPress={pick}
-        style={{ minHeight: 120, borderWidth: 2, borderStyle: 'dashed', borderColor: c.line, borderRadius: 16, backgroundColor: c.panel, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 6 }}
+        style={{ minHeight: file ? 110 : 200, borderWidth: 2, borderStyle: file ? 'solid' : 'dashed', borderColor: c.line, borderRadius: 16, backgroundColor: c.panel, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 6 }}
       >
         <Text style={{ fontWeight: '600', color: c.ink, textAlign: 'center' }}>{t('m_pick')}</Text>
         {file ? <Text style={{ color: c.muted, fontSize: 13 }}>{t('d_chosen') + file.name}</Text> : null}
@@ -220,9 +220,14 @@ export default function DemoScreen() {
       {showPipe ? (
         <View style={{ marginTop: 20, gap: 10 }}>
           {STAGES.map((key, n) => (
-            <View key={key} style={[s.card, { padding: 14, flexDirection: 'row', justifyContent: 'space-between' }]}>
-              <Text style={s.body}>{t(key)}</Text>
-              <Text style={{ color: stages[n] === 'done' ? c.en : c.muted, fontWeight: stages[n] === 'done' ? '600' : '400', fontSize: 13.5 }}>{t('st_' + stages[n])}</Text>
+            <View key={key} style={{ padding: 14, borderWidth: 1, borderColor: c.line, borderRadius: 10, backgroundColor: c.panel, gap: 10 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                <Text style={[s.body, { flex: 1 }]}>{t(key)}</Text>
+                <Text style={{ color: stages[n] === 'done' ? c.en : c.muted, fontWeight: stages[n] === 'done' ? '600' : '400', fontSize: 13.5 }}>{t('st_' + stages[n])}</Text>
+              </View>
+              <View style={{ height: 4, borderRadius: 2, backgroundColor: c.line, overflow: 'hidden' }}>
+                <View style={{ height: '100%', width: stages[n] === 'wait' ? '0%' : stages[n] === 'run' ? '55%' : '100%', backgroundColor: c.ink }} />
+              </View>
             </View>
           ))}
           {sttPhase ? <Text style={[s.note, { marginTop: -2 }]}>{t(sttPhase)}</Text> : null}

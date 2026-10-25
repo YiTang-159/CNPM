@@ -10,6 +10,20 @@ import { formatMoney, planPrice } from '../shared/format';
 import { calcPrice, checkCounts, parseCount, SAMPLE_PACKS, unitPrice } from '../shared/pricing';
 
 const PLANS = [1, 2, 3];
+const qh = (c) => ({ textAlign: 'right', color: c.muted, fontWeight: '600', fontSize: 12.5 });
+const qc = (c) => ({ textAlign: 'right', color: c.ink, fontSize: 14, fontVariant: ['tabular-nums'] });
+
+/** Dòng có dấu ✓ màu xanh như `.plan li` trên web. */
+function Check({ children }) {
+  const c = useTheme();
+  const s = useStyles();
+  return (
+    <View style={{ flexDirection: 'row', gap: 10 }}>
+      <Text style={{ color: c.en, fontWeight: '800', fontSize: 15.5, lineHeight: 23 }}>✓</Text>
+      <Text style={[s.body, { flex: 1 }]}>{children}</Text>
+    </View>
+  );
+}
 
 export default function PricingScreen({ navigation }) {
   const { t, L } = useI18n();
@@ -39,7 +53,7 @@ export default function PricingScreen({ navigation }) {
   return (
     <Screen>
       <Text accessibilityRole="header" style={s.h1}>{t('pr_title')}</Text>
-      <Text style={[s.p, { marginVertical: 12 }]}>{t('pr_sub')}</Text>
+      <Text style={[s.lead, { marginTop: 14 }]}>{t('pr_sub')}</Text>
 
       <View style={s.section}>
         <Text accessibilityRole="header" style={s.h2}>{t('pc_title')}</Text>
@@ -57,17 +71,28 @@ export default function PricingScreen({ navigation }) {
           error={outErr && t(outErr)}
           keyboardType="number-pad"
         />
-        <Text style={[s.p, { fontSize: 13.5, marginBottom: 16 }]}>{t('pc_hint')}</Text>
+        <Text style={[s.fine, { marginBottom: 16 }]}>{t('pc_hint')}</Text>
         {price ? (
           <View style={[s.card, { padding: 20 }]}>
-            <Text style={s.body}>
-              {t('pc_row_up')}: {u} × {formatMoney(L, unitPrice(L, 0))} = {formatMoney(L, price.up)}
-            </Text>
-            <Text style={[s.body, { marginTop: 6 }]}>
-              {t('pc_row_out')}: {o} × {formatMoney(L, unitPrice(L, 1))} = {formatMoney(L, price.out)}
-            </Text>
-            <Text style={[s.p, { marginTop: 14 }]}>{t('pc_total')}</Text>
-            <Text testID="pc-total" accessibilityLiveRegion="polite" style={{ fontSize: 32, fontWeight: '800', color: c.ink }}>
+            <View style={{ flexDirection: 'row', paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.line }}>
+              <Text style={{ flex: 1.3 }} />
+              <Text style={[qh(c), { flex: 0.6 }]}>{t('pc_qty')}</Text>
+              <Text style={[qh(c), { flex: 1.2 }]}>{t('pc_unit')}</Text>
+              <Text style={[qh(c), { flex: 1.4 }]}>{t('pc_amount')}</Text>
+            </View>
+            {[
+              [t('pc_row_up'), u, unitPrice(L, 0), price.up],
+              [t('pc_row_out'), o, unitPrice(L, 1), price.out],
+            ].map(([name, qty, unit, amount]) => (
+              <View key={name} style={{ flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.line }}>
+                <Text style={{ flex: 1.3, fontWeight: '600', color: c.ink, fontSize: 14.5 }}>{name}</Text>
+                <Text style={[qc(c), { flex: 0.6 }]}>{qty}</Text>
+                <Text style={[qc(c), { flex: 1.2 }]}>{formatMoney(L, unit)}</Text>
+                <Text style={[qc(c), { flex: 1.4 }]}>{formatMoney(L, amount)}</Text>
+              </View>
+            ))}
+            <Text style={[s.p, { marginTop: 16 }]}>{t('pc_total')}</Text>
+            <Text testID="pc-total" accessibilityLiveRegion="polite" style={{ fontSize: 36, fontWeight: '800', color: c.ink, letterSpacing: -0.5 }}>
               {formatMoney(L, price.total)}
             </Text>
           </View>
@@ -76,15 +101,15 @@ export default function PricingScreen({ navigation }) {
 
       <View style={s.section}>
         <Text accessibilityRole="header" style={s.h2}>{t('pk_title')}</Text>
-        <Text style={[s.p, { marginBottom: 16 }]}>{t('pk_sub')}</Text>
+        <Text style={[s.fine, { marginBottom: 16 }]}>{t('pk_sub')}</Text>
         <View style={{ gap: 16 }}>
           {SAMPLE_PACKS.map((pack) => (
             <View key={pack.id} style={[s.card, { padding: 20 }]}>
               <Text accessibilityRole="header" style={[s.h3, { fontSize: 19 }]}>{t('pk' + pack.id + '_n')}</Text>
-              <Text style={s.p}>{t('pk' + pack.id + '_d')}</Text>
+              <Text style={[s.p, { marginTop: 4 }]}>{t('pk' + pack.id + '_d')}</Text>
               <View style={{ marginVertical: 12, gap: 6 }}>
-                <Text style={s.body}>✓  {pack.uploads} {t('pk_vid')}</Text>
-                <Text style={s.body}>✓  {pack.outs} {t('pk_out')}</Text>
+                <Check>{pack.uploads} {t('pk_vid')}</Check>
+                <Check>{pack.outs} {t('pk_out')}</Check>
               </View>
               <Text testID={'pk-price-' + pack.id} style={{ fontSize: 28, fontWeight: '800', color: c.ink, marginBottom: 14 }}>
                 {formatMoney(L, calcPrice(L, pack.uploads, pack.outs).total)}
@@ -124,7 +149,7 @@ export default function PricingScreen({ navigation }) {
                 </Text>
                 <View style={{ marginVertical: 16, gap: 8 }}>
                   {[1, 2, 3].map((k) => (
-                    <Text key={k} style={s.body}>✓  {t('pl' + n + '_' + k)}</Text>
+                    <Check key={k}>{t('pl' + n + '_' + k)}</Check>
                   ))}
                 </View>
                 <Button

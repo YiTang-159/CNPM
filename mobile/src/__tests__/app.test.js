@@ -6,6 +6,8 @@ import App from '../../App';
 import { CUES, I } from '../shared/i18n';
 
 const vi = (key) => I[key][0]; // bản tiếng Việt (ngôn ngữ mặc định)
+// Tên mục vừa có ở thanh tab, vừa có ở chân trang (như web) nên có thể khớp nhiều chỗ; bấm cái đầu tiên đều đi đúng màn hình.
+const press = (key) => fireEvent.press(screen.getAllByText(vi(key))[0]);
 
 // Không gọi dịch vụ dịch thật khi chạy test — giả lập kết quả dịch
 jest.mock('../shared/translate', () => ({
@@ -56,7 +58,7 @@ describe('Ứng dụng di động Dubchef', () => {
 
   it('bảng giá: chọn thanh toán theo năm thì giá giảm 20%', async () => {
     render(<App />);
-    fireEvent.press(screen.getByText(vi('nav_pricing')));
+    press('nav_pricing');
     expect(await screen.findByText(/250\.000/)).toBeTruthy();
 
     fireEvent.press(screen.getByText(vi('pr_yearly')));
@@ -65,7 +67,7 @@ describe('Ứng dụng di động Dubchef', () => {
 
   it('bảng giá: tính giá theo số video đăng lên và số video dịch ra', async () => {
     render(<App />);
-    fireEvent.press(screen.getByText(vi('nav_pricing')));
+    press('nav_pricing');
     // mặc định 3 video đăng lên, 3 video dịch ra: 3 × 20.000 + 3 × 10.000
     expect((await screen.findByTestId('pc-total')).props.children).toMatch(/90\.000/);
 
@@ -76,7 +78,7 @@ describe('Ứng dụng di động Dubchef', () => {
 
   it('bảng giá: số video dịch ra quá 3 lần số video đăng lên thì báo lỗi và không hiện giá', async () => {
     render(<App />);
-    fireEvent.press(screen.getByText(vi('nav_pricing')));
+    press('nav_pricing');
     fireEvent.changeText(await screen.findByLabelText(vi('pc_up')), '2');
     fireEvent.changeText(screen.getByLabelText(vi('pc_out')), '7');
     expect(await screen.findByText(vi('pc_over'))).toBeTruthy();
@@ -85,7 +87,7 @@ describe('Ứng dụng di động Dubchef', () => {
 
   it('bảng giá: bấm gói mẫu thì điền sẵn số video vào phần tính giá', async () => {
     render(<App />);
-    fireEvent.press(screen.getByText(vi('nav_pricing')));
+    press('nav_pricing');
     const buttons = await screen.findAllByText(vi('pk_use'));
     fireEvent.press(buttons[2]); // gói "Kênh ẩm thực": 30 video đăng lên, 90 video dịch ra
     expect(screen.getByLabelText(vi('pc_up')).props.value).toBe('30');
@@ -96,7 +98,7 @@ describe('Ứng dụng di động Dubchef', () => {
 
   it('trải nghiệm: bấm dịch khi chưa chọn video thì báo lỗi', async () => {
     render(<App />);
-    fireEvent.press(screen.getByText(vi('nav_demo')));
+    press('nav_demo');
     fireEvent.press(await screen.findByRole('button', { name: vi('d_translate_btn') }));
     expect(await screen.findByText(vi('d_need'))).toBeTruthy();
   });
@@ -107,7 +109,7 @@ describe('Ứng dụng di động Dubchef', () => {
       assets: [{ name: 'video.mp4', uri: 'file:///video.mp4' }],
     });
     render(<App />);
-    fireEvent.press(screen.getByText(vi('nav_demo')));
+    press('nav_demo');
     fireEvent.press(await screen.findByText(vi('m_pick')));
     fireEvent.press(await screen.findByRole('button', { name: vi('d_translate_btn') }));
     // Trong môi trường test (và trong Expo Go), whisper.rn/ffmpeg-kit chưa được build native vào app
@@ -121,7 +123,7 @@ describe('Ứng dụng di động Dubchef', () => {
       assets: [{ name: 'mon-an.mp4', uri: 'file:///mon-an.mp4' }],
     });
     render(<App />);
-    fireEvent.press(screen.getByText(vi('nav_demo')));
+    press('nav_demo');
     fireEvent.press(await screen.findByText(vi('m_pick')));
     fireEvent.changeText(await screen.findByLabelText(vi('d_script_label')), 'Đập trứng vào bát.\nXào cùng cà chua.');
     fireEvent.press(screen.getByRole('button', { name: vi('d_translate_btn') }));
@@ -145,7 +147,7 @@ describe('Ứng dụng di động Dubchef', () => {
       assets: [{ name: 'mon-an.mp4', uri: 'file:///mon-an.mp4' }],
     });
     render(<App />);
-    fireEvent.press(screen.getByText(vi('nav_demo')));
+    press('nav_demo');
     fireEvent.press(await screen.findByText(vi('m_pick')));
     fireEvent.press(await screen.findByRole('button', { name: vi('d_translate_btn') }));
 
@@ -156,8 +158,8 @@ describe('Ứng dụng di động Dubchef', () => {
 
   it('tài khoản: đăng ký báo lỗi khi để trống, đủ thông tin thì đăng ký thành công', async () => {
     render(<App />);
-    fireEvent.press(screen.getByText(vi('tab_account')));
-    fireEvent.press(await screen.findByText(vi('rg_title')));
+    press('tab_account');
+    press('rg_title');
 
     fireEvent.press(await screen.findByRole('button', { name: vi('rg_btn') }));
     for (const key of ['e_name', 'e_email', 'e_pass', 'e_pass2', 'e_agree']) {

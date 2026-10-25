@@ -11,8 +11,9 @@ import { errorKey, HAS_API } from '../api/client';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function LoginForm() {
+function LoginForm({ onSwitch }) {
   const { t } = useI18n();
+  const c = useTheme();
   const { login } = useAuth();
   const s = useStyles();
   const [v, setV] = useState({ email: '', pass: '' });
@@ -41,16 +42,19 @@ function LoginForm() {
   return (
     <View>
       <Text accessibilityRole="header" style={s.h1}>{t('li_title')}</Text>
-      <Text style={[s.p, { marginVertical: 12 }]}>{t('li_sub')}</Text>
+      <Text style={[s.lead, { marginTop: 12, marginBottom: 24 }]}>{t('li_sub')}</Text>
       {srvErr ? <Text accessibilityLiveRegion="polite" style={[s.err, { marginBottom: 12 }]}>{t(srvErr)}</Text> : null}
       <Field label={t('f_email')} value={v.email} onChangeText={set('email')} error={errs.email && t(errs.email)} keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
       <Field label={t('f_pass')} value={v.pass} onChangeText={set('pass')} error={errs.pass && t(errs.pass)} secureTextEntry autoCapitalize="none" autoComplete="password" />
       <Button title={t('nav_login')} onPress={submit} disabled={busy} />
+      <Text style={{ marginTop: 22, color: c.muted, fontSize: 15.5 }}>
+        {t('li_no')} <Text style={{ color: c.ink, fontWeight: '600' }} onPress={onSwitch} accessibilityRole="link">{t('rg_title')}</Text>
+      </Text>
     </View>
   );
 }
 
-function RegisterForm() {
+function RegisterForm({ onSwitch }) {
   const { t } = useI18n();
   const { register } = useAuth();
   const c = useTheme();
@@ -84,7 +88,7 @@ function RegisterForm() {
   return (
     <View>
       <Text accessibilityRole="header" style={s.h1}>{t('rg_title')}</Text>
-      <Text style={[s.p, { marginVertical: 12 }]}>{t('rg_sub')}</Text>
+      <Text style={[s.lead, { marginTop: 12, marginBottom: 24 }]}>{t('rg_sub')}</Text>
       {srvErr ? <Text accessibilityLiveRegion="polite" style={[s.err, { marginBottom: 12 }]}>{t(srvErr)}</Text> : null}
       <Field label={t('f_name')} value={v.name} onChangeText={set('name')} error={errs.name && t(errs.name)} autoComplete="name" />
       <Field label={t('f_email')} value={v.email} onChangeText={set('email')} error={errs.email && t(errs.email)} keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
@@ -102,6 +106,9 @@ function RegisterForm() {
         {errs.agree ? <Text style={s.err}>{t(errs.agree)}</Text> : null}
       </View>
       <Button title={t('rg_btn')} onPress={submit} disabled={busy} />
+      <Text style={{ marginTop: 22, color: c.muted, fontSize: 15.5 }}>
+        {t('rg_have')} <Text style={{ color: c.ink, fontWeight: '600' }} onPress={onSwitch} accessibilityRole="link">{t('nav_login')}</Text>
+      </Text>
     </View>
   );
 }
@@ -117,7 +124,7 @@ export default function AccountScreen() {
       {user ? (
         <View>
           <Text accessibilityRole="header" style={s.h1}>{t('hello')}, {user.name}</Text>
-          <Text style={[s.p, { marginVertical: 12 }]}>{user.email}</Text>
+          <Text style={[s.lead, { marginVertical: 12 }]}>{user.email}</Text>
           <Button variant="ghost" title={t('logout')} onPress={logout} />
         </View>
       ) : (
@@ -127,7 +134,7 @@ export default function AccountScreen() {
             onChange={setMode}
             options={[{ key: 'login', label: t('nav_login') }, { key: 'register', label: t('rg_title') }]}
           />
-          <View style={{ marginTop: 24 }}>{mode === 'login' ? <LoginForm /> : <RegisterForm />}</View>
+          <View style={{ marginTop: 24 }}>{mode === 'login' ? <LoginForm onSwitch={() => setMode('register')} /> : <RegisterForm onSwitch={() => setMode('login')} />}</View>
           {!HAS_API ? <Text style={s.note}>{t('auth_demo')}</Text> : null}
         </View>
       )}

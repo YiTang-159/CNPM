@@ -2,6 +2,8 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import Brand from './Brand';
+import Footer from './Footer';
 import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../theme';
 import { LANGS } from '../shared/i18n';
@@ -32,25 +34,22 @@ function LangSwitch() {
   );
 }
 
-/** Khung chung cho mọi màn hình: thanh đầu (logo + đổi ngôn ngữ) và vùng cuộn. */
-export default function Screen({ children }) {
+/**
+ * Khung chung cho mọi màn hình, giống web: thanh đầu (logo + đổi ngôn ngữ), vùng cuộn và chân trang.
+ * `bleed`: nội dung tự quản lề trái/phải (dùng với <Section>), không có padding sẵn.
+ */
+export default function Screen({ children, bleed, scrollRef, footer = true }) {
   const c = useTheme();
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.bg }}>
       <StatusBar style={c.dark ? 'light' : 'dark'} />
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.line }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ gap: 3, width: 24 }}>
-            <View style={{ height: 5, borderRadius: 3, width: '100%', backgroundColor: c.vi }} />
-            <View style={{ height: 5, borderRadius: 3, width: '72%', backgroundColor: c.en }} />
-            <View style={{ height: 5, borderRadius: 3, width: '88%', backgroundColor: c.zh }} />
-          </View>
-          <Text accessibilityRole="header" style={{ fontSize: 21, fontWeight: '800', color: c.ink }}>Dubchef</Text>
-        </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, minHeight: 60, borderBottomWidth: 1, borderBottomColor: c.line, backgroundColor: c.bg }}>
+        <Brand />
         <LangSwitch />
       </View>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
-        {children}
+      <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
+        <View style={bleed ? null : { padding: 20, paddingTop: 36, paddingBottom: 56 }}>{children}</View>
+        {footer ? <Footer /> : null}
       </ScrollView>
     </SafeAreaView>
   );

@@ -12,6 +12,8 @@ import Register from './pages/Register.jsx';
 import { Terms, Privacy } from './pages/Legal.jsx';
 import Admin from './pages/Admin.jsx';
 import AdminUsers from './pages/AdminUsers.jsx';
+import AdminQr from './pages/AdminQr.jsx';
+import Guest from './pages/Guest.jsx';
 import AdminLayout from './components/AdminLayout.jsx';
 import NotFound from './pages/NotFound.jsx';
 
@@ -28,6 +30,7 @@ export default function App() {
         <Route path="contact" element={<Contact />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
+        <Route path="guest" element={<Guest />} />
         <Route path="terms" element={<Terms />} />
         <Route path="privacy" element={<Privacy />} />
         <Route path="*" element={<NotFound />} />
@@ -35,6 +38,7 @@ export default function App() {
       <Route path="admin" element={<AdminLayout />}>
         <Route index element={<Admin />} />
         <Route path="users" element={<AdminUsers />} />
+        <Route path="qr" element={<AdminQr />} />
       </Route>
     </Routes>
   );

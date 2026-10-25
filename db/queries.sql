@@ -18,3 +18,12 @@ WHERE Status = 'paid'
 GROUP BY CustomerEmail, Currency
 ORDER BY Tong DESC;
 GO
+
+-- Số người quét mã QR của khách theo ngày (người không trùng và số lượt quét)
+SELECT CAST(ScannedAt AS DATE) AS Ngay,
+       COUNT(DISTINCT VisitorId) AS NguoiQuet,
+       COUNT(*)                  AS LuotQuet
+FROM dbo.QrScans
+GROUP BY CAST(ScannedAt AS DATE)
+ORDER BY Ngay DESC;
+

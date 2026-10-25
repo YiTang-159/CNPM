@@ -30,7 +30,8 @@ export function dayKey(date) {
   return date.getFullYear() + '-' + p(date.getMonth() + 1) + '-' + p(date.getDate());
 }
 
-function visitorId() {
+/** Mã khách của trình duyệt này (dùng chung cho lượt truy cập và lượt quét QR). */
+export function visitorId() {
   try {
     let id = localStorage.getItem(K_VID);
     if (!id) {

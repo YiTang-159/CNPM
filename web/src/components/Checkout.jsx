@@ -3,7 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { formatMoney } from '../shared/format.js';
-import { CURRENCIES, HAS_PAYMENT_API, METHODS, orderAmount, orders } from '../api/orders.js';
+import { CURRENCIES, HAS_PAYMENT_API, METHODS, orderAmount, orders, paymentPayload } from '../api/orders.js';
+import QrCode from './QrCode.jsx';
 
 /** Nút Thanh toán và khung thanh toán cho số video đang chọn ở phần tính giá. */
 export default function Checkout({ uploads, outs, total, autoOpen = false }) {
@@ -16,6 +17,8 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   const [failed, setFailed] = useState(false);
   const [done, setDone] = useState(null);
   const [recent, setRecent] = useState([]);
+  const [pending, setPending] = useState(null); // đơn đã tạo, đang chờ khách quét mã QR
+  const [step, setStep] = useState('form'); // 'form' hoặc 'qr'
 
   const refresh = useCallback(() => {
     if (user) orders.list(user.email).then(setRecent).catch(() => setRecent([]));
@@ -29,9 +32,34 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
     setBusy(true);
     setFailed(false);
     try {
+      if (method === 'qr') {
+        // Đổi phương thức rồi quay lại thì dùng lại đơn cũ nếu số video và loại tiền không đổi, tránh tạo đơn trùng.
+        const same = pending && pending.uploads === uploads && pending.outs === outs && pending.currency === CURRENCIES[L];
+        setPending(same ? pending : await orders.create({ name: user.name, email: user.email, uploads, outs, L }));
+        setStep('qr');
+        refresh();
+        return;
+      }
       const order = await orders.create({ name: user.name, email: user.email, uploads, outs, L });
       const res = await orders.pay(order.id, method);
       setDone(res.order);
+      refresh();
+    } catch (err) {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Khách đã quét mã và chuyển tiền: ghi nhận thanh toán bằng QR (giả lập, chưa nối ngân hàng thật). */
+  async function confirmQr() {
+    setBusy(true);
+    setFailed(false);
+    try {
+      const res = await orders.pay(pending.id, 'qr');
+      setDone(res.order);
+      setPending(null);
+      setStep('form');
       refresh();
     } catch (err) {
       setFailed(true);
@@ -44,6 +72,8 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
     setOpen(false);
     setDone(null);
     setFailed(false);
+    setPending(null);
+    setStep('form');
   }
 
   if (!open) {
@@ -76,6 +106,23 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
           </dl>
           <p style={{ marginTop: 14 }}><button type="button" className="btn" onClick={close}>{t('co_close')}</button></p>
         </div>
+      ) : step === 'qr' && pending ? (
+        <div className="co-qr" data-testid="co-qr-step">
+          <p>{t('co_qr_scan')}</p>
+          <QrCode value={paymentPayload(pending)} label={t('co_qr_alt')} size={220} testId="co-qrcode" />
+          <dl className="co-sum">
+            <dt>{t('co_code')}</dt><dd data-testid="co-qr-order">#{pending.id}</dd>
+            <dt>{t('pc_amount')}</dt><dd>{formatMoney(CURRENCIES.indexOf(pending.currency), orderAmount(pending))}</dd>
+            <dt>{t('co_qr_memo')}</dt><dd>DUBCHEF{pending.id}</dd>
+          </dl>
+          <p className="fine" style={{ marginTop: 12 }}>{t('co_qr_demo')}</p>
+          {failed ? <p className="err" role="alert">{t('co_fail')}</p> : null}
+          <p style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-primary" onClick={confirmQr} disabled={busy}>{busy ? t('co_busy') : t('co_qr_done')}</button>
+            <button type="button" className="btn" onClick={() => { setStep('form'); setFailed(false); }} disabled={busy}>{t('co_qr_back')}</button>
+            <button type="button" className="btn" onClick={close} disabled={busy}>{t('co_close')}</button>
+          </p>
+        </div>
       ) : (
         <form onSubmit={submit}>
           <dl className="co-sum">
@@ -97,7 +144,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
           {!HAS_PAYMENT_API ? <p className="fine" style={{ marginTop: 6 }}>{t('co_local')}</p> : null}
           {failed ? <p className="err" role="alert">{t('co_fail')}</p> : null}
           <p style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? t('co_busy') : t('co_pay')}</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? t('co_busy') : t(method === 'qr' ? 'co_qr_make' : 'co_pay')}</button>
             <button type="button" className="btn" onClick={close} disabled={busy}>{t('co_close')}</button>
           </p>
         </form>

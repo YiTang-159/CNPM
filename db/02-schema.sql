@@ -22,13 +22,21 @@ IF OBJECT_ID(N'dbo.Payments', N'U') IS NULL
 CREATE TABLE dbo.Payments (
     PaymentId      INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Payments PRIMARY KEY,
     OrderId        INT           NOT NULL CONSTRAINT FK_Payments_Orders REFERENCES dbo.Orders(OrderId),
-    Method         VARCHAR(10)   NOT NULL CONSTRAINT CK_Payments_Method CHECK (Method IN ('card', 'momo', 'bank')),
+    Method         VARCHAR(10)   NOT NULL CONSTRAINT CK_Payments_Method CHECK (Method IN ('card', 'momo', 'bank', 'qr')),
     AmountMinor    BIGINT        NOT NULL CONSTRAINT CK_Payments_Amt CHECK (AmountMinor >= 0),
     Currency       CHAR(3)       NOT NULL,
     Status         VARCHAR(10)   NOT NULL CONSTRAINT CK_Payments_Status CHECK (Status IN ('success', 'failed')),
     TransactionRef VARCHAR(40)   NOT NULL CONSTRAINT UQ_Payments_Ref UNIQUE,
     PaidAt         DATETIME2(0)  NOT NULL CONSTRAINT DF_Payments_PaidAt DEFAULT SYSUTCDATETIME()
 );
+GO
+
+-- CSDL tạo từ bản cũ chỉ cho phép card/momo/bank: mở thêm phương thức 'qr' (quét mã QR)
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_Payments_Method' AND definition NOT LIKE N'%qr%')
+BEGIN
+    ALTER TABLE dbo.Payments DROP CONSTRAINT CK_Payments_Method;
+    ALTER TABLE dbo.Payments ADD CONSTRAINT CK_Payments_Method CHECK (Method IN ('card', 'momo', 'bank', 'qr'));
+END
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Orders_Email' AND object_id = OBJECT_ID(N'dbo.Orders'))
@@ -89,4 +97,18 @@ CREATE TABLE dbo.Messages (
     Body      NVARCHAR(2000) NOT NULL,
     CreatedAt DATETIME2(0)   NOT NULL CONSTRAINT DF_Messages_Created DEFAULT SYSUTCDATETIME()
 );
+GO
+
+-- Mỗi lần khách quét mã QR "trải nghiệm với tư cách khách" là một dòng (VisitorId trùng với bảng Visits)
+IF OBJECT_ID(N'dbo.QrScans', N'U') IS NULL
+CREATE TABLE dbo.QrScans (
+    ScanId    BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_QrScans PRIMARY KEY,
+    VisitorId VARCHAR(64)  NOT NULL,
+    Lang      VARCHAR(8)   NOT NULL,
+    ScannedAt DATETIME2(0) NOT NULL CONSTRAINT DF_QrScans_At DEFAULT SYSUTCDATETIME()
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_QrScans_At' AND object_id = OBJECT_ID(N'dbo.QrScans'))
+    CREATE INDEX IX_QrScans_At ON dbo.QrScans (ScannedAt) INCLUDE (VisitorId);
 GO

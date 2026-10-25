@@ -6,7 +6,7 @@ import { calcPrice, checkCounts, parseCount } from '../../shared/pricing.js';
 
 /** Thứ tự khớp với L của giao diện: 0 Việt, 1 Anh, 2 Trung. */
 export const CURRENCIES = ['VND', 'USD', 'CNY'];
-export const METHODS = ['card', 'momo', 'bank'];
+export const METHODS = ['card', 'momo', 'bank', 'qr'];
 const MINOR_PER_UNIT = [1, 100, 100];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

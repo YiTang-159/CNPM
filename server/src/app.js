@@ -105,10 +105,27 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.status(204).end();
   }));
 
+  // ---- Đếm lượt quét mã QR của khách (trang /guest) ----
+  app.post('/api/qr-scan', wrap(async (req, res) => {
+    const b = req.body || {};
+    const visitorId = String(b.visitorId || '');
+    const lang = String(b.lang || '');
+    if (!/^[\w-]{1,64}$/.test(visitorId) || !/^[a-z]{2,8}$/.test(lang)) return res.status(400).json({ code: 'invalid' });
+    await repo.addQrScan({ visitorId, lang });
+    res.status(204).end();
+  }));
+
   // ---- Trang quản trị ----
   app.get('/api/admin/overview', adminOnly, wrap(async (req, res) => {
     const span = [7, 14, 30].includes(Number(req.query.days)) ? Number(req.query.days) : 7;
     const raw = await repo.visitStats(span, tz);
+    res.json({ stats: buildStats(raw, Date.now(), span, tz) });
+  }));
+
+  // Số người quét mã QR của khách: cùng dạng với /overview (visitors = người quét, views = lượt quét)
+  app.get('/api/admin/qr', adminOnly, wrap(async (req, res) => {
+    const span = [7, 14, 30].includes(Number(req.query.days)) ? Number(req.query.days) : 7;
+    const raw = await repo.qrStats(span, tz);
     res.json({ stats: buildStats(raw, Date.now(), span, tz) });
   }));
 

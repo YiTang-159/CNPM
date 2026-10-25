@@ -92,7 +92,7 @@ Xem `CONTRIBUTING.md` (nhánh, Pull Request, phát hành mobile, phân công) v�
 
 ## Trang quản trị (`/#/admin`)
 
-Bảng điều khiển riêng cho quản trị viên (có thanh bên, không dùng menu của trang chính), gồm 2 trang:
+Bảng điều khiển riêng cho quản trị viên (có thanh bên, không dùng menu của trang chính), gồm 3 trang:
 
 **Tổng quan (`/admin`)**
 - 4 ô số liệu: đang truy cập (5 phút gần nhất), hôm nay (so với hôm qua), trong kỳ 7/14/30 ngày (so với kỳ trước), tổng cộng.
@@ -102,6 +102,11 @@ Bảng điều khiển riêng cho quản trị viên (có thanh bên, không dù
 - Tổng người dùng, đang hoạt động, đã khóa.
 - Tìm theo tên hoặc email, sắp xếp, phân trang 8 người mỗi trang.
 - Khóa / mở khóa (người bị khóa không đăng nhập được), xóa có hỏi xác nhận, xuất CSV.
+
+**Mã QR khách (`/admin/qr`)**
+- Hiện mã QR dành cho khách (sao chép liên kết, tải SVG để in hoặc chiếu).
+- 4 ô số liệu về **người quét mã**: hôm nay (so với hôm qua), trong kỳ 7/14/30 ngày (so với kỳ trước), tổng người quét (kèm tổng lượt quét), vừa quét trong 5 phút.
+- Biểu đồ người quét và lượt quét theo ngày. Người quét tính theo mã khách của trình duyệt nên một người quét nhiều lần vẫn là 1 người; mỗi lần quét ở phiên mới là 1 lượt.
 
 **Cách vào:** bấm **Đăng nhập**, dùng tài khoản quản trị có sẵn (không cần đăng ký): email `admin@dubchef.vn`, mật khẩu `admin12345` (đổi bằng `VITE_ADMIN_EMAIL`, `VITE_ADMIN_PASSWORD` trong `web/.env`), rồi bấm **Quản trị** trên menu hoặc vào `/#/admin`. Tài khoản khác không vào được.
 
@@ -115,22 +120,26 @@ Bảng điều khiển riêng cho quản trị viên (có thanh bên, không dù
 |---|---|
 | `POST /api/track` | nhận `{visitorId, path, lang}`, lưu một lượt xem |
 | `GET /api/admin/overview?days=7` | trả `{ stats }`, `stats` theo hàm `summarize` trong `analytics.js`: `span`, `today`, `yesterday`, `period`, `prev`, `total` (mỗi cái `{visitors, views}`), `activeNow`, `series` (`[{date, visitors, views}]`), `peak` |
+| `POST /api/qr-scan` | nhận `{visitorId, lang}`, lưu một lượt quét mã QR của khách (bảng `QrScans`) |
+| `GET /api/admin/qr?days=7` | cùng dạng với `/api/admin/overview` nhưng cho lượt quét QR: `visitors` = số người quét (không trùng), `views` = số lượt quét |
 | `GET /api/admin/users` | trả `{ users: [{name, email, at, status}] }`, `status` là `active` hoặc `locked` |
 | `PATCH /api/admin/users` | nhận `{email, status}` để khóa / mở khóa |
 | `DELETE /api/admin/users?email=...` | xóa người dùng |
 
 ### Dùng dữ liệu thật cho trang Admin
 
-1. Chạy CSDL + API: `docker compose up -d --build` (lần đầu tự tạo các bảng `Users`, `Visits`, `Messages` và tài khoản quản trị từ `ADMIN_EMAIL` / `ADMIN_PASSWORD`, mặc định `admin@dubchef.vn` / `admin12345`).
+1. Chạy CSDL + API: `docker compose up -d --build` (lần đầu tự tạo các bảng `Users`, `Visits`, `QrScans`, `Messages` và tài khoản quản trị từ `ADMIN_EMAIL` / `ADMIN_PASSWORD`, mặc định `admin@dubchef.vn` / `admin12345`).
 2. Tạo `web/.env` với dòng `VITE_API_URL=http://localhost:3000`, rồi chạy lại `npm run dev` trong `web` (đổi biến `.env` phải khởi động lại).
-3. Đăng nhập bằng tài khoản admin ở trên, vào `/#/admin`. Các nút "Nạp dữ liệu mẫu" sẽ biến mất vì số liệu giờ là thật: người dùng đăng ký và lượt truy cập đều lưu trong SQL Server. Xem trực tiếp: `SELECT * FROM dbo.Users; SELECT TOP 50 * FROM dbo.Visits ORDER BY VisitId DESC;`
+3. Đăng nhập bằng tài khoản admin ở trên, vào `/#/admin`. Các nút "Nạp dữ liệu mẫu" sẽ biến mất vì số liệu giờ là thật: người dùng đăng ký và lượt truy cập đều lưu trong SQL Server. Xem trực tiếp: `SELECT * FROM dbo.Users; SELECT TOP 50 * FROM dbo.Visits ORDER BY VisitId DESC; SELECT TOP 50 * FROM dbo.QrScans ORDER BY ScanId DESC;`
 4. Trước khi đưa lên mạng: đổi `ADMIN_PASSWORD`, đặt `TOKEN_SECRET` là chuỗi ngẫu nhiên dài, đặt `CORS_ORIGIN` đúng địa chỉ web. Ngày thống kê tính theo múi giờ UTC+7 (đổi bằng `STATS_TZ_HOURS`).
 
 Lưu ý: người dùng tạo trước đó ở chế độ lưu tạm (localStorage) không tự sang CSDL; họ cần đăng ký lại. Mã nguồn: `server/src/auth.js` (băm mật khẩu scrypt, token), `stats.js` (tổng hợp), `app.js` (API), `db.js` (SQL).
 
 ## Thanh toán ở trang Bảng giá + SQL Server (Docker)
 
-Ở phần **Tính giá theo số video**, khi số video hợp lệ sẽ có nút **Thanh toán**: chọn phương thức (thẻ, MoMo, chuyển khoản), xác nhận, nhận mã đơn và mã giao dịch. Đây là **thanh toán giả lập**: không nhập và không lưu số thẻ.
+Ở phần **Tính giá theo số video**, khi số video hợp lệ sẽ có nút **Thanh toán**: chọn phương thức (thẻ, MoMo, chuyển khoản hoặc **quét mã QR**), xác nhận, nhận mã đơn và mã giao dịch. Đây là **thanh toán giả lập**: không nhập và không lưu số thẻ.
+
+**Thanh toán bằng mã QR:** chọn *Quét mã QR* rồi bấm **Tạo mã QR**; hệ thống tạo đơn "chờ thanh toán" và hiện mã QR chứa mã đơn, số tiền, loại tiền và nội dung chuyển khoản (`DUBCHEF<mã đơn>`). Sau khi quét, bấm **Tôi đã thanh toán** để ghi nhận (mã giao dịch bắt đầu bằng `QR-`). Mã QR là giả lập, chưa nối ngân hàng thật; muốn dùng thật cần tích hợp cổng như VietQR/MoMo và nhận thông báo thanh toán từ ngân hàng thay cho nút xác nhận. Đổi sang phương thức khác rồi quay lại QR sẽ dùng lại đơn cũ, không tạo đơn trùng.
 
 **Kiến trúc:** web (React) → API Node.js (`server/`) → SQL Server trong Docker (`db/`).
 
@@ -153,3 +162,12 @@ Lưu ý: người dùng tạo trước đó ở chế độ lưu tạm (localSto
 Không đặt `VITE_PAYMENT_API_URL` thì thanh toán vẫn chạy nhưng đơn chỉ lưu trong trình duyệt.
 
 **API:** `GET /api/health`, `POST /api/orders` (`{name,email,uploads,outs,L}`), `POST /api/orders/:id/pay` (`{method}`), `GET /api/orders?email=`. Bản demo chưa có xác thực; làm thật thì cần kiểm tra đăng nhập ở máy chủ.
+
+## Mã QR cho khách trải nghiệm
+
+Mã QR dẫn tới trang `/#/guest`: khách **không cần đăng nhập**, vào là thấy lời chào và nút **Trải nghiệm ngay** (sang `/demo`). Mã QR hiện ở **trang chủ** (để người xem trên máy tính quét bằng điện thoại) và ở **Admin → Mã QR khách** (để tải, in, chiếu).
+
+- Mỗi lần mở `/guest` là một lượt quét, ghi bằng `trackScan` (`web/src/api/qr.js`). Mỗi phiên trình duyệt chỉ ghi một lần nên tải lại trang không làm tăng số liệu. Lượt xem trang `/guest` vẫn được `Layout` tính vào số người truy cập chung.
+- **Địa chỉ trong mã:** mặc định là địa chỉ trang đang mở. Chạy ở `localhost` thì điện thoại không vào được, nên đặt `VITE_PUBLIC_URL` (địa chỉ web đã đăng, ví dụ `https://ten-ban.github.io/CNPM/`) trong `web/.env` rồi chạy lại. Trang Admin có cảnh báo khi địa chỉ chỉ mở được trên máy bạn.
+- Mã QR được tạo ngay trong trình duyệt bằng `web/src/utils/qr.js` (không cần thư viện ngoài, tối đa 213 byte).
+- Chưa có Backend: số liệu lưu trong `localStorage`; nút **Nạp dữ liệu mẫu** ở trang Mã QR khách thêm 60 ngày lượt quét giả. Có Backend: lưu ở bảng `QrScans` (SQL Server), xem `db/queries.sql`.

@@ -7,8 +7,10 @@ import { createApp } from '../src/app.js';
 function fakeRepo() {
   const users = [{ name: 'Admin', email: 'admin@x.vn', role: 'admin', status: 'active', at: new Date().toISOString(), hash: hashPassword('admin12345') }];
   const visits = [];
+  const qrScans = [];
   return {
     visits,
+    qrScans,
     findUser: async (e) => users.find((u) => u.email === e) || null,
     createUser: async ({ name, email, passwordHash, role = 'user' }) => {
       if (users.some((u) => u.email === email)) return null;
@@ -20,6 +22,8 @@ function fakeRepo() {
     setUserStatus: async (e, s) => { const u = users.find((x) => x.email === e && x.role === 'user'); if (u) u.status = s; return !!u; },
     deleteUser: async (e) => { const i = users.findIndex((x) => x.email === e && x.role === 'user'); if (i >= 0) users.splice(i, 1); return i >= 0; },
     addVisit: async (v) => { visits.push(v); },
+    addQrScan: async (v) => { qrScans.push(v); },
+    qrStats: async () => ({ days: [], period: { visitors: 3, views: 5 }, prev: { visitors: 0, views: 0 }, totals: { visitors: 4, views: 9 }, activeNow: 1 }),
     addMessage: async () => {},
     visitStats: async () => ({ days: [], period: { visitors: 1, views: 2 }, prev: { visitors: 0, views: 0 }, totals: { visitors: 1, views: 2 }, activeNow: 1 }),
   };
@@ -82,5 +86,26 @@ test('ghi lượt truy cập, bỏ qua trang admin, đọc tổng quan', async (
     assert.equal(ov.status, 200);
     assert.equal(ov.data.stats.span, 14);
     assert.equal(ov.data.stats.series.length, 14);
+  } finally { close(); }
+});
+
+test('ghi lượt quét mã QR của khách và chỉ admin mới xem được số liệu', async () => {
+  const { repo, call, close } = await start();
+  try {
+    assert.equal((await call('POST', '/api/qr-scan', { visitorId: 'v1', lang: 'vi' })).status, 204);
+    assert.equal((await call('POST', '/api/qr-scan', { visitorId: '', lang: 'vi' })).status, 400);
+    assert.equal((await call('POST', '/api/qr-scan', { visitorId: 'v1', lang: 'VI!' })).status, 400);
+    assert.equal((await call('POST', '/api/qr-scan', { visitorId: 'a b', lang: 'vi' })).status, 400);
+    assert.deepEqual(repo.qrScans, [{ visitorId: 'v1', lang: 'vi' }]);
+
+    const admin = (await call('POST', '/api/auth/login', { email: 'admin@x.vn', password: 'admin12345' })).data.user;
+    const user = (await call('POST', '/api/auth/register', { name: 'An', email: 'an@x.vn', password: 'matkhau123' })).data.user;
+    assert.equal((await call('GET', '/api/admin/qr?days=7')).status, 401);
+    assert.equal((await call('GET', '/api/admin/qr?days=7', null, user.token)).status, 403);
+    const qr = await call('GET', '/api/admin/qr?days=30', null, admin.token);
+    assert.equal(qr.status, 200);
+    assert.equal(qr.data.stats.series.length, 30);
+    assert.deepEqual(qr.data.stats.period, { visitors: 3, views: 5 });
+    assert.deepEqual(qr.data.stats.total, { visitors: 4, views: 9 });
   } finally { close(); }
 });

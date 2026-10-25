@@ -65,6 +65,42 @@ const mapUser = (r) => ({
   hash: r.PasswordHash,
 });
 
+/**
+ * Gộp số liệu theo ngày cho một bảng có cột VisitorId và một cột thời gian (`table`, `col` là hằng số trong mã, không lấy từ người dùng).
+ * Dùng chung cho lượt truy cập (Visits) và lượt quét QR (QrScans).
+ */
+async function aggregate(pool, table, col, span, tz, now = Date.now()) {
+  const DAY = 86400000;
+  const key = (i) => dayKey(now - i * DAY, tz);
+  const from = new Date(now - (span * 2 + 1) * DAY);
+  const k = `CONVERT(char(10), DATEADD(HOUR, @tz, ${col}), 23)`;
+  const days = await pool.request()
+    .input('tz', sql.Int, tz).input('from', sql.DateTime2, from)
+    .query(`SELECT ${k} AS d, COUNT(DISTINCT VisitorId) AS visitors, COUNT(*) AS views
+            FROM ${table} WHERE ${col} >= @from GROUP BY ${k}`);
+  const win = await pool.request()
+    .input('tz', sql.Int, tz).input('from', sql.DateTime2, from)
+    .input('c0', sql.Char(10), key(span - 1)).input('c1', sql.Char(10), key(0))
+    .input('p0', sql.Char(10), key(span * 2 - 1)).input('p1', sql.Char(10), key(span))
+    .query(`SELECT
+              COUNT(DISTINCT CASE WHEN d BETWEEN @c0 AND @c1 THEN VisitorId END) AS cv,
+              SUM(CASE WHEN d BETWEEN @c0 AND @c1 THEN 1 ELSE 0 END) AS cw,
+              COUNT(DISTINCT CASE WHEN d BETWEEN @p0 AND @p1 THEN VisitorId END) AS pv,
+              SUM(CASE WHEN d BETWEEN @p0 AND @p1 THEN 1 ELSE 0 END) AS pw
+            FROM (SELECT VisitorId, ${k} AS d FROM ${table} WHERE ${col} >= @from) x`);
+  const tot = await pool.request().query(`SELECT COUNT(DISTINCT VisitorId) AS visitors, COUNT(*) AS views FROM ${table}`);
+  const act = await pool.request().input('m', sql.Int, ACTIVE_MINUTES)
+    .query(`SELECT COUNT(DISTINCT VisitorId) AS n FROM ${table} WHERE ${col} >= DATEADD(MINUTE, -@m, SYSUTCDATETIME())`);
+  const w = win.recordset[0];
+  return {
+    days: days.recordset.map((r) => ({ date: r.d, visitors: r.visitors, views: r.views })),
+    period: { visitors: w.cv || 0, views: w.cw || 0 },
+    prev: { visitors: w.pv || 0, views: w.pw || 0 },
+    totals: { visitors: tot.recordset[0].visitors, views: tot.recordset[0].views },
+    activeNow: act.recordset[0].n,
+  };
+}
+
 /** Tạo CSDL + bảng (nếu chưa có) rồi trả về các hàm thao tác dữ liệu. */
 export async function openRepo() {
   const master = await connect('master');
@@ -204,37 +240,18 @@ export async function openRepo() {
     },
 
     /** Số liệu thô cho trang Admin: theo ngày, kỳ này / kỳ trước, tổng, đang online. Ngày tính theo múi giờ `tz`. */
-    async visitStats(span, tz, now = Date.now()) {
-      const DAY = 86400000;
-      const key = (i) => dayKey(now - i * DAY, tz);
-      const from = new Date(now - (span * 2 + 1) * DAY);
-      const k = "CONVERT(char(10), DATEADD(HOUR, @tz, VisitedAt), 23)";
-      const days = await pool.request()
-        .input('tz', sql.Int, tz).input('from', sql.DateTime2, from)
-        .query(`SELECT ${k} AS d, COUNT(DISTINCT VisitorId) AS visitors, COUNT(*) AS views
-                FROM dbo.Visits WHERE VisitedAt >= @from GROUP BY ${k}`);
-      const win = await pool.request()
-        .input('tz', sql.Int, tz).input('from', sql.DateTime2, from)
-        .input('c0', sql.Char(10), key(span - 1)).input('c1', sql.Char(10), key(0))
-        .input('p0', sql.Char(10), key(span * 2 - 1)).input('p1', sql.Char(10), key(span))
-        .query(`SELECT
-                  COUNT(DISTINCT CASE WHEN d BETWEEN @c0 AND @c1 THEN VisitorId END) AS cv,
-                  SUM(CASE WHEN d BETWEEN @c0 AND @c1 THEN 1 ELSE 0 END) AS cw,
-                  COUNT(DISTINCT CASE WHEN d BETWEEN @p0 AND @p1 THEN VisitorId END) AS pv,
-                  SUM(CASE WHEN d BETWEEN @p0 AND @p1 THEN 1 ELSE 0 END) AS pw
-                FROM (SELECT VisitorId, ${k} AS d FROM dbo.Visits WHERE VisitedAt >= @from) x`);
-      const tot = await pool.request().query('SELECT COUNT(DISTINCT VisitorId) AS visitors, COUNT(*) AS views FROM dbo.Visits');
-      const act = await pool.request().input('m', sql.Int, ACTIVE_MINUTES)
-        .query('SELECT COUNT(DISTINCT VisitorId) AS n FROM dbo.Visits WHERE VisitedAt >= DATEADD(MINUTE, -@m, SYSUTCDATETIME())');
-      const w = win.recordset[0];
-      return {
-        days: days.recordset.map((r) => ({ date: r.d, visitors: r.visitors, views: r.views })),
-        period: { visitors: w.cv || 0, views: w.cw || 0 },
-        prev: { visitors: w.pv || 0, views: w.pw || 0 },
-        totals: { visitors: tot.recordset[0].visitors, views: tot.recordset[0].views },
-        activeNow: act.recordset[0].n,
-      };
+    visitStats: (span, tz, now) => aggregate(pool, 'dbo.Visits', 'VisitedAt', span, tz, now),
+
+    // ---- Lượt quét mã QR của khách ----
+    async addQrScan({ visitorId, lang }) {
+      await pool.request()
+        .input('vid', sql.VarChar(64), visitorId)
+        .input('lang', sql.VarChar(8), lang)
+        .query('INSERT INTO dbo.QrScans (VisitorId, Lang) VALUES (@vid, @lang)');
     },
+
+    /** Cùng dạng với visitStats: visitors = số người quét (không trùng), views = số lượt quét. */
+    qrStats: (span, tz, now) => aggregate(pool, 'dbo.QrScans', 'ScannedAt', span, tz, now),
   };
   return repo;
 }

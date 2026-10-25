@@ -1,5 +1,5 @@
 /**
- * Đơn hàng và thanh toán ở trang Bảng giá.
+ * Đơn hàng và thanh toán ở trang Bảng giá (thẻ, MoMo, chuyển khoản, quét mã QR).
  * - Có VITE_PAYMENT_API_URL (API Node.js + SQL Server trong Docker): gọi POST /api/orders, POST /api/orders/:id/pay, GET /api/orders.
  * - Không có: lưu tạm trong localStorage của trình duyệt (để demo khi chưa chạy Docker).
  * Biến này tách riêng với VITE_API_URL (Backend đăng nhập) để bật thanh toán thật mà không ảnh hưởng đăng nhập.
@@ -12,11 +12,16 @@ const K_ORDERS = 'dubchef-orders';
 
 /** Thứ tự khớp với L của giao diện: 0 Việt, 1 Anh, 2 Trung. */
 export const CURRENCIES = ['VND', 'USD', 'CNY'];
-export const METHODS = ['card', 'momo', 'bank'];
+export const METHODS = ['card', 'momo', 'bank', 'qr'];
 const MINOR_PER_UNIT = [1, 100, 100];
 
 /** Số tiền của đơn theo đơn vị chính (đồng, đô la, nhân dân tệ) để đưa vào formatMoney. */
 export const orderAmount = (order) => order.amountMinor / MINOR_PER_UNIT[CURRENCIES.indexOf(order.currency)];
+
+/** Nội dung mã QR thanh toán (giả lập): mã đơn, số tiền, loại tiền và nội dung chuyển khoản. */
+export function paymentPayload(order) {
+  return ['DUBCHEF-PAY', 'order=' + order.id, 'amount=' + orderAmount(order), 'cur=' + order.currency, 'memo=DUBCHEF' + order.id].join('|');
+}
 
 function read() {
   try { return JSON.parse(localStorage.getItem(K_ORDERS)) || []; } catch (e) { return []; }

@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
+import QrCode from '../components/QrCode.jsx';
+import { guestUrl } from '../api/qr.js';
 
 const STEPS = ['s1', 's2', 's3', 's4'];
 const BANDS = [
@@ -51,6 +53,16 @@ export default function Home() {
                 <p>{t(key)}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="wrap qr-home">
+          <QrCode value={guestUrl()} label={t('qh_alt')} size={176} testId="home-qr" />
+          <div>
+            <h2 className="sec">{t('qh_title')}</h2>
+            <p className="lead">{t('qh_sub')}</p>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateOrder, priceOrder, newTransactionRef, CURRENCIES } from '../src/orders.js';
+import { validateOrder, priceOrder, newTransactionRef, CURRENCIES, METHODS } from '../src/orders.js';
 
 const base = { name: ' An ', email: 'AN@Example.com', uploads: 3, outs: 3, L: 0 };
 
@@ -35,4 +35,9 @@ test('mã giao dịch có tiền tố theo phương thức và không trùng', (
   assert.match(newTransactionRef('momo'), /^MOMO-[0-9A-Z]+-[0-9A-F]{8}$/);
   assert.notEqual(newTransactionRef('card'), newTransactionRef('card'));
   assert.ok(newTransactionRef('bank').length <= 40);
+});
+
+test('có phương thức thanh toán quét mã QR', () => {
+  assert.ok(METHODS.includes('qr'));
+  assert.match(newTransactionRef('qr'), /^QR-[0-9A-Z]+-[0-9A-F]{8}$/);
 });

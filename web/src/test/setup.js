@@ -16,6 +16,7 @@ if (typeof URL.revokeObjectURL !== 'function') {
 
 beforeEach(() => {
   localStorage.clear(); // mỗi bài test bắt đầu với trình duyệt "sạch"
+  sessionStorage.clear();
 });
 
 afterEach(() => {

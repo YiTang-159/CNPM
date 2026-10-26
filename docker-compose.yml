@@ -30,7 +30,7 @@ services:
       DB_USER: sa
       DB_PASSWORD: ${DB_PASSWORD:-Dubchef@12345}
       DB_NAME: DubchefDB
-      CORS_ORIGIN: http://localhost:5173
+      CORS_ORIGIN: http://localhost:5173,http://192.168.0.113:5173
       # Tài khoản quản trị tạo tự động lần đầu chạy. ĐỔI các giá trị này trước khi đưa lên mạng.
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@dubchef.vn}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}

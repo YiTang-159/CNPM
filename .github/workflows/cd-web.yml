@@ -38,6 +38,9 @@ jobs:
         env:
           # Tùy chọn: Settings > Variables > VITE_API_URL (địa chỉ Backend)
           VITE_API_URL: ${{ vars.VITE_API_URL }}
+          # Đếm lượt quét QR bằng Supabase (không cần Backend riêng): xem db/supabase-qr.sql
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

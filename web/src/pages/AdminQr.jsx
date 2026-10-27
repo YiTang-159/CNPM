@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
-import { HAS_API } from '../api/client.js';
-import { guestUrl, isLocalAddress, qrStats } from '../api/qr.js';
+import { QR_SHARED, guestUrl, isLocalAddress, qrStats } from '../api/qr.js';
 import { qrSvg } from '../utils/qr.js';
 import QrCode from '../components/QrCode.jsx';
 import { Chart, Kpi, Trend, num, shortDate } from '../components/AdminWidgets.jsx';
@@ -63,7 +62,7 @@ export default function AdminQr() {
             ))}
           </div>
           <button type="button" className="btn btn-sm" onClick={load}>{t('ad_refresh')}</button>
-          {!HAS_API ? (
+          {!QR_SHARED ? (
             <>
               <button type="button" className="btn btn-sm" onClick={() => { qrStats.seed(); load(); }}>{t('ad_seed')}</button>
               <button type="button" className="btn btn-sm" onClick={() => { qrStats.reset(); load(); }}>{t('ad_reset')}</button>
@@ -71,7 +70,7 @@ export default function AdminQr() {
           ) : null}
         </div>
       </div>
-      {!HAS_API ? <p className="adm-note">{t('aq_local')}</p> : null}
+      {!QR_SHARED ? <p className="adm-note">{t('aq_local')}</p> : null}
 
       <section className="panel" aria-labelledby="aq-code-h">
         <div className="qr-card">

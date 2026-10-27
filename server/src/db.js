@@ -44,30 +44,30 @@ async function runScript(pool, file) {
 }
 
 const mapOrder = (r) => ({
-  id: r.OrderId,
-  name: r.CustomerName,
-  email: r.CustomerEmail,
-  uploads: r.UploadVideos,
-  outs: r.OutVideos,
-  currency: r.Currency.trim(),
-  amountMinor: Number(r.AmountMinor), // BIGINT trả về dạng chuỗi
-  status: r.Status,
-  createdAt: new Date(r.CreatedAt).toISOString(),
-  ref: r.TransactionRef || null,
+  id: r.MaDonHang,
+  name: r.TenKhachHang,
+  email: r.EmailKhachHang,
+  uploads: r.SoVideoDang,
+  outs: r.SoVideoDich,
+  currency: r.LoaiTien.trim(),
+  amountMinor: Number(r.SoTien), // BIGINT trả về dạng chuỗi
+  status: r.TrangThai,
+  createdAt: new Date(r.NgayTao).toISOString(),
+  ref: r.MaThamChieu || null,
 });
 
 const mapUser = (r) => ({
-  name: r.Name,
+  name: r.HoTen,
   email: r.Email,
-  role: r.Role,
-  status: r.Status,
-  at: new Date(r.CreatedAt).toISOString(),
-  hash: r.PasswordHash,
+  role: r.VaiTro,
+  status: r.TrangThai,
+  at: new Date(r.NgayTao).toISOString(),
+  hash: r.MatKhauBam,
 });
 
 /**
- * Gộp số liệu theo ngày cho một bảng có cột VisitorId và một cột thời gian (`table`, `col` là hằng số trong mã, không lấy từ người dùng).
- * Dùng chung cho lượt truy cập (Visits) và lượt quét QR (QrScans).
+ * Gộp số liệu theo ngày cho một bảng có cột MaKhach và một cột thời gian (`table`, `col` là hằng số trong mã, không lấy từ người dùng).
+ * Dùng chung cho lượt truy cập (LuotTruyCap) và lượt quét QR (LuotQuetQR).
  */
 async function aggregate(pool, table, col, span, tz, now = Date.now()) {
   const DAY = 86400000;
@@ -76,21 +76,21 @@ async function aggregate(pool, table, col, span, tz, now = Date.now()) {
   const k = `CONVERT(char(10), DATEADD(HOUR, @tz, ${col}), 23)`;
   const days = await pool.request()
     .input('tz', sql.Int, tz).input('from', sql.DateTime2, from)
-    .query(`SELECT ${k} AS d, COUNT(DISTINCT VisitorId) AS visitors, COUNT(*) AS views
+    .query(`SELECT ${k} AS d, COUNT(DISTINCT MaKhach) AS visitors, COUNT(*) AS views
             FROM ${table} WHERE ${col} >= @from GROUP BY ${k}`);
   const win = await pool.request()
     .input('tz', sql.Int, tz).input('from', sql.DateTime2, from)
     .input('c0', sql.Char(10), key(span - 1)).input('c1', sql.Char(10), key(0))
     .input('p0', sql.Char(10), key(span * 2 - 1)).input('p1', sql.Char(10), key(span))
     .query(`SELECT
-              COUNT(DISTINCT CASE WHEN d BETWEEN @c0 AND @c1 THEN VisitorId END) AS cv,
+              COUNT(DISTINCT CASE WHEN d BETWEEN @c0 AND @c1 THEN MaKhach END) AS cv,
               SUM(CASE WHEN d BETWEEN @c0 AND @c1 THEN 1 ELSE 0 END) AS cw,
-              COUNT(DISTINCT CASE WHEN d BETWEEN @p0 AND @p1 THEN VisitorId END) AS pv,
+              COUNT(DISTINCT CASE WHEN d BETWEEN @p0 AND @p1 THEN MaKhach END) AS pv,
               SUM(CASE WHEN d BETWEEN @p0 AND @p1 THEN 1 ELSE 0 END) AS pw
-            FROM (SELECT VisitorId, ${k} AS d FROM ${table} WHERE ${col} >= @from) x`);
-  const tot = await pool.request().query(`SELECT COUNT(DISTINCT VisitorId) AS visitors, COUNT(*) AS views FROM ${table}`);
+            FROM (SELECT MaKhach, ${k} AS d FROM ${table} WHERE ${col} >= @from) x`);
+  const tot = await pool.request().query(`SELECT COUNT(DISTINCT MaKhach) AS visitors, COUNT(*) AS views FROM ${table}`);
   const act = await pool.request().input('m', sql.Int, ACTIVE_MINUTES)
-    .query(`SELECT COUNT(DISTINCT VisitorId) AS n FROM ${table} WHERE ${col} >= DATEADD(MINUTE, -@m, SYSUTCDATETIME())`);
+    .query(`SELECT COUNT(DISTINCT MaKhach) AS n FROM ${table} WHERE ${col} >= DATEADD(MINUTE, -@m, SYSUTCDATETIME())`);
   const w = win.recordset[0];
   return {
     days: days.recordset.map((r) => ({ date: r.d, visitors: r.visitors, views: r.views })),
@@ -124,7 +124,7 @@ export async function openRepo() {
         .input('out', sql.Int, o.outs)
         .input('cur', sql.Char(3), o.currency)
         .input('amt', sql.BigInt, o.amountMinor)
-        .query(`INSERT INTO dbo.Orders (CustomerName, CustomerEmail, UploadVideos, OutVideos, Currency, AmountMinor)
+        .query(`INSERT INTO dbo.DonHang (TenKhachHang, EmailKhachHang, SoVideoDang, SoVideoDich, LoaiTien, SoTien)
                 OUTPUT inserted.*
                 VALUES (@name, @email, @up, @out, @cur, @amt)`);
       return mapOrder(r.recordset[0]);
@@ -137,7 +137,7 @@ export async function openRepo() {
       try {
         const upd = await new sql.Request(tx)
           .input('id', sql.Int, id)
-          .query(`UPDATE dbo.Orders SET Status = 'paid' OUTPUT inserted.* WHERE OrderId = @id AND Status = 'pending'`);
+          .query(`UPDATE dbo.DonHang SET TrangThai = 'paid' OUTPUT inserted.* WHERE MaDonHang = @id AND TrangThai = 'pending'`);
         if (!upd.recordset.length) {
           await tx.rollback();
           return null;
@@ -146,13 +146,13 @@ export async function openRepo() {
         await new sql.Request(tx)
           .input('id', sql.Int, id)
           .input('method', sql.VarChar(10), method)
-          .input('amt', sql.BigInt, order.AmountMinor)
-          .input('cur', sql.Char(3), order.Currency)
+          .input('amt', sql.BigInt, order.SoTien)
+          .input('cur', sql.Char(3), order.LoaiTien)
           .input('ref', sql.VarChar(40), ref)
-          .query(`INSERT INTO dbo.Payments (OrderId, Method, AmountMinor, Currency, Status, TransactionRef)
+          .query(`INSERT INTO dbo.GiaoDich (MaDonHang, PhuongThuc, SoTien, LoaiTien, TrangThai, MaThamChieu)
                   VALUES (@id, @method, @amt, @cur, 'success', @ref)`);
         await tx.commit();
-        return { order: mapOrder({ ...order, TransactionRef: ref }), payment: { method, ref } };
+        return { order: mapOrder({ ...order, MaThamChieu: ref }), payment: { method, ref } };
       } catch (e) {
         await tx.rollback().catch(() => {});
         throw e;
@@ -163,18 +163,18 @@ export async function openRepo() {
       const r = await pool.request()
         .input('email', sql.NVarChar(254), email)
         .input('n', sql.Int, limit)
-        .query(`SELECT TOP (@n) o.*, p.TransactionRef
-                FROM dbo.Orders o
-                LEFT JOIN dbo.Payments p ON p.OrderId = o.OrderId AND p.Status = 'success'
-                WHERE o.CustomerEmail = @email
-                ORDER BY o.CreatedAt DESC, o.OrderId DESC`);
+        .query(`SELECT TOP (@n) o.*, p.MaThamChieu
+                FROM dbo.DonHang o
+                LEFT JOIN dbo.GiaoDich p ON p.MaDonHang = o.MaDonHang AND p.TrangThai = 'success'
+                WHERE o.EmailKhachHang = @email
+                ORDER BY o.NgayTao DESC, o.MaDonHang DESC`);
       return r.recordset.map(mapOrder);
     },
 
     // ---- Tài khoản ----
     async findUser(email) {
       const r = await pool.request().input('email', sql.NVarChar(254), email)
-        .query('SELECT * FROM dbo.Users WHERE Email = @email');
+        .query('SELECT * FROM dbo.NguoiDung WHERE Email = @email');
       return r.recordset[0] ? mapUser(r.recordset[0]) : null;
     },
 
@@ -186,7 +186,7 @@ export async function openRepo() {
           .input('email', sql.NVarChar(254), email)
           .input('hash', sql.VarChar(200), passwordHash)
           .input('role', sql.VarChar(10), role)
-          .query(`INSERT INTO dbo.Users (Name, Email, PasswordHash, Role) OUTPUT inserted.*
+          .query(`INSERT INTO dbo.NguoiDung (HoTen, Email, MatKhauBam, VaiTro) OUTPUT inserted.*
                   VALUES (@name, @email, @hash, @role)`);
         return mapUser(r.recordset[0]);
       } catch (e) {
@@ -196,7 +196,7 @@ export async function openRepo() {
     },
 
     async listUsers() {
-      const r = await pool.request().query('SELECT * FROM dbo.Users ORDER BY CreatedAt DESC, UserId DESC');
+      const r = await pool.request().query('SELECT * FROM dbo.NguoiDung ORDER BY NgayTao DESC, MaNguoiDung DESC');
       return r.recordset.map(mapUser);
     },
 
@@ -205,13 +205,13 @@ export async function openRepo() {
       const r = await pool.request()
         .input('email', sql.NVarChar(254), email)
         .input('st', sql.VarChar(10), status)
-        .query(`UPDATE dbo.Users SET Status = @st WHERE Email = @email AND Role = 'user'`);
+        .query(`UPDATE dbo.NguoiDung SET TrangThai = @st WHERE Email = @email AND VaiTro = 'user'`);
       return r.rowsAffected[0] > 0;
     },
 
     async deleteUser(email) {
       const r = await pool.request().input('email', sql.NVarChar(254), email)
-        .query(`DELETE FROM dbo.Users WHERE Email = @email AND Role = 'user'`);
+        .query(`DELETE FROM dbo.NguoiDung WHERE Email = @email AND VaiTro = 'user'`);
       return r.rowsAffected[0] > 0;
     },
 
@@ -227,7 +227,7 @@ export async function openRepo() {
         .input('name', sql.NVarChar(100), name)
         .input('email', sql.NVarChar(254), email)
         .input('body', sql.NVarChar(2000), body)
-        .query('INSERT INTO dbo.Messages (Name, Email, Body) VALUES (@name, @email, @body)');
+        .query('INSERT INTO dbo.LienHe (HoTen, Email, NoiDung) VALUES (@name, @email, @body)');
     },
 
     // ---- Lượt truy cập ----
@@ -236,22 +236,22 @@ export async function openRepo() {
         .input('vid', sql.VarChar(64), visitorId)
         .input('path', sql.NVarChar(200), path)
         .input('lang', sql.VarChar(8), lang)
-        .query('INSERT INTO dbo.Visits (VisitorId, Path, Lang) VALUES (@vid, @path, @lang)');
+        .query('INSERT INTO dbo.LuotTruyCap (MaKhach, DuongDan, NgonNgu) VALUES (@vid, @path, @lang)');
     },
 
     /** Số liệu thô cho trang Admin: theo ngày, kỳ này / kỳ trước, tổng, đang online. Ngày tính theo múi giờ `tz`. */
-    visitStats: (span, tz, now) => aggregate(pool, 'dbo.Visits', 'VisitedAt', span, tz, now),
+    visitStats: (span, tz, now) => aggregate(pool, 'dbo.LuotTruyCap', 'NgayTruyCap', span, tz, now),
 
     // ---- Lượt quét mã QR của khách ----
     async addQrScan({ visitorId, lang }) {
       await pool.request()
         .input('vid', sql.VarChar(64), visitorId)
         .input('lang', sql.VarChar(8), lang)
-        .query('INSERT INTO dbo.QrScans (VisitorId, Lang) VALUES (@vid, @lang)');
+        .query('INSERT INTO dbo.LuotQuetQR (MaKhach, NgonNgu) VALUES (@vid, @lang)');
     },
 
     /** Cùng dạng với visitStats: visitors = số người quét (không trùng), views = số lượt quét. */
-    qrStats: (span, tz, now) => aggregate(pool, 'dbo.QrScans', 'ScannedAt', span, tz, now),
+    qrStats: (span, tz, now) => aggregate(pool, 'dbo.LuotQuetQR', 'NgayQuet', span, tz, now),
   };
   return repo;
 }

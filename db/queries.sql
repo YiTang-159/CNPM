@@ -3,27 +3,27 @@ USE DubchefDB;
 GO
 
 -- 1. Các đơn mới nhất kèm mã giao dịch
-SELECT TOP (20) o.OrderId, o.CustomerEmail, o.OutVideos, o.Currency, o.AmountMinor, o.Status, p.Method, p.TransactionRef
-FROM dbo.Orders o
-LEFT JOIN dbo.Payments p ON p.OrderId = o.OrderId AND p.Status = 'success'
-ORDER BY o.CreatedAt DESC;
+SELECT TOP (20) o.MaDonHang, o.EmailKhachHang, o.SoVideoDich, o.LoaiTien, o.SoTien, o.TrangThai, p.PhuongThuc, p.MaThamChieu
+FROM dbo.DonHang o
+LEFT JOIN dbo.GiaoDich p ON p.MaDonHang = o.MaDonHang AND p.TrangThai = 'success'
+ORDER BY o.NgayTao DESC;
 
 -- 2. Doanh thu theo ngày
 SELECT * FROM dbo.vw_DoanhThuNgay ORDER BY Ngay DESC;
 
 -- 3. Người dùng trả nhiều nhất (theo từng loại tiền)
-SELECT TOP (10) CustomerEmail, Currency, SUM(AmountMinor) AS Tong
-FROM dbo.Orders
-WHERE Status = 'paid'
-GROUP BY CustomerEmail, Currency
+SELECT TOP (10) EmailKhachHang, LoaiTien, SUM(SoTien) AS Tong
+FROM dbo.DonHang
+WHERE TrangThai = 'paid'
+GROUP BY EmailKhachHang, LoaiTien
 ORDER BY Tong DESC;
 GO
 
 -- Số người quét mã QR của khách theo ngày (người không trùng và số lượt quét)
-SELECT CAST(ScannedAt AS DATE) AS Ngay,
-       COUNT(DISTINCT VisitorId) AS NguoiQuet,
+SELECT CAST(NgayQuet AS DATE) AS Ngay,
+       COUNT(DISTINCT MaKhach) AS NguoiQuet,
        COUNT(*)                  AS LuotQuet
-FROM dbo.QrScans
-GROUP BY CAST(ScannedAt AS DATE)
+FROM dbo.LuotQuetQR
+GROUP BY CAST(NgayQuet AS DATE)
 ORDER BY Ngay DESC;
 

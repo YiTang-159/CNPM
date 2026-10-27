@@ -1,7 +1,7 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { ADMIN_EMAIL, ADMIN_PASSWORD, HAS_API, isAdmin } from '../api/client.js';
+import { ADMIN_EMAIL, ADMIN_PASSWORD, SHARED, isAdmin } from '../api/client.js';
 import { LANGS } from '../shared/i18n.js';
 
 const LANG_LABEL = { vi: 'VI', en: 'EN', zh: '中文' };
@@ -19,7 +19,7 @@ export default function AdminLayout() {
           <p role="alert">{t(user ? 'ad_denied' : 'ad_need_login')}</p>
           <p className="fine">
             {t('ad_hint')} <strong>{ADMIN_EMAIL}</strong>
-            {!HAS_API ? <> {t('ad_pass')} <strong>{ADMIN_PASSWORD}</strong></> : null}
+            {!SHARED ? <> {t('ad_pass')} <strong>{ADMIN_PASSWORD}</strong></> : null}
           </p>
           <p style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {user ? null : <Link className="btn btn-primary" to="/login">{t('nav_login')}</Link>}

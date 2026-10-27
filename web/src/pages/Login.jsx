@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
-import { errorKey, HAS_API } from '../api/client.js';
+import { errorKey, SHARED } from '../api/client.js';
 import Field from '../components/Field.jsx';
 import { returnTarget } from '../utils/returnTo.js';
 
@@ -63,7 +63,7 @@ export default function Login() {
         <button className="btn btn-primary" type="submit" style={{ width: '100%' }} disabled={busy}>{t('nav_login')}</button>
       </form>
       <p className="alt">{t('li_no')} <Link to="/register" state={state}>{t('rg_title')}</Link></p>
-      {!HAS_API ? <p className="auth-note">{t('auth_demo')}</p> : null}
+      {!SHARED ? <p className="auth-note">{t('auth_demo')}</p> : null}
     </div>
   );
 }

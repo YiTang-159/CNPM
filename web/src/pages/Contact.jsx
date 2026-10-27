@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
-import { api, errorKey, HAS_API } from '../api/client.js';
+import { api, errorKey, SHARED } from '../api/client.js';
 import Field from '../components/Field.jsx';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -65,7 +65,7 @@ export default function Contact() {
             <textarea id="c-msg" value={v.msg} onChange={set('msg')} aria-invalid={errs.msg ? 'true' : undefined} />
           </Field>
           <button className="btn btn-primary" type="submit" disabled={busy}>{t('c_send')}</button>
-          {!HAS_API ? <p className="auth-note">{t('auth_demo')}</p> : null}
+          {!SHARED ? <p className="auth-note">{t('auth_demo')}</p> : null}
         </form>
         <aside className="side">
           <h2>{t('c_info_t')}</h2>

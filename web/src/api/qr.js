@@ -90,27 +90,49 @@ function write(data) {
  * Ghi một lượt quét khi khách mở trang /guest. Mỗi phiên trình duyệt chỉ ghi một lần
  * (tải lại trang không làm tăng số liệu). Trả true nếu đã ghi.
  */
-export function trackScan(lang) {
-  try {
-    if (sessionStorage.getItem(K_SEEN)) return false;
-    sessionStorage.setItem(K_SEEN, '1');
-  } catch (e) { /* không có sessionStorage thì vẫn ghi */ }
+export async function trackScan(lang) {
   const id = visitorId();
+  // Đã ghi nhận thành công trong phiên này
+  if (sessionStorage.getItem(K_SEEN) === '1') {
+    return { success: true, alreadyScanned: true };
+  }
   if (BASE) {
-    fetch(BASE + '/api/qr-scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visitorId: id, lang }),
-      keepalive: true,
-    }).catch(() => {});
-    return true;
+    const res = await fetch(
+      BASE.replace(/\/+$/, '') + '/api/qr-scan',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          visitorId: id,
+          lang
+        })
+      }
+    );
+    if (!res.ok) {
+      throw new Error('Không thể lưu lượt quét vào SQL Server');
+    }
+    sessionStorage.setItem(K_SEEN, '1');
+    return { success: true, alreadyScanned: false };
   }
   if (SUPA) {
-    rpc('qr_track', { p_visitor: id, p_lang: lang }).catch(() => {});
-    return true;
+    await rpc('qr_track', {
+      p_visitor: id,
+      p_lang: lang
+    });
+    sessionStorage.setItem(K_SEEN, '1');
+    return { success: true, alreadyScanned: false };
   }
-  write(addVisit(read(), { id, path: GUEST_PATH, lang, at: new Date() }));
-  return true;
+  // Chế độ demo: chỉ lưu ở trình duyệt
+  write(addVisit(read(), {
+    id,
+    path: GUEST_PATH,
+    lang,
+    at: new Date()
+  }));
+  sessionStorage.setItem(K_SEEN, '1');
+  return { success: true, alreadyScanned: false };
 }
 
 export const qrStats = {

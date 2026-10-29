@@ -26,7 +26,13 @@ export default function AdminQr() {
     setFailed(false);
     qrStats.load(user, span).then((r) => setSt(r.stats)).catch(() => setFailed(true));
   }, [user, span]);
-  useEffect(load, [load]);
+  useEffect(() => {
+    load();
+    const interval = setInterval(() => {
+      load();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [load]);
   useEffect(() => () => clearTimeout(timer.current), []);
 
   async function copy() {

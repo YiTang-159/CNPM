@@ -14,4 +14,8 @@ export default defineConfig({
     include: ['src/**/*.test.{js,jsx}'],
     css: false,
   },
+  server: {
+    host: '0.0.0.0',
+    port: 5173
+  },
 });

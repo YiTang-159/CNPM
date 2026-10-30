@@ -44,6 +44,9 @@ export default function AdminLayout() {
           <NavLink to="/admin/videos">
             Quản lý video
           </NavLink>
+          <NavLink to="/admin/languages">
+            Quản lý ngôn ngữ
+          </NavLink>
           <NavLink to="/admin/qr">{t('ad_nav_qr')}</NavLink>
         </nav>
         <Link className="adm-back" to="/">← {t('ad_back')}</Link>

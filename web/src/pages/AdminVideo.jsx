@@ -1,8 +1,3 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext.jsx';
-import { usePageTitle } from '../utils/usePageTitle.js';
-import { videoAdminApi } from '../api/adminVideos.js';
-
 export default function AdminVideos() {
   const { user } = useAuth();
 

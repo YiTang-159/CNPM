@@ -16,7 +16,8 @@ import AdminQr from './pages/AdminQr.jsx';
 import Guest from './pages/Guest.jsx';
 import AdminLayout from './components/AdminLayout.jsx';
 import NotFound from './pages/NotFound.jsx';
-import AdminVideos from './pages/AdminVideos.jsx';
+import AdminVideos from './pages/AdminVideo.jsx';
+import AdminLanguages from './pages/AdminLanguages.jsx';
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
         <Route index element={<Admin />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="videos" element={<AdminVideos />} />
+        <Route path="languages" element={<AdminLanguages />} />
         <Route path="qr" element={<AdminQr />} />
       </Route>
     </Routes>

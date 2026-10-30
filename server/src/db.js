@@ -200,6 +200,27 @@ export async function openRepo() {
       return r.recordset.map(mapUser);
     },
 
+    // Quản lý danh sách video
+    async listVideos() {
+      const r = await pool.request().query(`
+        SELECT
+          v.MaVideo AS id,
+          v.TieuDe AS title,
+          v.TrangThai AS status,
+          v.NgonNguGoc AS originalLanguage,
+          v.DuongDan AS videoUrl,
+          v.NgayTaiLen AS createdAt,
+          u.HoTen AS userName,
+          u.Email AS userEmail
+        FROM dbo.Video v
+        INNER JOIN dbo.NguoiDung u
+          ON v.MaNguoiDung = u.MaNguoiDung
+        ORDER BY v.NgayTaiLen DESC
+      `);
+
+      return r.recordset;
+    },
+
     /** Chỉ đổi người dùng thường (không đụng tới quản trị viên). Trả true nếu có dòng được đổi. */
     async setUserStatus(email, status) {
       const r = await pool.request()

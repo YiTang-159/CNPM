@@ -106,3 +106,33 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_LuotQuetQR_Ngay' AND object_id = OBJECT_ID(N'dbo.LuotQuetQR'))
     CREATE INDEX IX_LuotQuetQR_Ngay ON dbo.LuotQuetQR (NgayQuet) INCLUDE (MaKhach);
 GO
+
+IF OBJECT_ID(N'dbo.NgonNgu', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.NgonNgu (
+        MaNgonNgu VARCHAR(8) NOT NULL
+            CONSTRAINT PK_NgonNgu PRIMARY KEY,
+
+        TenNgonNgu NVARCHAR(80) NOT NULL,
+
+        TenTiengAnh NVARCHAR(80) NOT NULL,
+
+        TrangThai VARCHAR(10) NOT NULL
+            CONSTRAINT DF_NgonNgu_TrangThai
+            DEFAULT 'active'
+            CONSTRAINT CK_NgonNgu_TrangThai
+            CHECK (TrangThai IN ('active', 'inactive')),
+
+        NgayTao DATETIME2(0) NOT NULL
+            CONSTRAINT DF_NgonNgu_NgayTao
+            DEFAULT SYSUTCDATETIME()
+    );
+
+    INSERT INTO dbo.NgonNgu
+        (MaNgonNgu, TenNgonNgu, TenTiengAnh, TrangThai)
+    VALUES
+        ('vi', N'Tiếng Việt', N'Vietnamese', 'active'),
+        ('en', N'Tiếng Anh', N'English', 'active'),
+        ('zh', N'Tiếng Trung', N'Chinese', 'active');
+END;
+GO

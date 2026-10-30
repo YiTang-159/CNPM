@@ -134,6 +134,13 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.json({ users: users.map(({ name, email, at, status }) => ({ name, email, at, status })) });
   }));
 
+  app.get('/api/admin/videos', adminOnly, wrap(async (req, res) => {
+    const videos = await repo.listVideos();
+    res.json({
+      videos
+    });
+  }));
+
   app.patch('/api/admin/users', adminOnly, wrap(async (req, res) => {
     const email = String((req.body && req.body.email) || '').trim().toLowerCase();
     const status = req.body && req.body.status;

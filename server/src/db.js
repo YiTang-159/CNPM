@@ -221,6 +221,29 @@ export async function openRepo() {
       return r.recordset;
     },
 
+    // Thống kê tổng quan Admin từ SQL Server
+    async adminStatistics() {
+      const result = await pool.request().query(`
+        SELECT
+          (SELECT COUNT(*) FROM dbo.NguoiDung)
+            AS totalUsers,
+
+          (SELECT COUNT(*) FROM dbo.Video)
+            AS totalVideos,
+
+          (SELECT COUNT(*) FROM dbo.NgonNgu)
+            AS totalLanguages,
+
+          (SELECT COUNT(*) FROM dbo.LuotQuetQR)
+            AS totalQrScans,
+
+          (SELECT COUNT(*) FROM dbo.LuotTruyCap)
+            AS totalVisits
+      `);
+
+      return result.recordset[0];
+    },
+
     /** Chỉ đổi người dùng thường (không đụng tới quản trị viên). Trả true nếu có dòng được đổi. */
     async setUserStatus(email, status) {
       const r = await pool.request()

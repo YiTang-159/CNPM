@@ -134,6 +134,16 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.json({ users: users.map(({ name, email, at, status }) => ({ name, email, at, status })) });
   }));
 
+  // API thống kê tổng quan Admin từ SQL Server
+  app.get('/api/admin/statistics', adminOnly, wrap(async (req, res) => {
+    const statistics = await repo.adminStatistics();
+
+    res.json({
+      success: true,
+      statistics
+    });
+  }));
+
   app.get('/api/admin/videos', adminOnly, wrap(async (req, res) => {
     const videos = await repo.listVideos();
     res.json({

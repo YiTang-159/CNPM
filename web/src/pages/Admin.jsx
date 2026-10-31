@@ -16,12 +16,64 @@ export default function Admin() {
   const [span, setSpan] = useState(7);
   const [st, setSt] = useState(null);
   const [failed, setFailed] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState('');
 
   const load = useCallback(() => {
     setFailed(false);
     statsApi.load(user, span).then((r) => setSt(r.stats)).catch(() => setFailed(true));
   }, [user, span]);
   useEffect(load, [load]);
+  useEffect(() => {
+    if (!HAS_API) {
+      setSummaryLoading(false);
+      return;
+    }
+
+    if (!user?.token) {
+      setSummaryError('Chưa có phiên đăng nhập Admin hợp lệ.');
+      setSummaryLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadSummary() {
+      try {
+        setSummaryLoading(true);
+        setSummaryError('');
+
+        const base = import.meta.env.VITE_API_URL || '';
+
+        const response = await fetch(`${base}/api/admin/statistics`, {
+          headers: {
+            Authorization: `Bearer ${user.token}`
+          },
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`Lỗi API: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setSummary(data.statistics);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setSummaryError(error.message);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setSummaryLoading(false);
+        }
+      }
+    }
+
+    loadSummary();
+
+    return () => controller.abort();
+  }, [user?.token]);
 
   return (
     <>
@@ -49,6 +101,70 @@ export default function Admin() {
 
       {failed ? <p role="alert">{t('ad_fail')}</p> : null}
       {!st && !failed ? <p role="status">{t('ad_loading')}</p> : null}
+
+      {/* Thống kê tổng quan từ SQL Server */}
+      <section className="panel" aria-labelledby="summary-title">
+        <div className="panel-head">
+          <h2 id="summary-title">Thống kê hệ thống Dubchef</h2>
+          <p className="fine-i">
+            Dữ liệu được lấy trực tiếp từ SQL Server
+          </p>
+        </div>
+
+        {summaryLoading && (
+          <p role="status">Đang tải thống kê...</p>
+        )}
+
+        {summaryError && (
+          <p role="alert">
+            Không thể tải thống kê: {summaryError}
+          </p>
+        )}
+
+        {summary && (
+          <div className="kpis">
+            <Kpi
+              id="total-users"
+              label="Tổng người dùng"
+              value={num(L, summary.totalUsers)}
+            >
+              Tài khoản đã đăng ký
+            </Kpi>
+
+            <Kpi
+              id="total-videos"
+              label="Tổng video"
+              value={num(L, summary.totalVideos)}
+            >
+              Video đã tải lên
+            </Kpi>
+
+            <Kpi
+              id="total-languages"
+              label="Tổng ngôn ngữ"
+              value={num(L, summary.totalLanguages)}
+            >
+              Ngôn ngữ được hỗ trợ
+            </Kpi>
+
+            <Kpi
+              id="total-qr"
+              label="Tổng lượt quét QR"
+              value={num(L, summary.totalQrScans)}
+            >
+              Lượt quét mã QR
+            </Kpi>
+
+            <Kpi
+              id="total-visits"
+              label="Tổng lượt truy cập"
+              value={num(L, summary.totalVisits)}
+            >
+              Lượt truy cập được ghi nhận
+            </Kpi>
+          </div>
+        )}
+      </section>
 
       {st ? (
         <>

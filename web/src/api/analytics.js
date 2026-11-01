@@ -1,28 +1,11 @@
-/**
- * Đếm lượt truy cập cho trang Quản trị.
- * - Có VITE_API_URL: gửi từng lượt xem lên Backend (POST /api/track), trang Admin đọc GET /api/admin/overview.
- * - Không có: lưu trong localStorage (chỉ đếm được trên trình duyệt này, dùng để demo khi chưa có Backend).
- */
-const BASE = (import.meta.env && import.meta.env.VITE_API_URL) || '';
+/** Lượt truy cập được ghi và đọc qua API SQL Server. */
+const BASE = ((import.meta.env && import.meta.env.VITE_API_URL) || '').replace(/\/+$/, '');
 
-const K_VISITS = 'dubchef-visits';
 const K_VID = 'dubchef-vid';
 export const ACTIVE_MINUTES = 5; // "đang online" = có hoạt động trong 5 phút gần nhất
 export const KEEP_DAYS = 90; // chỉ giữ số liệu 90 ngày gần nhất cho nhẹ
 
 const EMPTY = () => ({ visitors: {}, days: {} });
-
-function read() {
-  try {
-    const v = JSON.parse(localStorage.getItem(K_VISITS));
-    return v && v.visitors && v.days ? v : EMPTY();
-  } catch (e) {
-    return EMPTY();
-  }
-}
-function write(data) {
-  try { localStorage.setItem(K_VISITS, JSON.stringify(data)); } catch (e) { /* bỏ qua */ }
-}
 
 /** Ngày dạng YYYY-MM-DD theo giờ máy. */
 export function dayKey(date) {
@@ -129,39 +112,26 @@ export function sampleData(now = new Date()) {
   return data;
 }
 
-/** Gọi mỗi lần mở một trang. Trang Admin không tự tính vào số liệu. */
+/** Gửi lượt truy cập lên SQL Server; lỗi thống kê không chặn việc sử dụng trang. */
 export function trackVisit(path, lang) {
   if (path.startsWith('/admin')) return;
-  const id = visitorId();
-  if (BASE) {
-    fetch(BASE + '/api/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visitorId: id, path, lang }),
-    }).catch(() => {});
-    return;
-  }
-  write(addVisit(read(), { id, path, lang, at: new Date() }));
+  return fetch(BASE + '/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ visitorId: visitorId(), path, lang }),
+  }).then((res) => res.ok).catch(() => false);
 }
 
 export const stats = {
-  /** Số liệu tổng hợp. Có Backend: GET /api/admin/overview?days=N -> { stats }. */
   async load(user, span = 7) {
-    if (BASE) {
-      const res = await fetch(BASE + '/api/admin/overview?days=' + span, { headers: { 'X-User-Email': user.email, ...(user.token ? { Authorization: 'Bearer ' + user.token } : {}) } });
-      if (!res.ok) throw new Error('server');
-      return res.json();
-    }
-    return { stats: summarize(read(), new Date(), span) };
+    const res = await fetch(BASE + '/api/admin/overview?days=' + span, {
+      headers: user?.token ? { Authorization: 'Bearer ' + user.token } : {},
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.code || 'server');
+    if (!data.stats) throw new Error('server');
+    return data;
   },
-  /** Nạp dữ liệu mẫu (chỉ ở chế độ lưu tạm). */
-  seed() {
-    if (!BASE) write(sampleData());
-  },
-  /** Xóa toàn bộ số liệu truy cập đã lưu (chỉ ở chế độ lưu tạm). */
-  reset() {
-    if (!BASE) {
-      try { localStorage.removeItem(K_VISITS); } catch (e) { /* bỏ qua */ }
-    }
-  },
+  seed() {},
+  reset() {},
 };

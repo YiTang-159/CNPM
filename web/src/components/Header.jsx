@@ -43,6 +43,7 @@ export default function Header() {
           {LINKS.map(([to, key]) => (
             <NavLink key={to} to={to}>{t(key)}</NavLink>
           ))}
+          {user ? <NavLink to="/account">Dự án của tôi</NavLink> : null}
           {isAdmin(user) ? <NavLink to="/admin">{t('nav_admin')}</NavLink> : null}
           <div className="nav-end">
             <div className="lang" role="group" aria-label={t('langlabel')}>

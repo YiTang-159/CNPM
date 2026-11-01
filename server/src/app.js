@@ -4,25 +4,41 @@ import cors from 'cors';
 import { METHODS, newTransactionRef, priceOrder, validateOrder } from './orders.js';
 import { hashPassword, makeToken, readToken, verifyPassword } from './auth.js';
 import { buildStats } from './stats.js';
+import { installServiceRoutes } from './serviceRoutes.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const wrap = (fn) => (req, res, next) => fn(req, res).catch(next);
+const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 const publicUser = (u, secret) => ({ name: u.name, email: u.email, role: u.role, token: makeToken(u, secret) });
 
-export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 7 } = {}) {
+export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 7, paymentDemo = process.env.PAYMENT_DEMO === 'true', uploadDir, uploadQuotaBytes, totalUploadQuotaBytes, maxUploadBytes, maxConcurrentUploads } = {}) {
   const app = express();
   app.use(cors({ origin: corsOrigin === '*' ? true : corsOrigin.split(',').map((s) => s.trim()) }));
-  app.use(express.json({ limit: '10kb' }));
+  app.disable('x-powered-by');
+  app.use(express.json({ limit: '1mb' }));
 
-  // Chỉ quản trị viên (token hợp lệ, role admin) được qua. Không tin header X-User-Email vì ai cũng giả được.
-  const adminOnly = (req, res, next) => {
+  // Quyền luôn đọc lại từ SQL: token của tài khoản bị khóa/xóa không còn sử dụng được.
+  const authenticated = wrap(async (req, res, next) => {
     const m = /^Bearer (.+)$/.exec(req.get('authorization') || '');
     const who = m && readToken(m[1], secret);
     if (!who) return res.status(401).json({ code: 'auth' });
-    if (who.role !== 'admin') return res.status(403).json({ code: 'forbidden' });
+    const user = await repo.findUser(who.email);
+    if (!user || (user.id != null && user.id !== who.id)) return res.status(401).json({ code: 'auth' });
+    if (user.status !== 'active') return res.status(403).json({ code: 'locked' });
+    req.user = user;
     next();
-  };
+  });
+  const adminOnly = [authenticated, (req, res, next) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ code: 'forbidden' });
+    next();
+  }];
+
+  installServiceRoutes(app, repo, { authenticated, adminOnly, uploadDir, uploadQuotaBytes, totalUploadQuotaBytes, maxUploadBytes, maxConcurrentUploads });
+
+  app.get('/api/auth/me', authenticated, (req, res) => {
+    const { name, email, role, status, at, lastLogin } = req.user;
+    res.json({ user: { name, email, role, status, at, lastLogin } });
+  });
 
   app.get('/api/health', wrap(async (req, res) => {
     try {
@@ -34,38 +50,57 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }));
 
   // Tạo đơn: giá do máy chủ tính, trạng thái "pending"
-  app.post('/api/orders', wrap(async (req, res) => {
-    const v = validateOrder(req.body);
+  app.post('/api/orders', authenticated, wrap(async (req, res) => {
+    const v = validateOrder({ ...req.body, name: req.user.name, email: req.user.email });
     if (v.error) return res.status(400).json({ code: v.error });
     const order = await repo.createOrder({ ...v.value, ...priceOrder(v.value) });
     res.status(201).json({ order });
   }));
 
   // Thanh toán giả lập: không nhận số thẻ, chỉ ghi phương thức và mã giao dịch
-  app.post('/api/orders/:id/pay', wrap(async (req, res) => {
+  app.post('/api/orders/:id/pay', authenticated, wrap(async (req, res) => {
     const id = Number(req.params.id);
     const method = req.body && req.body.method;
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ code: 'invalid' });
     if (!METHODS.includes(method)) return res.status(400).json({ code: 'method' });
-    const result = await repo.payOrder(id, { method, ref: newTransactionRef(method) });
+    const order = await repo.getOrder(id);
+    if (!order || order.email !== req.user.email || (req.user.id != null && order.ownerId !== req.user.id)) return res.status(404).json({ code: 'not_found' });
+    if (!paymentDemo) return res.status(503).json({ code: 'payment_unavailable' });
+    const result = await repo.payOrder(id, { method, ref: newTransactionRef(method), email: req.user.email });
     if (!result) return res.status(409).json({ code: 'not_payable' });
     res.json(result);
   }));
 
-  // Đơn của một email (bản demo: chưa có xác thực, bản thật cần kiểm tra đăng nhập)
-  app.get('/api/orders', wrap(async (req, res) => {
-    const email = String(req.query.email || '').trim().toLowerCase();
-    if (!EMAIL.test(email)) return res.status(400).json({ code: 'email' });
+  // Không chấp nhận email do client gửi để đọc dữ liệu người khác.
+  app.get('/api/orders', authenticated, wrap(async (req, res) => {
+    const email = req.user.email;
     res.json({ orders: await repo.listOrders(email) });
   }));
 
+  // Giới hạn thử mật khẩu trong bộ nhớ của API; không tin X-Forwarded-For do client tự gửi.
+  const attempts = new Map();
+  const authLimit = (req, res, next) => {
+    const now = Date.now();
+    if (attempts.size > 10000) for (const [key, item] of attempts) if (item.until <= now) attempts.delete(key);
+    const key = req.ip;
+    const old = attempts.get(key);
+    const item = old && old.until > now ? old : { count: 0, until: now + 15 * 60000 };
+    item.count++;
+    attempts.set(key, item);
+    if (item.count > 60) {
+      res.set('Retry-After', String(Math.ceil((item.until - now) / 1000)));
+      return res.status(429).json({ code: 'rate_limited' });
+    }
+    next();
+  };
+
   // ---- Tài khoản ----
-  app.post('/api/auth/register', wrap(async (req, res) => {
+  app.post('/api/auth/register', authLimit, wrap(async (req, res) => {
     const b = req.body || {};
     const name = String(b.name || '').trim();
     const email = String(b.email || '').trim().toLowerCase();
     const password = String(b.password || '');
-    if (!name || name.length > 100 || !EMAIL.test(email) || email.length > 254 || password.length < 8 || password.length > 200) {
+    if (typeof b.name !== 'string' || typeof b.email !== 'string' || typeof b.password !== 'string' || !name || name.length > 100 || !EMAIL.test(email) || email.length > 254 || password.length < 8 || password.length > 200) {
       return res.status(400).json({ code: 'invalid' });
     }
     const user = await repo.createUser({ name, email, passwordHash: hashPassword(password) });
@@ -73,21 +108,24 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.status(201).json({ user: publicUser(user, secret) });
   }));
 
-  app.post('/api/auth/login', wrap(async (req, res) => {
+  app.post('/api/auth/login', authLimit, wrap(async (req, res) => {
     const b = req.body || {};
-    const user = await repo.findUser(String(b.email || '').trim().toLowerCase());
+    if (typeof b.email !== 'string' || b.email.length > 254 || typeof b.password !== 'string' || b.password.length > 200) return res.status(400).json({ code: 'invalid' });
+    const user = await repo.findUser(b.email.trim().toLowerCase());
     if (!user || !verifyPassword(String(b.password || ''), user.hash)) return res.status(401).json({ code: 'invalid' });
-    if (user.status === 'locked') return res.status(403).json({ code: 'locked' });
+    if (user.status !== 'active') return res.status(403).json({ code: 'locked' });
+    if (/^sha256\$/i.test(user.hash) && repo.updatePasswordHash) await repo.updatePasswordHash(user.email, hashPassword(b.password), user.hash);
+    await repo.recordLogin(user.email);
     res.json({ user: publicUser(user, secret) });
   }));
 
-  app.post('/api/contact', wrap(async (req, res) => {
+  app.post('/api/contact', (req, res, next) => req.get('authorization') ? authenticated(req, res, next) : next(), wrap(async (req, res) => {
     const b = req.body || {};
-    const name = String(b.name || '').trim();
-    const email = String(b.email || '').trim().toLowerCase();
+    const name = req.user ? req.user.name : String(b.name || '').trim();
+    const email = req.user ? req.user.email : String(b.email || '').trim().toLowerCase();
     const body = String(b.message || '').trim();
-    if (!name || name.length > 100 || !EMAIL.test(email) || !body || body.length > 2000) return res.status(400).json({ code: 'invalid' });
-    await repo.addMessage({ name, email, body });
+    if (typeof b.message !== 'string' || (!req.user && (typeof b.name !== 'string' || typeof b.email !== 'string')) || !name || name.length > 100 || !EMAIL.test(email) || email.length > 254 || !body || body.length > 2000) return res.status(400).json({ code: 'invalid' });
+    await repo.addMessage({ name, email, body, ownerEmail: req.user ? req.user.email : null });
     res.status(201).json({ ok: true });
   }));
 
@@ -167,7 +205,13 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
-    console.error(err);
+    if (res.headersSent) return next(err);
+    if (err.publicCode && err.status >= 400 && err.status < 500) return res.status(err.status).json({ code: err.publicCode });
+    if (err.type === 'entity.too.large') return res.status(413).json({ code: 'too_large' });
+    if (err.type === 'entity.parse.failed') return res.status(400).json({ code: 'invalid_json' });
+    if (err.number === 547) return res.status(409).json({ code: 'in_use' });
+    // Không ghi nội dung query / dữ liệu người dùng / mật khẩu ra log.
+    console.error('API error:', err.code || err.name || 'server');
     res.status(500).json({ code: 'server' });
   });
   return app;

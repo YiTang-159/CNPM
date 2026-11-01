@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import { projectApi, projectError } from '../api/projectApi.js';
+import './Account.css';
 import { useI18n } from '../context/I18nContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import { translateLines, TranslateError } from '../shared/translate.js';
@@ -13,6 +17,13 @@ const ERR_KEY = { net: 'e_net', server: 'd_translate_err', empty: 'd_translate_e
 
 export default function Demo() {
   const { t, lang } = useI18n();
+  const { user } = useAuth();
+  const [title, setTitle] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saved, setSaved] = useState(null);
+  const [uploadedUrl, setUploadedUrl] = useState('');
+  const [resultLanguage, setResultLanguage] = useState(lang);
   usePageTitle('d_title');
 
   // --- video + lời thoại ---
@@ -154,7 +165,13 @@ export default function Demo() {
   }, [voice, speed, segments]);
 
   const pickFile = (f) => {
-    if (!f) return;
+    if (!f || running || saving) return;
+    setTitle(f.name.replace(/\.[^.]+$/, '').slice(0, 200));
+    setSegments(null);
+    setDone(false);
+    setSaved(null);
+    setSaveError('');
+    setUploadedUrl('');
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     setFile(f);
     setFileName(f.name);
@@ -212,6 +229,8 @@ export default function Demo() {
     if (!file) return;
 
     setTranslateErr('');
+    setSaved(null);
+    setSaveError('');
     setDone(false);
     setShowPipe(true);
     setRunning(true);
@@ -263,6 +282,7 @@ export default function Demo() {
         ? translated.map((seg, n) => ({ ...seg, start: chunkTimes[n].start, end: chunkTimes[n].end }))
         : translated;
 
+      setResultLanguage(sourceLang);
       setSegments(withTime);
       setI(0);
       const outLangs = translate ? ['vi', 'en', 'zh'] : [sourceLang];
@@ -284,6 +304,30 @@ export default function Demo() {
       setRunning(false);
       setSttPhase('');
     }
+  };
+
+  const saveProject = async () => {
+    if (!user || !segments || saving || !title.trim()) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      let videoUrl = uploadedUrl;
+      if (!videoUrl && file) {
+        const upload = await projectApi.upload(user, file);
+        videoUrl = upload.url;
+        setUploadedUrl(videoUrl);
+      }
+      const savedSegments = segments.map((segment) => {
+        const timed = Number.isFinite(segment.start) && Number.isFinite(segment.end) && segment.end > segment.start;
+        return { ...segment, start: timed ? segment.start : null, end: timed ? segment.end : null };
+      });
+      const { project } = await projectApi.create(user, {
+        title: title.trim(), originalLanguage: resultLanguage,
+        sourceName: fileName, videoUrl, segments: savedSegments,
+      });
+      setSaved(project);
+    } catch (error) { setSaveError(projectError(error)); }
+    finally { setSaving(false); }
   };
 
   const segLangs = segments ? ['vi', 'en', 'zh'].filter((l) => segments[0][l] != null) : [];
@@ -309,7 +353,7 @@ export default function Demo() {
           onDragLeave={(e) => { e.preventDefault(); setOver(false); }}
           onDrop={(e) => { e.preventDefault(); setOver(false); pickFile(e.dataTransfer.files[0]); }}
         >
-          <input type="file" accept="video/*" onChange={(e) => pickFile(e.target.files[0])} />
+          <input type="file" accept="video/*" disabled={running || saving} onChange={(e) => pickFile(e.target.files[0])} />
           {file ? (
             <>
               <strong className="drop-name">{t('d_chosen')}{fileName}</strong>
@@ -334,7 +378,7 @@ export default function Demo() {
             <input type="checkbox" checked={translate} onChange={(e) => setTranslate(e.target.checked)} />
             {t('d_opt_translate')}
           </label>
-          <button className="btn btn-primary" type="button" onClick={start} disabled={running}>
+          <button className="btn btn-primary" type="button" onClick={start} disabled={running || saving}>
             {running ? t(translate ? 'd_translating' : 'd_dubbing') : t(translate ? 'd_translate_btn' : 'd_dub_btn')}
           </button>
         </div>
@@ -361,6 +405,21 @@ export default function Demo() {
           </>
         ) : null}
         {done ? <p className="ok" role="status" style={{ marginTop: 16 }}>{t(translate ? 'd_done' : 'd_done_dub')}</p> : null}
+
+        {segments ? <section className="project-save" aria-labelledby="project-save-title">
+          <h2 id="project-save-title">Lưu dự án của bạn</h2>
+          <p>Video, phụ đề và kịch bản được lưu theo tài khoản để xem lại và nhận cập nhật từ quản trị viên.</p>
+          {user ? <>
+            <label htmlFor="project-title">Tên dự án</label>
+            <input id="project-title" maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)} disabled={saving || Boolean(saved)} />
+            <button type="button" className="btn btn-primary" onClick={saveProject} disabled={saving || Boolean(saved) || !title.trim()}>
+              {saving ? 'Đang tải video và lưu dự án…' : saved ? 'Đã lưu dự án' : 'Lưu vào tài khoản'}
+            </button>
+            {saved ? <p className="ok" role="status">Đã lưu dự án #{saved.id}. <Link to="/account">Mở dự án của tôi</Link></p> : null}
+            {saveError ? <p className="err" role="alert">{saveError}</p> : null}
+          </> : <p><Link to="/login" state={{ from: '/demo' }}>Đăng nhập</Link> để lưu dự án. Sau khi đăng nhập, bạn cần chọn lại video nếu trang đã tải lại.</p>}
+          <p className="fine">Hỗ trợ lưu MP4, WebM, MOV tối đa 100 MB. Giọng đọc đang phát từ trình duyệt; chưa xuất tệp âm thanh thuyết minh.</p>
+        </section> : null}
 
         {segments ? (
           <div className="player" ref={playerRef}>

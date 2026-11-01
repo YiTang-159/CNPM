@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import { api, errorKey, SHARED } from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import Field from '../components/Field.jsx';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -9,12 +10,17 @@ const EMPTY = { name: '', email: '', msg: '' };
 
 export default function Contact() {
   const { t } = useI18n();
+  const { user } = useAuth();
   usePageTitle('c_title');
   const [v, setV] = useState(EMPTY);
   const [errs, setErrs] = useState({});
   const [ok, setOk] = useState(false);
   const [srvErr, setSrvErr] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (user) setV((value) => ({ ...value, name: user.name, email: user.email }));
+  }, [user]);
 
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
 
@@ -37,7 +43,7 @@ export default function Contact() {
     try {
       await api.contact({ name: v.name.trim(), email: v.email.trim(), message: v.msg.trim() });
       setOk(true);
-      setV(EMPTY);
+      setV(user ? { name: user.name, email: user.email, msg: '' } : EMPTY);
     } catch (x) {
       setSrvErr(errorKey(x));
     } finally {
@@ -56,13 +62,13 @@ export default function Contact() {
           {ok ? <p className="ok" role="status">{t('c_ok')}</p> : null}
           {srvErr ? <p className="err" role="alert" style={{ marginBottom: 16 }}>{t(srvErr)}</p> : null}
           <Field id="c-name" label={t('f_name')} error={errs.name && t(errs.name)}>
-            <input id="c-name" autoComplete="name" value={v.name} onChange={set('name')} aria-invalid={errs.name ? 'true' : undefined} />
+            <input id="c-name" maxLength={100} disabled={Boolean(user)} autoComplete="name" value={v.name} onChange={set('name')} aria-invalid={errs.name ? 'true' : undefined} />
           </Field>
           <Field id="c-email" label={t('f_email')} error={errs.email && t(errs.email)}>
-            <input id="c-email" type="email" autoComplete="email" value={v.email} onChange={set('email')} aria-invalid={errs.email ? 'true' : undefined} />
+            <input id="c-email" maxLength={254} disabled={Boolean(user)} type="email" autoComplete="email" value={v.email} onChange={set('email')} aria-invalid={errs.email ? 'true' : undefined} />
           </Field>
           <Field id="c-msg" label={t('f_msg')} error={errs.msg && t(errs.msg)}>
-            <textarea id="c-msg" value={v.msg} onChange={set('msg')} aria-invalid={errs.msg ? 'true' : undefined} />
+            <textarea id="c-msg" maxLength={2000} value={v.msg} onChange={set('msg')} aria-invalid={errs.msg ? 'true' : undefined} />
           </Field>
           <button className="btn btn-primary" type="submit" disabled={busy}>{t('c_send')}</button>
           {!SHARED ? <p className="auth-note">{t('auth_demo')}</p> : null}

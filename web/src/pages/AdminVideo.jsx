@@ -1,64 +1,19 @@
+import { useState } from 'react';
+import { serviceAdminApi } from '../api/services.js';
+import { ServiceHeader, ServiceState, dateLabel, languageName, matchesSearch, useAdminRecords } from '../components/AdminServiceTools.jsx';
+
 export default function AdminVideos() {
-  const { user } = useAuth();
-
-  const [videos, setVideos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const loadVideos = useCallback(async () => {
-    if (!user?.token) {
-      setError('Vui lòng đăng nhập Admin');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-
-      const data = await videoAdminApi.getVideos(user.token);
-      setVideos(data.videos || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.token]);
-
-  useEffect(() => {
-    loadVideos();
-  }, [loadVideos]);
-
-  if (loading) return <p>Đang tải video...</p>;
-  if (error) return <p>Lỗi: {error}</p>;
-
-  return (
-    <section>
-      <h1>Quản lý video đã dịch</h1>
-
-      <button onClick={loadVideos}>
-        Làm mới danh sách
-      </button>
-
+  const state = useAdminRecords(serviceAdminApi.videos);
+  const [search, setSearch] = useState('');
+  const visible = state.records.filter((record) => matchesSearch(record, search));
+  return <>
+    <ServiceHeader title="Quản lý video" description="Các dự án khách hàng đã lưu lên máy chủ, cùng tài khoản sở hữu và ngôn ngữ gốc." {...state} search={search} setSearch={setSearch} />
+    <ServiceState {...state} empty={!visible.length} />
+    {!state.loading && !state.error && visible.length > 0 && <div className="service-record service-table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Tên video</th>
-            <th>Trạng thái</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {videos.map(video => (
-            <tr key={video.id}>
-              <td>{video.id}</td>
-              <td>{video.title}</td>
-              <td>{video.status}</td>
-            </tr>
-          ))}
-        </tbody>
+        <thead><tr><th scope="col">Mã</th><th scope="col">Tên video</th><th scope="col">Khách hàng</th><th scope="col">Ngôn ngữ gốc</th><th scope="col">Trạng thái</th><th scope="col">Ngày tạo</th></tr></thead>
+        <tbody>{visible.map((video) => <tr key={video.id}><td>{video.id}</td><td>{video.title}</td><td>{video.userName}<br />{video.userEmail}</td><td>{languageName(video.originalLanguage)}</td><td>{video.status}</td><td>{dateLabel(video.createdAt)}</td></tr>)}</tbody>
       </table>
-    </section>
-  );
+    </div>}
+  </>;
 }

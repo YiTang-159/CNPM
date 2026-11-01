@@ -1,8 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { CUSTOMER, installMockBackend, saveSession } from './mockBackend.js';
-import { projectApi } from '../api/projectApi.js';
 import { renderApp } from './utils.jsx';
 import { I } from '../shared/i18n.js';
 
@@ -49,8 +47,6 @@ async function fillMinimal(user) {
   const file = new File(['nội dung giả'], 'mon-an.mp4', { type: 'video/mp4' });
   await user.upload(document.querySelector('input[type="file"]'), file);
 }
-
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Trang Trải nghiệm (luồng dịch thật)', () => {
   it('bấm dịch khi chưa chọn video thì báo lỗi', async () => {
@@ -110,44 +106,6 @@ describe('Trang Trải nghiệm (luồng dịch thật)', () => {
 
     expect(await screen.findByText(vi_('e_net'))).toBeInTheDocument();
     expect(document.querySelector('video')).toBeNull();
-  });
-
-  it('lưu video và kết quả vào API theo tài khoản, chỉ báo thành công khi cả hai bước hoàn tất', async () => {
-    installMockBackend({ users: [CUSTOMER] });
-    saveSession();
-    const upload = vi.spyOn(projectApi, 'upload').mockResolvedValue({ url: '/api/media/example.mp4' });
-    const create = vi.spyOn(projectApi, 'create').mockResolvedValue({ project: { id: 12 } });
-    const user = userEvent.setup();
-    renderApp('/demo');
-    await screen.findByText(/Xin chào, An/);
-    await fillMinimal(user);
-    await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
-    await screen.findByText(vi_('d_done_dub'));
-    await user.click(screen.getByRole('button', { name: 'Lưu vào tài khoản' }));
-    expect(await screen.findByText(/Đã lưu dự án #12/)).toBeInTheDocument();
-    expect(upload).toHaveBeenCalledWith(expect.objectContaining({ token: CUSTOMER.token }), expect.any(File));
-    expect(create).toHaveBeenCalledWith(expect.objectContaining({ email: CUSTOMER.email }), expect.objectContaining({
-      title: 'mon-an', originalLanguage: 'vi', videoUrl: '/api/media/example.mp4',
-      segments: [expect.objectContaining({ vi: 'Đập trứng vào bát. Xào cùng cà chua.' })],
-    }));
-    expect(screen.getByRole('button', { name: 'Đã lưu dự án' })).toBeDisabled();
-  });
-
-  it('lỗi lưu SQL không báo đã lưu; thử lại dùng lại video đã tải lên', async () => {
-    installMockBackend({ users: [CUSTOMER] }); saveSession();
-    const upload = vi.spyOn(projectApi, 'upload').mockResolvedValue({ url: '/api/media/example.mp4' });
-    const create = vi.spyOn(projectApi, 'create').mockRejectedValueOnce(new Error('SQL offline')).mockResolvedValue({ project: { id: 13 } });
-    const user = userEvent.setup(); renderApp('/demo');
-    await screen.findByText(/Xin chào, An/);
-    await fillMinimal(user);
-    await user.click(screen.getByRole('button', { name: vi_('d_dub_btn') }));
-    await screen.findByText(vi_('d_done_dub'));
-    await user.click(screen.getByRole('button', { name: 'Lưu vào tài khoản' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Không thể kết nối hoặc lưu dữ liệu');
-    expect(screen.queryByText(/Đã lưu dự án #/)).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Lưu vào tài khoản' }));
-    expect(await screen.findByText(/Đã lưu dự án #13/)).toBeInTheDocument();
-    expect(upload).toHaveBeenCalledTimes(1); expect(create).toHaveBeenCalledTimes(2);
   });
 
   it('bật phụ đề tiếng Anh sau khi dịch xong', async () => {

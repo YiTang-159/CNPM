@@ -1,12 +1,17 @@
+# Chạy CSDL SQL Server và API thanh toán:  docker compose up -d --build
+# Dừng:  docker compose down      Xóa luôn dữ liệu:  docker compose down -v
 name: dubchef
+
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: dubchef-db
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${DB_PASSWORD:?Chay npm run setup:local truoc}
+      # Mật khẩu phải có chữ hoa, chữ thường, số, ký hiệu, từ 8 ký tự. Đổi bằng biến DB_PASSWORD.
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD:-Dubchef@12345}
     ports:
-      - "127.0.0.1:${SQL_PORT:-14330}:1433"
+      - "1433:1433"
     volumes:
       - dubchef-data:/var/opt/mssql
     restart: unless-stopped
@@ -15,6 +20,7 @@ services:
     build:
       context: .
       dockerfile: server/Dockerfile
+    container_name: dubchef-api
     depends_on:
       - db
     environment:
@@ -22,25 +28,17 @@ services:
       DB_HOST: db
       DB_PORT: "1433"
       DB_USER: sa
-      DB_PASSWORD: ${DB_PASSWORD:?Chay npm run setup:local truoc}
+      DB_PASSWORD: ${DB_PASSWORD:-Dubchef@12345}
       DB_NAME: DubchefDB
-      DB_TRUST_CERT: "true"
+      CORS_ORIGIN: http://localhost:5173
+      # Tài khoản quản trị tạo tự động lần đầu chạy. ĐỔI các giá trị này trước khi đưa lên mạng.
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@dubchef.vn}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Chay npm run setup:local truoc}
-      TOKEN_SECRET: ${TOKEN_SECRET:?Chay npm run setup:local truoc}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
-      PAYMENT_DEMO: ${PAYMENT_DEMO:-false}
-      SERVE_WEB: "true"
-    ports:
-      - "127.0.0.1:3000:3000"
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
+      TOKEN_SECRET: ${TOKEN_SECRET:-doi-chuoi-nay-thanh-mot-chuoi-ngau-nhien-dai}
     volumes:
       - dubchef-uploads:/app/server/uploads
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 120s
+    ports:
+      - "3000:3000"
     restart: on-failure
 
 volumes:

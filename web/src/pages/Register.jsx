@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import { errorKey, SHARED } from '../api/client.js';
 import Field from '../components/Field.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
 import { returnTarget } from '../utils/returnTo.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -63,10 +64,10 @@ export default function Register() {
           <input id="r-email" type="email" autoComplete="email" value={v.email} onChange={set('email')} aria-invalid={errs.email ? 'true' : undefined} />
         </Field>
         <Field id="r-pass" label={t('f_pass')} error={errs.pass && t(errs.pass)}>
-          <input id="r-pass" type="password" autoComplete="new-password" value={v.pass} onChange={set('pass')} aria-invalid={errs.pass ? 'true' : undefined} />
+          <PasswordInput id="r-pass" value={v.pass} onChange={set('pass')} invalid={errs.pass} />
         </Field>
         <Field id="r-pass2" label={t('f_pass2')} error={errs.pass2 && t(errs.pass2)}>
-          <input id="r-pass2" type="password" autoComplete="new-password" value={v.pass2} onChange={set('pass2')} aria-invalid={errs.pass2 ? 'true' : undefined} />
+          <PasswordInput id="r-pass2" value={v.pass2} onChange={set('pass2')} invalid={errs.pass2} />
         </Field>
         <div className="field">
           <div className="check">

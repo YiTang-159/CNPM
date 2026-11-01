@@ -1,19 +1,44 @@
-import { useState } from 'react';
-import { serviceAdminApi } from '../api/services.js';
-import { ServiceHeader, ServiceState, dateLabel, languageName, matchesSearch, useAdminRecords } from '../components/AdminServiceTools.jsx';
+import { useCallback, useEffect, useState } from 'react';
+import { manageApi } from '../api/workflows.js';
 
+const STATUS = ['uploaded', 'processing', 'completed', 'failed', 'hidden'];
 export default function AdminVideos() {
-  const state = useAdminRecords(serviceAdminApi.videos);
+  const [videos, setVideos] = useState([]);
+  const [status, setStatus] = useState('Đang tải dữ liệu...');
   const [search, setSearch] = useState('');
-  const visible = state.records.filter((record) => matchesSearch(record, search));
+  const [busy, setBusy] = useState(null);
+  const load = useCallback(async () => {
+    try { setVideos((await manageApi.videos()).videos || []); setStatus(''); }
+    catch (err) { setStatus('Không đọc được SQL Server: ' + err.message); }
+  }, []);
+  useEffect(() => { load(); const timer = window.setInterval(load, 15000); return () => window.clearInterval(timer); }, [load]);
+  const act = async (id, run) => {
+    setBusy(id);
+    try { await run(); await load(); }
+    catch (err) { setStatus('Không lưu được thay đổi: ' + err.message); }
+    finally { setBusy(null); }
+  };
   return <>
-    <ServiceHeader title="Quản lý video" description="Các dự án khách hàng đã lưu lên máy chủ, cùng tài khoản sở hữu và ngôn ngữ gốc." {...state} search={search} setSearch={setSearch} />
-    <ServiceState {...state} empty={!visible.length} />
-    {!state.loading && !state.error && visible.length > 0 && <div className="service-record service-table-wrap">
-      <table>
-        <thead><tr><th scope="col">Mã</th><th scope="col">Tên video</th><th scope="col">Khách hàng</th><th scope="col">Ngôn ngữ gốc</th><th scope="col">Trạng thái</th><th scope="col">Ngày tạo</th></tr></thead>
-        <tbody>{visible.map((video) => <tr key={video.id}><td>{video.id}</td><td>{video.title}</td><td>{video.userName}<br />{video.userEmail}</td><td>{languageName(video.originalLanguage)}</td><td>{video.status}</td><td>{dateLabel(video.createdAt)}</td></tr>)}</tbody>
-      </table>
-    </div>}
+    <div className="adm-head"><div><h1>Quản lý video</h1><p>Video được khách hàng tải lên và lưu trong SQL Server (thông tin) cùng Docker volume (tệp).</p></div></div>
+    <section className="panel">
+      <div className="adm-actions"><input aria-label="Tìm video" placeholder="Tìm tên video, email..." value={search} onChange={e => setSearch(e.target.value)} />
+        <button className="btn btn-sm" onClick={load}>Làm mới</button></div>
+      {status ? <p role="status">{status}</p> : null}
+      <div className="adm-table-wrap"><table className="adm-table"><thead><tr>
+        <th>Mã</th><th>Tiêu đề / Tệp</th><th>Người tải</th><th>Ngôn ngữ</th><th>Ngày tải</th><th>Trạng thái</th><th>Thao tác</th>
+      </tr></thead><tbody>
+        {videos.filter(v => `${v.title} ${v.userEmail} ${v.fileName}`.toLowerCase().includes(search.toLowerCase())).map(v => <tr key={v.id}>
+          <td>#{v.id}</td><td><strong>{v.title}</strong><p className="fine">{v.fileName}</p></td>
+          <td>{v.userName}<p className="fine">{v.userEmail}</p></td><td>{v.originalLanguage}</td>
+          <td>{v.createdAt ? new Date(v.createdAt).toLocaleString('vi-VN') : '—'}</td>
+          <td><select aria-label={`Trạng thái video ${v.id}`} value={v.status} disabled={busy === v.id}
+            onChange={e => act(v.id, () => manageApi.updateVideo(v.id, e.target.value))}>
+            {STATUS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select></td>
+          <td><button className="btn btn-sm" disabled={busy === v.id}
+            onClick={() => { if (window.confirm(`Xóa video #${v.id} và phụ đề/thuyết minh liên quan?`)) act(v.id, () => manageApi.deleteVideo(v.id)); }}>Xóa</button></td>
+        </tr>)}
+      </tbody></table>{!videos.length && !status ? <p>Chưa có video. Hãy đăng nhập tài khoản khách để tải video lên.</p> : null}</div>
+    </section>
   </>;
 }

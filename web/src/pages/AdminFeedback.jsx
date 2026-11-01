@@ -1,49 +1,35 @@
-import { useEffect, useState } from 'react';
-import { serviceAdminApi } from '../api/services.js';
-import { ServiceHeader, ServiceState, dateLabel, matchesSearch, useAdminRecords } from '../components/AdminServiceTools.jsx';
-
-const STATUS_LABELS = { open: 'Chờ xử lý', replied: 'Đã phản hồi', closed: 'Đã đóng' };
-
-function FeedbackEditor({ record, user, onSaved }) {
-  const [reply, setReply] = useState(record.reply || '');
-  const [status, setStatus] = useState(record.status || 'open');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
-  useEffect(() => {
-    setReply(record.reply || '');
-    setStatus(record.status || 'open');
-  }, [record.reply, record.status]);
-  const save = async (event) => {
-    event.preventDefault();
-    if (status === 'replied' && !reply.trim()) { setError('Vui lòng nhập nội dung trả lời trước khi đánh dấu đã phản hồi.'); return; }
-    setSaving(true); setError(''); setSaved(false);
-    try { onSaved(await serviceAdminApi.saveFeedback(user, record.id, { reply: reply.trim(), status })); setSaved(true); }
-    catch (err) { setError(err.message); }
-    finally { setSaving(false); }
-  };
-  return <article className="service-record">
-    <h2>{record.name}</h2>
-    <div className="service-meta"><span>{record.email}</span><span>{dateLabel(record.createdAt)}</span><span className="service-badge">{STATUS_LABELS[record.status] || STATUS_LABELS.open}</span></div>
-    <p className="service-text">{record.message}</p>
-    <form onSubmit={save}>
-      <label htmlFor={`reply-${record.id}`}>Nội dung trả lời<textarea id={`reply-${record.id}`} maxLength={2000} value={reply} onChange={(event) => { setReply(event.target.value); setSaved(false); }} /></label>
-      <label htmlFor={`feedback-status-${record.id}`}>Trạng thái<select id={`feedback-status-${record.id}`} value={status} onChange={(event) => { setStatus(event.target.value); setSaved(false); }}>{Object.entries(STATUS_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-      <p className="fine">Khách hàng đăng nhập bằng email này có thể xem câu trả lời trong trang tài khoản. Hệ thống không tự gửi email.</p>
-      <div className="service-actions"><button className="btn btn-primary" disabled={saving} type="submit">{saving ? 'Đang lưu…' : 'Lưu phản hồi'}</button>{record.repliedAt && <span className="fine">Lần trả lời gần nhất: {dateLabel(record.repliedAt)}</span>}</div>
-    </form>
-    {error && <p role="alert" className="service-error">{error}</p>}
-    {saved && <p role="status" className="service-success">Đã lưu phản hồi vào SQL Server.</p>}
-  </article>;
-}
+import { useCallback, useEffect, useState } from 'react';
+import { manageApi } from '../api/workflows.js';
 
 export default function AdminFeedback() {
-  const state = useAdminRecords(serviceAdminApi.feedback);
-  const [search, setSearch] = useState('');
-  const visible = state.records.filter((record) => matchesSearch(record, search));
+  const [items, setItems] = useState([]);
+  const [edits, setEdits] = useState({});
+  const [message, setMessage] = useState('');
+  const load = useCallback(async () => {
+    try { const rows = (await manageApi.feedback()).feedback || []; setItems(rows);
+      setEdits(Object.fromEntries(rows.map(r => [r.id, { status: r.status, reply: r.reply || '' }])));
+      setMessage(''); } catch (e) { setMessage('Không lấy được phản hồi: ' + e.message); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  async function save(item) {
+    try { await manageApi.updateFeedback(item.id, edits[item.id]); await load(); setMessage('Đã cập nhật phản hồi.'); }
+    catch (e) { setMessage('Không lưu được: ' + e.message); }
+  }
   return <>
-    <ServiceHeader title="Quản lý phản hồi" description="Tiếp nhận liên hệ, trả lời khách hàng và theo dõi trạng thái xử lý." {...state} search={search} setSearch={setSearch} />
-    <ServiceState {...state} empty={!visible.length} />
-    {!state.loading && !state.error && <div className="service-records">{visible.map((record) => <FeedbackEditor key={record.id} record={record} user={state.user} onSaved={state.replace} />)}</div>}
+    <div className="adm-head"><div><h1>Quản lý phản hồi</h1><p>Phản hồi có đăng nhập và lời nhắn từ trang Liên hệ, cập nhật trạng thái và trả lời ngay trong SQL Server.</p></div></div>
+    <section className="panel"><button className="btn btn-sm" onClick={load}>Làm mới</button>
+      {message ? <p role="status">{message}</p> : null}
+      <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Người gửi</th><th>Nội dung</th><th>Ngày gửi</th><th>Trạng thái</th><th>Phản hồi Admin</th><th>Thao tác</th></tr></thead>
+        <tbody>{items.map(item => <tr key={item.id}><td>{item.name}<p className="fine">{item.email}</p><small>{item.source === 'contact' ? 'Liên hệ' : `Tài khoản / Video #${item.videoId || '—'}`}</small></td>
+          <td className="adm-feedback-text">{item.message}</td><td>{new Date(item.createdAt).toLocaleString('vi-VN')}</td>
+          <td><select aria-label={`Trạng thái ${item.id}`} value={edits[item.id]?.status || item.status}
+            onChange={e => setEdits(v => ({ ...v, [item.id]: { ...v[item.id], status: e.target.value } }))}>
+            <option value="new">Mới</option><option value="reviewing">Đang xử lý</option><option value="resolved">Đã giải quyết</option>
+          </select></td>
+          <td><textarea rows={3} aria-label={`Trả lời ${item.id}`} value={edits[item.id]?.reply || ''} maxLength={2000}
+            onChange={e => setEdits(v => ({ ...v, [item.id]: { ...v[item.id], reply: e.target.value } }))} /></td>
+          <td><button className="btn btn-sm" onClick={() => save(item)}>Lưu</button></td></tr>)}</tbody>
+      </table>{!items.length && !message ? <p>Chưa có phản hồi.</p> : null}</div>
+    </section>
   </>;
 }

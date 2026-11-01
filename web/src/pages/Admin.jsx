@@ -71,8 +71,8 @@ export default function Admin() {
     }
 
     loadSummary();
-
-    return () => controller.abort();
+    const timer = window.setInterval(loadSummary, 20000);
+    return () => { window.clearInterval(timer); controller.abort(); };
   }, [user?.token]);
 
   return (
@@ -147,6 +147,9 @@ export default function Admin() {
               Ngôn ngữ được hỗ trợ
             </Kpi>
 
+            <Kpi id="total-narrations" label="Tổng thuyết minh" value={num(L, summary.totalNarrations || 0)}>Nội dung thuyết minh đã lưu</Kpi>
+            <Kpi id="total-subtitles" label="Tổng phụ đề" value={num(L, summary.totalSubtitles || 0)}>Phụ đề đã lưu</Kpi>
+            <Kpi id="total-feedback" label="Tổng phản hồi" value={num(L, summary.totalFeedback || 0)}>Phản hồi và liên hệ</Kpi>
             <Kpi
               id="total-qr"
               label="Tổng lượt quét QR"

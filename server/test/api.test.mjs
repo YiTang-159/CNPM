@@ -19,7 +19,6 @@ function fakeRepo() {
       return u;
     },
     listUsers: async () => users,
-    recordLogin: async () => {},
     setUserStatus: async (e, s) => { const u = users.find((x) => x.email === e && x.role === 'user'); if (u) u.status = s; return !!u; },
     deleteUser: async (e) => { const i = users.findIndex((x) => x.email === e && x.role === 'user'); if (i >= 0) users.splice(i, 1); return i >= 0; },
     addVisit: async (v) => { visits.push(v); },

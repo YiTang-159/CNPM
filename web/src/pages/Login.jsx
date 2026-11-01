@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import { errorKey, SHARED } from '../api/client.js';
 import Field from '../components/Field.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
 import { returnTarget } from '../utils/returnTo.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -58,7 +59,7 @@ export default function Login() {
           <input id="l-email" type="email" autoComplete="email" value={v.email} onChange={set('email')} aria-invalid={errs.email ? 'true' : undefined} />
         </Field>
         <Field id="l-pass" label={t('f_pass')} error={errs.pass && t(errs.pass)}>
-          <input id="l-pass" type="password" autoComplete="current-password" value={v.pass} onChange={set('pass')} aria-invalid={errs.pass ? 'true' : undefined} />
+          <PasswordInput id="l-pass" autoComplete="current-password" value={v.pass} onChange={set('pass')} invalid={errs.pass} />
         </Field>
         <button className="btn btn-primary" type="submit" style={{ width: '100%' }} disabled={busy}>{t('nav_login')}</button>
       </form>

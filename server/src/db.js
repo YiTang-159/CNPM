@@ -5,23 +5,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ACTIVE_MINUTES, dayKey } from './stats.js';
 import { hashPassword } from './auth.js';
-import { createServiceRepo } from './serviceRepo.js';
+import { attachWorkflows } from './workflows.js';
 
 const DB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db');
 
 function config(database) {
-  if (!process.env.DB_PASSWORD) throw new Error('Thiếu DB_PASSWORD. Hãy cấu hình mật khẩu SQL Server trong .env hoặc biến môi trường.');
   return {
     server: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT || 1433),
     user: process.env.DB_USER || 'sa',
-    password: process.env.DB_PASSWORD,
+    password: process.env.DB_PASSWORD || 'Dubchef@12345',
     database,
-    options: {
-      encrypt: process.env.DB_ENCRYPT !== 'false',
-      trustServerCertificate: process.env.DB_TRUST_CERT == null
-        ? process.env.NODE_ENV !== 'production' : process.env.DB_TRUST_CERT === 'true',
-    },
+    options: { encrypt: true, trustServerCertificate: true }, // chứng chỉ tự ký của container
     pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
   };
 }
@@ -29,7 +24,7 @@ function config(database) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** SQL Server cần vài chục giây để khởi động, nên thử lại cho đến khi kết nối được. */
-async function connect(database, tries = Number(process.env.DB_CONNECT_TRIES || 60)) {
+async function connect(database, tries = 60) {
   for (let n = 1; ; n++) {
     try {
       return await new sql.ConnectionPool(config(database)).connect();
@@ -51,7 +46,6 @@ async function runScript(pool, file) {
 
 const mapOrder = (r) => ({
   id: r.MaDonHang,
-  ownerId: r.MaNguoiDung ?? null,
   name: r.TenKhachHang,
   email: r.EmailKhachHang,
   uploads: r.SoVideoDang,
@@ -70,7 +64,6 @@ const mapUser = (r) => ({
   role: r.VaiTro,
   status: r.TrangThai,
   at: new Date(r.NgayTao).toISOString(),
-  lastLogin: r.LanDangNhapCuoi ? new Date(r.LanDangNhapCuoi).toISOString() : null,
   hash: r.MatKhauBam,
 });
 
@@ -112,34 +105,16 @@ async function aggregate(pool, table, col, span, tz, now = Date.now()) {
 
 /** Tạo CSDL + bảng (nếu chưa có) rồi trả về các hàm thao tác dữ liệu. */
 export async function openRepo() {
-  if (!process.env.DB_PASSWORD) throw new Error('Thiếu DB_PASSWORD. Hãy cấu hình mật khẩu SQL Server trong .env hoặc biến môi trường.');
-  const database = process.env.DB_NAME || 'DubchefDB';
-  if (process.env.DB_SKIP_CREATE !== 'true') {
-    const master = await connect('master');
-    try {
-      // QUOTENAME-style escaping: database name never becomes executable SQL.
-      await master.request().input('name', sql.NVarChar(128), database)
-        .query(`IF DB_ID(@name) IS NULL
-                BEGIN
-                  DECLARE @stmt NVARCHAR(300) = N'CREATE DATABASE ' + QUOTENAME(@name);
-                  EXEC sp_executesql @stmt;
-                END`);
-    } finally { await master.close(); }
-  }
+  const master = await connect('master');
+  await runScript(master, '01-create-database.sql');
+  await master.close();
 
-  const pool = await connect(database);
-  try {
-    await runScript(pool, '02-schema.sql');
-    await runScript(pool, '06-service.sql');
-  } catch (error) {
-    await pool.close();
-    throw error;
-  }
+  const pool = await connect(process.env.DB_NAME || 'DubchefDB');
+  await runScript(pool, '02-schema.sql');
+  await runScript(pool, '04-workflows.sql');
   console.log('SQL Server sẵn sàng.');
 
   const repo = {
-    ...createServiceRepo(pool),
-    close: () => pool.close(),
     async ping() {
       await pool.request().query('SELECT 1 AS ok');
     },
@@ -152,25 +127,20 @@ export async function openRepo() {
         .input('out', sql.Int, o.outs)
         .input('cur', sql.Char(3), o.currency)
         .input('amt', sql.BigInt, o.amountMinor)
-        .query(`DECLARE @owner INT = (SELECT MaNguoiDung FROM dbo.NguoiDung WHERE Email = @email AND TrangThai = 'active');
-                IF @owner IS NULL THROW 51001, N'Tài khoản không còn hoạt động.', 1;
-                INSERT INTO dbo.DonHang (TenKhachHang, EmailKhachHang, SoVideoDang, SoVideoDich, LoaiTien, SoTien, MaNguoiDung)
+        .query(`INSERT INTO dbo.DonHang (TenKhachHang, EmailKhachHang, SoVideoDang, SoVideoDich, LoaiTien, SoTien)
                 OUTPUT inserted.*
-                VALUES (@name, @email, @up, @out, @cur, @amt, @owner)`);
+                VALUES (@name, @email, @up, @out, @cur, @amt)`);
       return mapOrder(r.recordset[0]);
     },
 
     /** Đánh dấu đơn đã trả và ghi giao dịch trong cùng một transaction. Trả null nếu đơn không tồn tại hoặc đã trả. */
-    async payOrder(id, { method, ref, email }) {
+    async payOrder(id, { method, ref }) {
       const tx = new sql.Transaction(pool);
       await tx.begin();
       try {
         const upd = await new sql.Request(tx)
           .input('id', sql.Int, id)
-          .input('email', sql.NVarChar(254), email || null)
-          .query(`UPDATE o SET TrangThai = 'paid' OUTPUT inserted.*
-                  FROM dbo.DonHang o JOIN dbo.NguoiDung u ON u.MaNguoiDung = o.MaNguoiDung
-                  WHERE o.MaDonHang = @id AND o.TrangThai = 'pending' AND u.Email = @email AND u.TrangThai = 'active'`);
+          .query(`UPDATE dbo.DonHang SET TrangThai = 'paid' OUTPUT inserted.* WHERE MaDonHang = @id AND TrangThai = 'pending'`);
         if (!upd.recordset.length) {
           await tx.rollback();
           return null;
@@ -192,23 +162,22 @@ export async function openRepo() {
       }
     },
 
+    async orderEmail(id) {
+      const r = await pool.request().input('id', sql.Int, id)
+        .query('SELECT EmailKhachHang AS email FROM dbo.DonHang WHERE MaDonHang=@id');
+      return r.recordset[0]?.email || null;
+    },
+
     async listOrders(email, limit = 20) {
       const r = await pool.request()
         .input('email', sql.NVarChar(254), email)
         .input('n', sql.Int, limit)
         .query(`SELECT TOP (@n) o.*, p.MaThamChieu
                 FROM dbo.DonHang o
-                JOIN dbo.NguoiDung u ON u.MaNguoiDung = o.MaNguoiDung
                 LEFT JOIN dbo.GiaoDich p ON p.MaDonHang = o.MaDonHang AND p.TrangThai = 'success'
-                WHERE u.Email = @email
+                WHERE o.EmailKhachHang = @email
                 ORDER BY o.NgayTao DESC, o.MaDonHang DESC`);
       return r.recordset.map(mapOrder);
-    },
-
-    async getOrder(id) {
-      const r = await pool.request().input('id', sql.Int, id)
-        .query('SELECT * FROM dbo.DonHang WHERE MaDonHang = @id');
-      return r.recordset[0] ? mapOrder(r.recordset[0]) : null;
     },
 
     // ---- Tài khoản ----
@@ -240,25 +209,14 @@ export async function openRepo() {
       return r.recordset.map(mapUser);
     },
 
-    async recordLogin(email) {
-      await pool.request().input('email', sql.NVarChar(254), email)
-        .query('UPDATE dbo.NguoiDung SET LanDangNhapCuoi = SYSUTCDATETIME() WHERE Email = @email');
-    },
-
-    /** Chuyển băm mật khẩu cũ sang scrypt sau khi đã xác thực, không ghi đè một lần đổi mật khẩu đồng thời. */
-    async updatePasswordHash(email, newHash, expectedOldHash = null) {
-      const r = await pool.request().input('email', sql.NVarChar(254), email)
-        .input('newHash', sql.VarChar(200), newHash).input('oldHash', sql.VarChar(200), expectedOldHash)
-        .query(`UPDATE dbo.NguoiDung SET MatKhauBam = @newHash
-                WHERE Email = @email AND (@oldHash IS NULL OR MatKhauBam = @oldHash)`);
-      return r.rowsAffected[0] > 0;
-    },
-
     // Quản lý danh sách video
     async listVideos() {
       const r = await pool.request().query(`
         SELECT
           v.MaVideo AS id,
+          v.MaNguoiDung AS userId,
+          v.TenTep AS fileName,
+          v.DungLuong AS size,
           v.TieuDe AS title,
           v.TrangThai AS status,
           v.NgonNguGoc AS originalLanguage,
@@ -285,19 +243,16 @@ export async function openRepo() {
           (SELECT COUNT(*) FROM dbo.Video)
             AS totalVideos,
 
-          (SELECT COUNT(*) FROM dbo.NgonNgu)
-            AS totalLanguages,
+          (SELECT COUNT(*) FROM dbo.NgonNgu) AS totalLanguages,
+          (SELECT COUNT(*) FROM dbo.ThuyetMinh) AS totalNarrations,
+          (SELECT COUNT(*) FROM dbo.PhuDe) AS totalSubtitles,
+          (SELECT COUNT(*) FROM dbo.PhanHoi) + (SELECT COUNT(*) FROM dbo.LienHe) AS totalFeedback,
 
           (SELECT COUNT(*) FROM dbo.LuotQuetQR)
             AS totalQrScans,
 
           (SELECT COUNT(*) FROM dbo.LuotTruyCap)
-            AS totalVisits,
-
-          (SELECT COUNT(*) FROM dbo.ThuyetMinh) AS totalNarrations,
-          (SELECT COUNT(*) FROM dbo.PhuDe) AS totalSubtitles,
-          (SELECT COUNT(*) FROM dbo.LienHe) AS totalFeedback,
-          (SELECT COUNT(*) FROM dbo.LienHe WHERE TrangThai = 'open') AS openFeedback
+            AS totalVisits
       `);
 
       return result.recordset[0];
@@ -325,15 +280,12 @@ export async function openRepo() {
       return true;
     },
 
-    async addMessage({ name, email, body, ownerEmail = null }) {
+    async addMessage({ name, email, body }) {
       await pool.request()
         .input('name', sql.NVarChar(100), name)
         .input('email', sql.NVarChar(254), email)
         .input('body', sql.NVarChar(2000), body)
-        .input('ownerEmail', sql.NVarChar(254), ownerEmail)
-        .query(`DECLARE @owner INT = (SELECT MaNguoiDung FROM dbo.NguoiDung WHERE Email = @ownerEmail AND TrangThai = 'active');
-                IF @ownerEmail IS NOT NULL AND @owner IS NULL THROW 51001, N'Tài khoản không còn hoạt động.', 1;
-                INSERT INTO dbo.LienHe (HoTen, Email, NoiDung, MaNguoiDung) VALUES (@name, @email, @body, @owner)`);
+        .query('INSERT INTO dbo.LienHe (HoTen, Email, NoiDung) VALUES (@name, @email, @body)');
     },
 
     // ---- Lượt truy cập ----
@@ -359,5 +311,6 @@ export async function openRepo() {
     /** Cùng dạng với visitStats: visitors = số người quét (không trùng), views = số lượt quét. */
     qrStats: (span, tz, now) => aggregate(pool, 'dbo.LuotQuetQR', 'NgayQuet', span, tz, now),
   };
+  attachWorkflows(pool, repo);
   return repo;
 }

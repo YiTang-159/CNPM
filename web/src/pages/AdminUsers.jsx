@@ -32,6 +32,7 @@ export default function AdminUsers() {
   usePageTitle('ad_users_title');
   const [users, setUsers] = useState(null);
   const [failed, setFailed] = useState(false);
+  const [actionError, setActionError] = useState('');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('new');
   const [page, setPage] = useState(0);
@@ -48,7 +49,9 @@ export default function AdminUsers() {
   const cur = Math.min(page, pages - 1);
   const shown = rows.slice(cur * PAGE, cur * PAGE + PAGE);
 
-  const act = (fn) => fn().then(load).catch(() => setFailed(true));
+  const act = (fn) => { setActionError(''); return fn().then(load).catch(err =>
+    setActionError(err?.message === 'server' ? 'Không thể xóa tài khoản đang có dữ liệu liên kết. Hãy khóa tài khoản để bảo toàn video, đơn hàng và phản hồi.' : 'Không cập nhật được tài khoản trên máy chủ.'));
+  };
   const toggle = (u) => act(() => adminApi.setStatus(user, u.email, u.status === 'locked' ? 'active' : 'locked'));
   const remove = (u) => { setAsking(null); return act(() => adminApi.remove(user, u.email)); };
 
@@ -77,6 +80,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
+      {actionError ? <p role="alert">{actionError}</p> : null}
       {failed ? <p role="alert">{t('ad_fail')}</p> : null}
       {!users && !failed ? <p role="status">{t('ad_loading')}</p> : null}
 

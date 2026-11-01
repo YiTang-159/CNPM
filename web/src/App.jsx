@@ -18,9 +18,9 @@ import AdminLayout from './components/AdminLayout.jsx';
 import NotFound from './pages/NotFound.jsx';
 import AdminVideos from './pages/AdminVideo.jsx';
 import AdminLanguages from './pages/AdminLanguages.jsx';
-import AdminNarrations from './pages/AdminNarrations.jsx';
-import AdminSubtitles from './pages/AdminSubtitles.jsx';
+import AdminMediaResults from './pages/AdminMediaResults.jsx';
 import AdminFeedback from './pages/AdminFeedback.jsx';
+import AdminOrders from './pages/AdminOrders.jsx';
 import Account from './pages/Account.jsx';
 
 export default function App() {
@@ -34,9 +34,9 @@ export default function App() {
         <Route path="about" element={<About />} />
         <Route path="faq" element={<Faq />} />
         <Route path="contact" element={<Contact />} />
-        <Route path="account" element={<Account />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
+        <Route path="account" element={<Account />} />
         <Route path="guest" element={<Guest />} />
         <Route path="terms" element={<Terms />} />
         <Route path="privacy" element={<Privacy />} />
@@ -46,10 +46,11 @@ export default function App() {
         <Route index element={<Admin />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="videos" element={<AdminVideos />} />
-        <Route path="narrations" element={<AdminNarrations />} />
-        <Route path="subtitles" element={<AdminSubtitles />} />
-        <Route path="feedback" element={<AdminFeedback />} />
         <Route path="languages" element={<AdminLanguages />} />
+        <Route path="narrations" element={<AdminMediaResults kind="narrations" />} />
+        <Route path="subtitles" element={<AdminMediaResults kind="subtitles" />} />
+        <Route path="feedback" element={<AdminFeedback />} />
+        <Route path="orders" element={<AdminOrders />} />
         <Route path="qr" element={<AdminQr />} />
       </Route>
     </Routes>

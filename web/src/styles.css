@@ -373,3 +373,32 @@ footer{border-top:1px solid var(--line);background:var(--panel);padding:56px 0 3
 .qr-info{flex:1;min-width:240px}
 .qr-info h2{font-size:1.15rem;margin-bottom:6px}
 .qr-url{display:inline-block;max-width:100%;overflow-wrap:anywhere;padding:6px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--line);font-size:.88rem}
+
+/* Ô mật khẩu: duy nhất một nút hiện/ẩn, vẫn giữ giá trị khi chuyển focus. */
+.password-control { position: relative; display: flex; align-items: center; }
+.password-control input { width: 100%; padding-right: 82px; }
+.password-toggle { position: absolute; right: 9px; border: 0; background: transparent;
+  color: #215cb0; font-weight: 700; cursor: pointer; padding: 8px; min-width: 54px; }
+.password-toggle:focus-visible { outline: 2px solid #347bd3; border-radius: 6px; }
+.adm-table-wrap { overflow-x: auto; margin-top: 16px; }
+.adm-table { width: 100%; border-collapse: collapse; }
+.adm-table th,.adm-table td { padding: 12px 13px; border-bottom: 1px solid #d8e1ee; text-align: left; vertical-align: top; }
+.adm-table th { font-weight: 700; white-space: nowrap; }
+.adm-table td { overflow-wrap: anywhere; }
+.adm-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.adm-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-block: 16px; }
+.adm-form label { display: grid; gap: 5px; flex: 1 1 175px; }
+.adm-form input,.adm-form select,.adm-form textarea { width: 100%; max-width: 100%; padding: 10px; border: 1px solid #a9bbce; border-radius: 8px; }
+.adm-feedback-text { max-width: 400px; white-space: pre-wrap; }
+.account-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(290px,1fr)); gap: 20px; padding-bottom: 80px; }
+.account-grid .panel { padding: 20px; }
+.account-grid form { display: grid; gap: 12px; }
+.account-grid input,.account-grid select,.account-grid textarea { width: 100%; padding: 10px; border: 1px solid #aab8c9; border-radius: 8px; }
+.account-grid label { display: grid; gap: 5px; }
+.account-grid .list { list-style: none; padding: 0; }
+.account-grid .list li { padding: 11px 0; border-bottom: 1px solid #e4e8ef; }
+.status-good { color: #12703a; } .status-error { color: #9e2828; }
+/* Trình duyệt Edge có nút hiện mật khẩu mặc định: ẩn để không bị hai nút. */
+.password-control input::-ms-reveal,
+.password-control input::-ms-clear { display: none; }
+.adm-side { overflow-y: auto; }

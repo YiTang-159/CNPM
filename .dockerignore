@@ -1,11 +1,6 @@
 .git
 **/node_modules
-**/dist
-**/.env
-.env
-**/uploads
+web
 mobile
 .github
 *.docx
-artifacts
-db/data

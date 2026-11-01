@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import Field from '../components/Field.jsx';
 import Checkout from '../components/Checkout.jsx';
@@ -11,6 +12,7 @@ const PLANS = [1, 2, 3];
 
 export default function Pricing() {
   const { t, L } = useI18n();
+  const { user } = useAuth();
   usePageTitle('pr_title');
   // Quay lại từ trang đăng nhập/đăng ký: khôi phục số video đã chọn và mở lại khung thanh toán.
   const { state } = useLocation();
@@ -157,9 +159,12 @@ export default function Pricing() {
                 <ul>
                   {[1, 2, 3].map((k) => <li key={k}>{t('pl' + n + '_' + k)}</li>)}
                 </ul>
-                <Link className={'btn' + (pick ? ' btn-primary' : '')} to="/register">
+                {user ? <button className={'btn' + (pick ? ' btn-primary' : '')} type="button" onClick={() => {
+                  applyPack(SAMPLE_PACKS[p]);
+                  document.getElementById('pc-up')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}>Tính số video của gói</button> : <Link className={'btn' + (pick ? ' btn-primary' : '')} to="/register">
                   {p === 0 ? t('pl_c1') : t('pl_c')}
-                </Link>
+                </Link>}
               </section>
             );
           })}

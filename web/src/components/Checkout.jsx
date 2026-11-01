@@ -14,7 +14,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   const [open, setOpen] = useState(autoOpen);
   const [method, setMethod] = useState('card');
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState('');
+  const [failed, setFailed] = useState(false);
   const [done, setDone] = useState(null);
   const [recent, setRecent] = useState([]);
   const [pending, setPending] = useState(null); // đơn đã tạo, đang chờ khách quét mã QR
@@ -30,7 +30,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
-    setFailed('');
+    setFailed(false);
     try {
       if (method === 'qr') {
         // Đổi phương thức rồi quay lại thì dùng lại đơn cũ nếu số video và loại tiền không đổi, tránh tạo đơn trùng.
@@ -45,7 +45,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
       setDone(res.order);
       refresh();
     } catch (err) {
-      setFailed(err.code === 'payment_unavailable' ? 'Cổng thanh toán chưa được cấu hình. Đơn đã được lưu ở trạng thái chờ; chưa ghi nhận thu tiền.' : t('co_fail'));
+      setFailed(true);
     } finally {
       setBusy(false);
     }
@@ -54,7 +54,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   /** Khách đã quét mã và chuyển tiền: ghi nhận thanh toán bằng QR (giả lập, chưa nối ngân hàng thật). */
   async function confirmQr() {
     setBusy(true);
-    setFailed('');
+    setFailed(false);
     try {
       const res = await orders.pay(pending.id, 'qr');
       setDone(res.order);
@@ -62,7 +62,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
       setStep('form');
       refresh();
     } catch (err) {
-      setFailed(err.code === 'payment_unavailable' ? 'Cổng thanh toán chưa được cấu hình. Đơn đã được lưu ở trạng thái chờ; chưa ghi nhận thu tiền.' : t('co_fail'));
+      setFailed(true);
     } finally {
       setBusy(false);
     }
@@ -71,7 +71,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   function close() {
     setOpen(false);
     setDone(null);
-    setFailed('');
+    setFailed(false);
     setPending(null);
     setStep('form');
   }
@@ -116,10 +116,10 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
             <dt>{t('co_qr_memo')}</dt><dd>DUBCHEF{pending.id}</dd>
           </dl>
           <p className="fine" style={{ marginTop: 12 }}>{t('co_qr_demo')}</p>
-          {failed ? <p className="err" role="alert">{failed}</p> : null}
+          {failed ? <p className="err" role="alert">{t('co_fail')}</p> : null}
           <p style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-primary" onClick={confirmQr} disabled={busy}>{busy ? t('co_busy') : t('co_qr_done')}</button>
-            <button type="button" className="btn" onClick={() => { setStep('form'); setFailed(''); }} disabled={busy}>{t('co_qr_back')}</button>
+            <button type="button" className="btn" onClick={() => { setStep('form'); setFailed(false); }} disabled={busy}>{t('co_qr_back')}</button>
             <button type="button" className="btn" onClick={close} disabled={busy}>{t('co_close')}</button>
           </p>
         </div>
@@ -140,9 +140,9 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
               </label>
             ))}
           </fieldset>
-          <p className="fine" style={{ marginTop: 12 }}>Thanh toán trực tuyến cần cổng thanh toán được cấu hình. Chế độ thử nghiệm không thu tiền thật.</p>
+          <p className="fine" style={{ marginTop: 12 }}>{t('co_demo')}</p>
           {!HAS_PAYMENT_API ? <p className="fine" style={{ marginTop: 6 }}>{t('co_local')}</p> : null}
-          {failed ? <p className="err" role="alert">{failed}</p> : null}
+          {failed ? <p className="err" role="alert">{t('co_fail')}</p> : null}
           <p style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? t('co_busy') : t(method === 'qr' ? 'co_qr_make' : 'co_pay')}</button>
             <button type="button" className="btn" onClick={close} disabled={busy}>{t('co_close')}</button>

@@ -1,44 +1,54 @@
 // Các đường dẫn API. `repo` là lớp truy cập CSDL (db.js), tách ra để dễ thay khi kiểm thử.
 import express from 'express';
+import { mkdir, rename, unlink, stat } from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
+import { join } from 'node:path';
+import { pipeline } from 'node:stream/promises';
+import { Transform } from 'node:stream';
+import { randomUUID } from 'node:crypto';
 import cors from 'cors';
 import { METHODS, newTransactionRef, priceOrder, validateOrder } from './orders.js';
 import { hashPassword, makeToken, readToken, verifyPassword } from './auth.js';
 import { buildStats } from './stats.js';
-import { installServiceRoutes } from './serviceRoutes.js';
 
+const MAX_VIDEO = 150 * 1024 * 1024;
+const UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
+const VALID_LANG = /^[a-z]{2,8}$/;
+const STATUS = ['uploaded','processing','completed','failed','hidden'];
+const FEEDBACK_STATES = ['new','reviewing','resolved'];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-const publicUser = (u, secret) => ({ name: u.name, email: u.email, role: u.role, token: makeToken(u, secret) });
+const publicUser = (u, secret) => ({ id: u.id, name: u.name, email: u.email, role: u.role, token: makeToken(u, secret) });
 
-export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 7, paymentDemo = process.env.PAYMENT_DEMO === 'true', uploadDir, uploadQuotaBytes, totalUploadQuotaBytes, maxUploadBytes, maxConcurrentUploads } = {}) {
+export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 7 } = {}) {
   const app = express();
   app.use(cors({ origin: corsOrigin === '*' ? true : corsOrigin.split(',').map((s) => s.trim()) }));
-  app.disable('x-powered-by');
   app.use(express.json({ limit: '1mb' }));
 
-  // Quyền luôn đọc lại từ SQL: token của tài khoản bị khóa/xóa không còn sử dụng được.
-  const authenticated = wrap(async (req, res, next) => {
-    const m = /^Bearer (.+)$/.exec(req.get('authorization') || '');
-    const who = m && readToken(m[1], secret);
+  // Xác thực lại với SQL ở mỗi request: khóa/xóa tài khoản sẽ vô hiệu hóa token cũ.
+  const auth = wrap(async (req, res, next) => {
+    const token = /^Bearer (.+)$/i.exec(req.get('authorization') || '');
+    const who = token && readToken(token[1], secret);
     if (!who) return res.status(401).json({ code: 'auth' });
-    const user = await repo.findUser(who.email);
-    if (!user || (user.id != null && user.id !== who.id)) return res.status(401).json({ code: 'auth' });
-    if (user.status !== 'active') return res.status(403).json({ code: 'locked' });
-    req.user = user;
+    const current = await repo.findUser(who.email);
+    if (!current || current.status !== 'active' || current.role !== who.role)
+      return res.status(401).json({ code: 'auth' });
+    req.currentUser = current;
     next();
   });
-  const adminOnly = [authenticated, (req, res, next) => {
-    if (req.user.role !== 'admin') return res.status(403).json({ code: 'forbidden' });
-    next();
-  }];
-
-  installServiceRoutes(app, repo, { authenticated, adminOnly, uploadDir, uploadQuotaBytes, totalUploadQuotaBytes, maxUploadBytes, maxConcurrentUploads });
-
-  app.get('/api/auth/me', authenticated, (req, res) => {
-    const { name, email, role, status, at, lastLogin } = req.user;
-    res.json({ user: { name, email, role, status, at, lastLogin } });
-  });
+  const adminOnly = [auth, (req, res, next) => req.currentUser.role === 'admin'
+    ? next() : res.status(403).json({ code: 'forbidden' })];
+  const videoFor = async (req, res, admin = false) => {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) { res.status(400).json({ code: 'invalid' }); return null; }
+    const video = await repo.getVideo(id);
+    if (!video) { res.status(404).json({ code: 'not_found' }); return null; }
+    if (!admin && req.currentUser.role !== 'admin' && video.userEmail !== req.currentUser.email) {
+      res.status(403).json({ code: 'forbidden' }); return null;
+    }
+    return video;
+  };
 
   app.get('/api/health', wrap(async (req, res) => {
     try {
@@ -50,57 +60,38 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }));
 
   // Tạo đơn: giá do máy chủ tính, trạng thái "pending"
-  app.post('/api/orders', authenticated, wrap(async (req, res) => {
-    const v = validateOrder({ ...req.body, name: req.user.name, email: req.user.email });
+  app.post('/api/orders', auth, wrap(async (req, res) => {
+    const v = validateOrder(req.body);
     if (v.error) return res.status(400).json({ code: v.error });
-    const order = await repo.createOrder({ ...v.value, ...priceOrder(v.value) });
+    if (v.value.email !== req.currentUser.email) return res.status(403).json({ code: 'forbidden' });
+    const order = await repo.createOrder({ ...v.value, name: req.currentUser.name, ...priceOrder(v.value) });
     res.status(201).json({ order });
   }));
 
   // Thanh toán giả lập: không nhận số thẻ, chỉ ghi phương thức và mã giao dịch
-  app.post('/api/orders/:id/pay', authenticated, wrap(async (req, res) => {
+  app.post('/api/orders/:id/pay', auth, wrap(async (req, res) => {
     const id = Number(req.params.id);
     const method = req.body && req.body.method;
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ code: 'invalid' });
     if (!METHODS.includes(method)) return res.status(400).json({ code: 'method' });
-    const order = await repo.getOrder(id);
-    if (!order || order.email !== req.user.email || (req.user.id != null && order.ownerId !== req.user.id)) return res.status(404).json({ code: 'not_found' });
-    if (!paymentDemo) return res.status(503).json({ code: 'payment_unavailable' });
-    const result = await repo.payOrder(id, { method, ref: newTransactionRef(method), email: req.user.email });
+    if (await repo.orderEmail(id) !== req.currentUser.email) return res.status(404).json({ code: 'not_found' });
+    const result = await repo.payOrder(id, { method, ref: newTransactionRef(method) });
     if (!result) return res.status(409).json({ code: 'not_payable' });
     res.json(result);
   }));
 
-  // Không chấp nhận email do client gửi để đọc dữ liệu người khác.
-  app.get('/api/orders', authenticated, wrap(async (req, res) => {
-    const email = req.user.email;
-    res.json({ orders: await repo.listOrders(email) });
+  // Đơn hàng chỉ được xem bởi chính tài khoản đã tạo.
+  app.get('/api/orders', auth, wrap(async (req, res) => {
+    res.json({ orders: await repo.listOrders(req.currentUser.email) });
   }));
 
-  // Giới hạn thử mật khẩu trong bộ nhớ của API; không tin X-Forwarded-For do client tự gửi.
-  const attempts = new Map();
-  const authLimit = (req, res, next) => {
-    const now = Date.now();
-    if (attempts.size > 10000) for (const [key, item] of attempts) if (item.until <= now) attempts.delete(key);
-    const key = req.ip;
-    const old = attempts.get(key);
-    const item = old && old.until > now ? old : { count: 0, until: now + 15 * 60000 };
-    item.count++;
-    attempts.set(key, item);
-    if (item.count > 60) {
-      res.set('Retry-After', String(Math.ceil((item.until - now) / 1000)));
-      return res.status(429).json({ code: 'rate_limited' });
-    }
-    next();
-  };
-
   // ---- Tài khoản ----
-  app.post('/api/auth/register', authLimit, wrap(async (req, res) => {
+  app.post('/api/auth/register', wrap(async (req, res) => {
     const b = req.body || {};
     const name = String(b.name || '').trim();
     const email = String(b.email || '').trim().toLowerCase();
     const password = String(b.password || '');
-    if (typeof b.name !== 'string' || typeof b.email !== 'string' || typeof b.password !== 'string' || !name || name.length > 100 || !EMAIL.test(email) || email.length > 254 || password.length < 8 || password.length > 200) {
+    if (!name || name.length > 100 || !EMAIL.test(email) || email.length > 254 || password.length < 8 || password.length > 200) {
       return res.status(400).json({ code: 'invalid' });
     }
     const user = await repo.createUser({ name, email, passwordHash: hashPassword(password) });
@@ -108,24 +99,143 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.status(201).json({ user: publicUser(user, secret) });
   }));
 
-  app.post('/api/auth/login', authLimit, wrap(async (req, res) => {
+  app.post('/api/auth/login', wrap(async (req, res) => {
     const b = req.body || {};
-    if (typeof b.email !== 'string' || b.email.length > 254 || typeof b.password !== 'string' || b.password.length > 200) return res.status(400).json({ code: 'invalid' });
-    const user = await repo.findUser(b.email.trim().toLowerCase());
+    const user = await repo.findUser(String(b.email || '').trim().toLowerCase());
     if (!user || !verifyPassword(String(b.password || ''), user.hash)) return res.status(401).json({ code: 'invalid' });
-    if (user.status !== 'active') return res.status(403).json({ code: 'locked' });
-    if (/^sha256\$/i.test(user.hash) && repo.updatePasswordHash) await repo.updatePasswordHash(user.email, hashPassword(b.password), user.hash);
-    await repo.recordLogin(user.email);
+    if (user.status === 'locked') return res.status(403).json({ code: 'locked' });
     res.json({ user: publicUser(user, secret) });
   }));
 
-  app.post('/api/contact', (req, res, next) => req.get('authorization') ? authenticated(req, res, next) : next(), wrap(async (req, res) => {
+  // ---- Hồ sơ người dùng ----
+  app.get('/api/me', auth, (req, res) => res.json({ user: publicUser(req.currentUser, secret) }));
+  app.patch('/api/me', auth, wrap(async (req, res) => {
+    const name = String(req.body?.name || '').trim();
+    if (!name || name.length > 100) return res.status(400).json({ code: 'invalid' });
+    const updated = await repo.updateProfile(req.currentUser.email, name);
+    if (!updated) return res.status(404).json({ code: 'not_found' });
+    res.json({ user: publicUser(updated, secret) });
+  }));
+  app.patch('/api/me/password', auth, wrap(async (req, res) => {
+    const oldPass = String(req.body?.currentPassword || '');
+    const password = String(req.body?.newPassword || '');
+    if (password.length < 8 || password.length > 200 || !verifyPassword(oldPass, req.currentUser.hash))
+      return res.status(400).json({ code: 'invalid' });
+    await repo.updatePassword(req.currentUser.email, hashPassword(password));
+    res.json({ ok: true });
+  }));
+
+  // ---- Video do khách tải lên; lưu file ở volume, metadata và kết quả ở SQL ----
+  app.get('/api/videos', auth, wrap(async (req, res) => {
+    res.json({ videos: await repo.userVideos(req.currentUser.email) });
+  }));
+  app.post('/api/videos', auth, wrap(async (req, res) => {
     const b = req.body || {};
-    const name = req.user ? req.user.name : String(b.name || '').trim();
-    const email = req.user ? req.user.email : String(b.email || '').trim().toLowerCase();
+    const title = String(b.title || '').trim();
+    const fileName = String(b.fileName || '').trim();
+    const size = Number(b.size);
+    const mimeType = String(b.mimeType || '').trim().toLowerCase();
+    const originalLanguage = String(b.originalLanguage || '').trim();
+    if (!title || title.length > 200 || !fileName || fileName.length > 255 ||
+        !Number.isSafeInteger(size) || size <= 0 || size > MAX_VIDEO ||
+        !/^video\/[a-z0-9.+-]{1,60}$/.test(mimeType) || !VALID_LANG.test(originalLanguage))
+      return res.status(400).json({ code: 'invalid' });
+    const record = await repo.createVideo(req.currentUser.email, { title, fileName, size, mimeType, originalLanguage });
+    if (!record) return res.status(404).json({ code: 'not_found' });
+    res.status(201).json({ video: record });
+  }));
+  app.put('/api/videos/:id/file', auth, wrap(async (req, res) => {
+    const video = await videoFor(req, res);
+    if (!video) return;
+    if (video.videoUrl) return res.status(409).json({ code: 'exists' });
+    if (req.get('content-type')?.split(';')[0] !== 'application/octet-stream')
+      return res.status(415).json({ code: 'invalid' });
+    if (Number(req.get('content-length')) > MAX_VIDEO) return res.status(413).json({ code: 'too_large' });
+    await mkdir(UPLOAD_DIR, { recursive: true });
+    const key = `${video.id}-${randomUUID()}.bin`;
+    const tempPath = join(UPLOAD_DIR, key + '.part');
+    const finalPath = join(UPLOAD_DIR, key);
+    let length = 0;
+    const counter = new Transform({ transform(chunk, enc, cb) {
+      length += chunk.length;
+      cb(length > MAX_VIDEO ? new Error('too_large') : null, chunk);
+    }});
+    try {
+      await pipeline(req, counter, createWriteStream(tempPath, { flags: 'wx' }));
+      if (length !== Number(video.size)) throw new Error('size_mismatch');
+      await rename(tempPath, finalPath);
+      await repo.setVideoFile(video.id, finalPath);
+      res.status(201).json({ ok: true, id: video.id });
+    } catch (err) {
+      await unlink(tempPath).catch(() => {});
+      await unlink(finalPath).catch(() => {});
+      if (err.message === 'too_large' || err.message === 'size_mismatch')
+        return res.status(err.message === 'too_large' ? 413 : 400).json({ code: err.message });
+      throw err;
+    }
+  }));
+  app.get('/api/videos/:id/file', auth, wrap(async (req, res) => {
+    const video = await videoFor(req, res);
+    if (!video) return;
+    if (!video.videoUrl) return res.status(404).json({ code: 'not_found' });
+    // Chỉ mở đường dẫn đã sinh bên trong volume.
+    if (!video.videoUrl.startsWith(UPLOAD_DIR + '/')) return res.status(403).json({ code: 'forbidden' });
+    const size = await stat(video.videoUrl).catch(() => null);
+    if (!size) return res.status(404).json({ code: 'not_found' });
+    res.type(video.mimeType).sendFile(video.videoUrl);
+  }));
+  app.post('/api/videos/:id/results', auth, wrap(async (req, res) => {
+    const video = await videoFor(req, res);
+    if (!video) return;
+    const segments = req.body?.segments;
+    if (!Array.isArray(segments) || !segments.length || segments.length > 2000 ||
+        segments.some(s => !s || typeof s !== 'object' || !Object.keys(s).some(k => VALID_LANG.test(k)) ||
+          ['vi','en','zh'].some(k => s[k] != null && (typeof s[k] !== 'string' || s[k].length > 4000)) ||
+          (s.start != null && (!Number.isFinite(s.start) || s.start < 0)) ||
+          (s.end != null && (!Number.isFinite(s.end) || s.end < 0))))
+      return res.status(400).json({ code: 'invalid' });
+    const langs = [...new Set(segments.flatMap(s => Object.keys(s).filter(k => ['vi','en','zh'].includes(k) && typeof s[k] === 'string')))];
+    if (!langs.length) return res.status(400).json({ code: 'invalid' });
+    const result = { narrations: {}, subtitles: {} };
+    for (const lang of langs) {
+      const content = JSON.stringify(segments.filter(s => s[lang] != null).map(s => ({ text: s[lang], start: s.start ?? null, end: s.end ?? null })));
+      result.narrations[lang] = content;
+      result.subtitles[lang] = content;
+    }
+    await repo.saveVideoResult(video.id, 'completed', result);
+    res.json({ ok: true, languages: langs });
+  }));
+  app.get('/api/videos/:id/results', auth, wrap(async (req, res) => {
+    const video = await videoFor(req, res);
+    if (!video) return;
+    res.json(await repo.videoResults(video.id));
+  }));
+  app.get('/api/languages', wrap(async (req, res) => res.json({ languages: await repo.languages() })));
+
+  // ---- Phản hồi có tài khoản ----
+  app.get('/api/feedback', auth, wrap(async (req, res) => {
+    res.json({ feedback: await repo.userFeedback(req.currentUser.email) });
+  }));
+  app.post('/api/feedback', auth, wrap(async (req, res) => {
+    const message = String(req.body?.message || '').trim();
+    const videoId = req.body?.videoId == null || req.body?.videoId === '' ? null : Number(req.body.videoId);
+    if (!message || message.length > 2000 || (videoId !== null && (!Number.isSafeInteger(videoId) || videoId <= 0)))
+      return res.status(400).json({ code: 'invalid' });
+    if (videoId !== null) {
+      const video = await repo.getVideo(videoId);
+      if (!video || video.userEmail !== req.currentUser.email) return res.status(404).json({ code: 'not_found' });
+    }
+    const feedback = await repo.addFeedback(req.currentUser.email, message, videoId);
+    res.status(201).json({ feedback });
+  }));
+
+  app.post('/api/contact', wrap(async (req, res) => {
+    const b = req.body || {};
+    const name = String(b.name || '').trim();
+    const email = String(b.email || '').trim().toLowerCase();
     const body = String(b.message || '').trim();
-    if (typeof b.message !== 'string' || (!req.user && (typeof b.name !== 'string' || typeof b.email !== 'string')) || !name || name.length > 100 || !EMAIL.test(email) || email.length > 254 || !body || body.length > 2000) return res.status(400).json({ code: 'invalid' });
-    await repo.addMessage({ name, email, body, ownerEmail: req.user ? req.user.email : null });
+    if (!name || name.length > 100 || !EMAIL.test(email) || !body || body.length > 2000) return res.status(400).json({ code: 'invalid' });
+    await repo.addMessage({ name, email, body });
     res.status(201).json({ ok: true });
   }));
 
@@ -189,6 +299,77 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     });
   }));
 
+  app.get('/api/admin/languages', adminOnly, wrap(async (req, res) => res.json({ languages: await repo.languages() })));
+  app.post('/api/admin/languages', adminOnly, wrap(async (req, res) => {
+    const code = String(req.body?.code || '').toLowerCase().trim();
+    const name = String(req.body?.name || '').trim();
+    const englishName = String(req.body?.englishName || '').trim();
+    if (!VALID_LANG.test(code) || !name || name.length > 80 || !englishName || englishName.length > 80)
+      return res.status(400).json({ code: 'invalid' });
+    if (!await repo.createLanguage({ code, name, englishName })) return res.status(409).json({ code: 'exists' });
+    res.status(201).json({ ok: true });
+  }));
+  app.patch('/api/admin/languages/:code', adminOnly, wrap(async (req, res) => {
+    const code = String(req.params.code || '');
+    const name = String(req.body?.name || '').trim();
+    const englishName = String(req.body?.englishName || '').trim();
+    const status = req.body?.status;
+    if (!VALID_LANG.test(code) || !name || name.length > 80 || !englishName || englishName.length > 80 || !['active','inactive'].includes(status))
+      return res.status(400).json({ code: 'invalid' });
+    if (!await repo.updateLanguage(code, { name, englishName, status })) return res.status(404).json({ code: 'not_found' });
+    res.json({ ok: true });
+  }));
+  app.patch('/api/admin/videos/:id/results/:kind/:language', adminOnly, wrap(async (req, res) => {
+    const video = await videoFor(req, res, true);
+    if (!video) return;
+    const { kind, language } = req.params;
+    if (!['narrations','subtitles'].includes(kind) || !VALID_LANG.test(language))
+      return res.status(400).json({ code: 'invalid' });
+    const lines = req.body?.lines;
+    if (!Array.isArray(lines) || !lines.length || lines.length > 2000 ||
+        lines.some(x => !x || typeof x.text !== 'string' || x.text.length > 4000 ||
+          (x.start != null && (!Number.isFinite(x.start) || x.start < 0)) ||
+          (x.end != null && (!Number.isFinite(x.end) || x.end < 0))))
+      return res.status(400).json({ code: 'invalid' });
+    await repo.saveVideoResult(video.id, video.status, { [kind]: { [language]: JSON.stringify(lines) } });
+    res.json({ ok: true });
+  }));
+  app.get('/api/admin/videos/:id/translations', adminOnly, wrap(async (req, res) => {
+    const video = await videoFor(req, res, true);
+    if (!video) return;
+    res.json(await repo.videoResults(video.id));
+  }));
+  app.patch('/api/admin/videos/:id', adminOnly, wrap(async (req, res) => {
+    const video = await videoFor(req, res, true);
+    if (!video) return;
+    const status = String(req.body?.status || '');
+    if (!STATUS.includes(status)) return res.status(400).json({ code: 'invalid' });
+    await repo.setVideoStatus(video.id, status);
+    res.json({ ok: true });
+  }));
+  app.delete('/api/admin/videos/:id', adminOnly, wrap(async (req, res) => {
+    const video = await videoFor(req, res, true);
+    if (!video) return;
+    await repo.deleteVideo(video.id);
+    if (video.videoUrl && video.videoUrl.startsWith(UPLOAD_DIR + '/')) await unlink(video.videoUrl).catch(() => {});
+    res.json({ ok: true });
+  }));
+  app.get('/api/admin/feedback', adminOnly, wrap(async (req, res) => {
+    res.json({ feedback: await repo.allFeedback() });
+  }));
+  app.patch('/api/admin/feedback/:id', adminOnly, wrap(async (req, res) => {
+    const id = req.params.id;
+    const status = String(req.body?.status || '');
+    const reply = String(req.body?.reply || '').trim();
+    if (!/^[fc]-[1-9]\d*$/.test(id) || !FEEDBACK_STATES.includes(status) || reply.length > 2000)
+      return res.status(400).json({ code: 'invalid' });
+    if (!await repo.updateFeedback(id, status, reply || null)) return res.status(404).json({ code: 'not_found' });
+    res.json({ ok: true });
+  }));
+  app.get('/api/admin/orders', adminOnly, wrap(async (req, res) => {
+    res.json({ orders: await repo.adminOrders() });
+  }));
+
   app.patch('/api/admin/users', adminOnly, wrap(async (req, res) => {
     const email = String((req.body && req.body.email) || '').trim().toLowerCase();
     const status = req.body && req.body.status;
@@ -199,19 +380,18 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
 
   app.delete('/api/admin/users', adminOnly, wrap(async (req, res) => {
     const email = String(req.query.email || '').trim().toLowerCase();
-    if (!(await repo.deleteUser(email))) return res.status(404).json({ code: 'not_found' });
-    res.json({ ok: true });
+    try {
+      if (!(await repo.deleteUser(email))) return res.status(404).json({ code: 'not_found' });
+      res.json({ ok: true });
+    } catch (err) {
+      if (err.number === 547) return res.status(409).json({ code: 'has_data' });
+      throw err;
+    }
   }));
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
-    if (res.headersSent) return next(err);
-    if (err.publicCode && err.status >= 400 && err.status < 500) return res.status(err.status).json({ code: err.publicCode });
-    if (err.type === 'entity.too.large') return res.status(413).json({ code: 'too_large' });
-    if (err.type === 'entity.parse.failed') return res.status(400).json({ code: 'invalid_json' });
-    if (err.number === 547) return res.status(409).json({ code: 'in_use' });
-    // Không ghi nội dung query / dữ liệu người dùng / mật khẩu ra log.
-    console.error('API error:', err.code || err.name || 'server');
+    console.error(err);
     res.status(500).json({ code: 'server' });
   });
   return app;

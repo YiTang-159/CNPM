@@ -1,3 +1,4 @@
+-- CẢNH BÁO: PostgreSQL / Supabase; không chạy trong SQL Server / SSMS!
 -- Tài khoản người dùng + tin nhắn liên hệ + quản lý người dùng của Admin, lưu ở Supabase.
 -- Dán toàn bộ file vào Supabase > SQL Editor > Run (chạy lại nhiều lần vẫn an toàn).
 -- TRƯỚC KHI CHẠY: tìm dòng "ĐỔI MẬT KHẨU ADMIN" bên dưới và thay 'DoiMatKhauNay123' bằng mật khẩu của bạn.

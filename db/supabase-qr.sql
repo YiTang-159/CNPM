@@ -1,3 +1,4 @@
+-- CẢNH BÁO: PostgreSQL / Supabase; không chạy trong SQL Server / SSMS!
 -- Đếm lượt quét mã QR bằng Supabase. Dán toàn bộ file này vào Supabase > SQL Editor > Run (chạy lại nhiều lần vẫn an toàn).
 create table if not exists public.qr_scans (
   id         bigint generated always as identity primary key,

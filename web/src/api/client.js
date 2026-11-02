@@ -6,6 +6,8 @@
 import { SUPA, rpc } from './supabase.js';
 
 const BASE = (import.meta.env && import.meta.env.VITE_API_URL) || '';
+// Chỉ cho phép dữ liệu giả cục bộ khi chủ động bật trong môi trường DEV.
+const LOCAL_DEV = Boolean(import.meta.env?.DEV && import.meta.env?.VITE_ALLOW_LOCAL_DEMO === 'true');
 export const HAS_API = Boolean(BASE);
 /** true = tài khoản và tin nhắn liên hệ lưu dùng chung (Backend hoặc Supabase), không chỉ trong trình duyệt này. */
 export const SHARED = Boolean(BASE || SUPA);
@@ -88,12 +90,13 @@ const norm = (s) => s.trim().toLowerCase();
 export const ADMIN_EMAIL = (import.meta.env && import.meta.env.VITE_ADMIN_EMAIL) || 'admin@dubchef.vn';
 /** Mật khẩu của tài khoản quản trị có sẵn (chỉ dùng khi chưa có Backend, để demo). */
 export const ADMIN_PASSWORD = (import.meta.env && import.meta.env.VITE_ADMIN_PASSWORD) || 'admin12345';
-export const isAdmin = (user) => Boolean(user) && (user.role === 'admin' || (!BASE && norm(user.email || '') === norm(ADMIN_EMAIL)));
+export const isAdmin = (user) => Boolean(user) && (user.role === 'admin' || (LOCAL_DEV && !BASE && norm(user.email || '') === norm(ADMIN_EMAIL)));
 
 export const api = {
   async register({ name, email, password }) {
     if (BASE) return remote('/api/auth/register', { name, email, password });
     if (SUPA) return supa('app_register', { p_name: name, p_email: email, p_password: password });
+    if (!LOCAL_DEV) throw new ApiError('net');
     const users = read(K_USERS, []);
     if (norm(email) === norm(ADMIN_EMAIL) || users.some((u) => u.email === norm(email))) throw new ApiError('exists');
     const user = { name: name.trim(), email: norm(email) };
@@ -105,6 +108,7 @@ export const api = {
   async login({ email, password }) {
     if (BASE) return remote('/api/auth/login', { email, password });
     if (SUPA) return supa('app_login', { p_email: email, p_password: password });
+    if (!LOCAL_DEV) throw new ApiError('net');
     // Tài khoản quản trị có sẵn, không cần đăng ký.
     if (norm(email) === norm(ADMIN_EMAIL) && password === ADMIN_PASSWORD) {
       return { user: { name: 'Admin', email: norm(ADMIN_EMAIL), role: 'admin' } };
@@ -121,6 +125,7 @@ export const api = {
       await supa('app_contact', { p_name: name, p_email: email, p_message: message });
       return { ok: true };
     }
+    if (!LOCAL_DEV) throw new ApiError('net');
     const list = read(K_MSGS, []);
     list.push({ name, email, message, at: new Date().toISOString() });
     write(K_MSGS, list);

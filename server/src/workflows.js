@@ -9,7 +9,8 @@ const videoColumns = `v.MaVideo AS id, v.MaNguoiDung AS userId, v.TieuDe AS titl
   u.HoTen AS userName, u.Email AS userEmail`;
 const feedbackColumns = `p.MaPhanHoi AS id, p.MaNguoiDung AS userId, p.MaVideo AS videoId,
   u.HoTen AS name, u.Email AS email, p.NoiDung AS message,
-  p.TrangThai AS status, p.TraLoi AS reply, p.NgayTao AS createdAt`;
+  p.TrangThai AS status, p.TraLoi AS reply, p.UuTien AS priority,
+  p.NguoiXuLy AS assignedTo, p.NgayCapNhat AS updatedAt, p.NgayTao AS createdAt`;
 
 export function attachWorkflows(pool, repo) {
   Object.assign(repo, {
@@ -69,7 +70,7 @@ export function attachWorkflows(pool, repo) {
         .query('DELETE FROM dbo.Video OUTPUT deleted.DuongDan AS filePath WHERE MaVideo=@id');
       return r.recordset[0] || null;
     },
-    async saveVideoResult(id, status, results) {
+    async saveVideoResult(id, status, results, actor = 'system') {
       const tx = new sql.Transaction(pool);
       await tx.begin();
       try {
@@ -77,13 +78,28 @@ export function attachWorkflows(pool, repo) {
           const table = kind === 'narrations' ? 'dbo.ThuyetMinh' : 'dbo.PhuDe';
           for (const [lang, text] of Object.entries(results[kind] || {})) {
             // MERGE tránh tạo dòng trùng khi người dùng xử lý video lại.
-            await new sql.Request(tx).input('id', sql.Int, id).input('lang', sql.VarChar(8), lang)
+            const changed = await new sql.Request(tx).input('id', sql.Int, id).input('lang', sql.VarChar(8), lang)
               .input('content', sql.NVarChar(sql.MAX), text)
+              .input('actor', sql.NVarChar(254), actor)
               .query(`MERGE ${table} WITH (HOLDLOCK) AS t
                 USING (SELECT @id AS MaVideo, @lang AS NgonNgu) AS s
                 ON t.MaVideo=s.MaVideo AND t.NgonNgu=s.NgonNgu
-                WHEN MATCHED THEN UPDATE SET NoiDung=@content,NgayTao=SYSUTCDATETIME()
-                WHEN NOT MATCHED THEN INSERT (MaVideo,NgonNgu,NoiDung) VALUES (@id,@lang,@content);`);
+                WHEN MATCHED AND t.TrangThaiDuyet <> 'published' THEN UPDATE SET
+                  NoiDung=@content,TrangThaiDuyet='draft',PhienBan=t.PhienBan+1,
+                  NguoiSua=@actor,NgayCapNhat=SYSUTCDATETIME()
+                WHEN NOT MATCHED THEN INSERT (MaVideo,NgonNgu,NoiDung,NguoiSua)
+                  VALUES (@id,@lang,@content,@actor)
+                OUTPUT inserted.PhienBan AS version,inserted.TrangThaiDuyet AS status,
+                  inserted.NoiDung AS content;`);
+            // Xử lý lại video không được ghi đè bản đã xuất bản.
+            for (const row of changed.recordset || []) {
+              await new sql.Request(tx).input('kind', sql.VarChar(12), kind)
+                .input('id', sql.Int, id).input('lang', sql.VarChar(8), lang)
+                .input('version', sql.Int, row.version).input('status', sql.VarChar(12), row.status)
+                .input('content', sql.NVarChar(sql.MAX), row.content).input('editor', sql.NVarChar(254), actor)
+                .query(`INSERT dbo.LichSuNoiDung(Loai,MaVideo,NgonNgu,PhienBan,TrangThai,NoiDung,NguoiSua)
+                  VALUES(@kind,@id,@lang,@version,@status,@content,@editor)`);
+            }
           }
         }
         await new sql.Request(tx).input('id', sql.Int, id).input('status', sql.VarChar(20), status)
@@ -136,7 +152,7 @@ export function attachWorkflows(pool, repo) {
     async allFeedback() {
       const [f, contacts] = await Promise.all([
         pool.request().query(`SELECT ${feedbackColumns} FROM dbo.PhanHoi p INNER JOIN dbo.NguoiDung u ON p.MaNguoiDung=u.MaNguoiDung ORDER BY p.NgayTao DESC`),
-        pool.request().query('SELECT MaLienHe AS id,HoTen AS name,Email AS email,NoiDung AS message,TrangThai AS status,TraLoi AS reply,NgayTao AS createdAt FROM dbo.LienHe ORDER BY NgayTao DESC')
+        pool.request().query('SELECT MaLienHe AS id,HoTen AS name,Email AS email,NoiDung AS message,TrangThai AS status,TraLoi AS reply,UuTien AS priority,NguoiXuLy AS assignedTo,NgayCapNhat AS updatedAt,NgayTao AS createdAt FROM dbo.LienHe ORDER BY NgayTao DESC')
       ]);
       return [...f.recordset.map((x) => ({ ...x, id: 'f-' + x.id, source: 'user' })),
         ...contacts.recordset.map((x) => ({ ...x, id: 'c-' + x.id, source: 'contact' }))]

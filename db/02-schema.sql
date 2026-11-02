@@ -1,3 +1,7 @@
+-- Chạy trong SSMS: tự chọn đúng database DubchefDB. Không xóa dữ liệu.
+USE DubchefDB;
+GO
+
 -- Chạy trên DubchefDB. Chạy lại nhiều lần vẫn an toàn (chỉ tạo khi chưa có).
 -- Tên bảng và tên cột đều bằng tiếng Việt không dấu. Giá trị trạng thái ('pending', 'paid', 'admin', 'card'...) giữ nguyên
 -- vì web và API đang dùng đúng các giá trị đó.

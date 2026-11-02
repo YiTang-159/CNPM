@@ -57,5 +57,10 @@ export const manageApi = {
   updateLanguage: (code, data) => request(`/api/admin/languages/${code}`, { method: 'PATCH', body: data }),
   feedback: () => request('/api/admin/feedback'),
   updateFeedback: (id, data) => request(`/api/admin/feedback/${id}`, { method: 'PATCH', body: data }),
+  mediaIndex: kind => request(`/api/admin/media/${kind}`),
+  mediaDetail: (kind,id,language) => request(`/api/admin/media/${kind}/${id}/${language}`),
+  mediaHistory: (kind,id,language) => request(`/api/admin/media/${kind}/${id}/${language}/history`),
+  saveMedia: (kind,id,language,data) => request(`/api/admin/media/${kind}/${id}/${language}`, {method:'PUT',body:data}),
+  feedbackHistory: id => request(`/api/admin/feedback/${id}/history`),
   orders: () => request('/api/admin/orders'),
 };

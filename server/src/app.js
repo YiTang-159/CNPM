@@ -10,6 +10,7 @@ import cors from 'cors';
 import { METHODS, newTransactionRef, priceOrder, validateOrder } from './orders.js';
 import { hashPassword, makeToken, readToken, verifyPassword } from './auth.js';
 import { buildStats } from './stats.js';
+import { validMediaLines, validateFeedback, MEDIA_STATES } from './adminPolicy.js';
 
 const MAX_VIDEO = 150 * 1024 * 1024;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
@@ -104,6 +105,9 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const user = await repo.findUser(String(b.email || '').trim().toLowerCase());
     if (!user || !verifyPassword(String(b.password || ''), user.hash)) return res.status(401).json({ code: 'invalid' });
     if (user.status === 'locked') return res.status(403).json({ code: 'locked' });
+    if (typeof repo.recordLogin === 'function') {
+      await repo.recordLogin(user.id, req.ip).catch(e => console.warn('Lỗi lưu lịch sử đăng nhập:', e.message));
+    }
     res.json({ user: publicUser(user, secret) });
   }));
 
@@ -202,7 +206,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
       result.narrations[lang] = content;
       result.subtitles[lang] = content;
     }
-    await repo.saveVideoResult(video.id, 'completed', result);
+    await repo.saveVideoResult(video.id, 'completed', result, req.currentUser.email);
     res.json({ ok: true, languages: langs });
   }));
   app.get('/api/videos/:id/results', auth, wrap(async (req, res) => {
@@ -282,6 +286,11 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.json({ users: users.map(({ name, email, at, status }) => ({ name, email, at, status })) });
   }));
 
+  // Trang tổng hợp: nhiều module, một API duy nhất; luôn xác thực quyền Admin.
+  app.get('/api/admin/dashboard', adminOnly, wrap(async (req, res) => {
+    res.json(await repo.dashboardSummary());
+  }));
+
   // API thống kê tổng quan Admin từ SQL Server
   app.get('/api/admin/statistics', adminOnly, wrap(async (req, res) => {
     const statistics = await repo.adminStatistics();
@@ -299,6 +308,46 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     });
   }));
 
+  // Quản lý nội dung theo quy trình kiểm duyệt; có phiên bản và audit SQL.
+  const mediaKind = value => ['narrations', 'subtitles'].includes(value);
+  const mediaId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
+  const mediaLanguage = value => VALID_LANG.test(value || '');
+
+  app.get('/api/admin/media/:kind', adminOnly, wrap(async (req, res) => {
+    if (!mediaKind(req.params.kind)) return res.status(400).json({code:'invalid'});
+    res.json({ items: await repo.mediaIndex(req.params.kind) });
+  }));
+  app.get('/api/admin/media/:kind/:id/:language/history', adminOnly, wrap(async (req, res) => {
+    if (!mediaKind(req.params.kind) || !mediaId(req.params.id) || !mediaLanguage(req.params.language))
+      return res.status(400).json({code:'invalid'});
+    res.json({history: await repo.mediaHistory(req.params.kind, Number(req.params.id), req.params.language)});
+  }));
+  app.get('/api/admin/media/:kind/:id/:language', adminOnly, wrap(async (req, res) => {
+    if (!mediaKind(req.params.kind) || !mediaId(req.params.id) || !mediaLanguage(req.params.language))
+      return res.status(400).json({code:'invalid'});
+    const item = await repo.mediaDetail(req.params.kind, Number(req.params.id), req.params.language);
+    if (!item) return res.status(404).json({code:'not_found'});
+    res.json({ item });
+  }));
+  app.put('/api/admin/media/:kind/:id/:language', adminOnly, wrap(async (req, res) => {
+    const {kind,id,language} = req.params;
+    const {lines,status,version} = req.body || {};
+    if (!mediaKind(kind) || !mediaId(id) || !mediaLanguage(language) ||
+        !MEDIA_STATES.includes(status) ||
+        !Number.isSafeInteger(version) || version < 0 || !validMediaLines(lines))
+      return res.status(400).json({code:'invalid'});
+    const video = await repo.getVideo(Number(id));
+    if (!video) return res.status(404).json({code:'not_found'});
+    try {
+      const result = await repo.saveManagedMedia({kind,videoId:Number(id),language,
+        lines,status,version,editor:req.currentUser.email});
+      res.json({ok:true, ...result});
+    } catch (e) {
+      if (e.code === 'conflict' || e.code === 'review_required' || e.code === 'reopen_required')
+        return res.status(409).json({code:e.code});
+      throw e;
+    }
+  }));
   app.get('/api/admin/languages', adminOnly, wrap(async (req, res) => res.json({ languages: await repo.languages() })));
   app.post('/api/admin/languages', adminOnly, wrap(async (req, res) => {
     const code = String(req.body?.code || '').toLowerCase().trim();
@@ -331,8 +380,8 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
           (x.start != null && (!Number.isFinite(x.start) || x.start < 0)) ||
           (x.end != null && (!Number.isFinite(x.end) || x.end < 0))))
       return res.status(400).json({ code: 'invalid' });
-    await repo.saveVideoResult(video.id, video.status, { [kind]: { [language]: JSON.stringify(lines) } });
-    res.json({ ok: true });
+    // API cũ chuyển về cơ chế quản trị có lịch sử, không cho cập nhật âm thầm ngoài kiểm duyệt.
+    return res.status(410).json({ code: 'use_media_management' });
   }));
   app.get('/api/admin/videos/:id/translations', adminOnly, wrap(async (req, res) => {
     const video = await videoFor(req, res, true);
@@ -357,13 +406,19 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   app.get('/api/admin/feedback', adminOnly, wrap(async (req, res) => {
     res.json({ feedback: await repo.allFeedback() });
   }));
+  app.get('/api/admin/feedback/:id/history', adminOnly, wrap(async (req, res) => {
+    if (!/^[fc]-[1-9]\d*$/.test(req.params.id)) return res.status(400).json({code:'invalid'});
+    res.json({history: await repo.feedbackHistory(req.params.id)});
+  }));
   app.patch('/api/admin/feedback/:id', adminOnly, wrap(async (req, res) => {
     const id = req.params.id;
     const status = String(req.body?.status || '');
     const reply = String(req.body?.reply || '').trim();
-    if (!/^[fc]-[1-9]\d*$/.test(id) || !FEEDBACK_STATES.includes(status) || reply.length > 2000)
+    const priority = String(req.body?.priority || 'normal');
+    if (!/^[fc]-[1-9]\d*$/.test(id) || !validateFeedback({status, priority, reply}))
       return res.status(400).json({ code: 'invalid' });
-    if (!await repo.updateFeedback(id, status, reply || null)) return res.status(404).json({ code: 'not_found' });
+    if (!await repo.handleFeedback(id, {status,reply:reply||null,priority,editor:req.currentUser.email}))
+      return res.status(404).json({ code: 'not_found' });
     res.json({ ok: true });
   }));
   app.get('/api/admin/orders', adminOnly, wrap(async (req, res) => {

@@ -1,3 +1,7 @@
+-- Chạy trong SSMS: tự chọn đúng database DubchefDB. Không xóa dữ liệu.
+USE DubchefDB;
+GO
+
 -- Bổ sung quy trình User -> SQL Server -> Admin. Không xóa/đặt lại bảng hay dữ liệu hiện có.
 -- File video vật lý nằm ở Docker volume; các thông tin, phụ đề, nội dung thuyết minh ở SQL Server.
 IF OBJECT_ID(N'dbo.Video', N'U') IS NULL
@@ -56,4 +60,17 @@ IF COL_LENGTH('dbo.LienHe','TrangThai') IS NULL
 GO
 IF COL_LENGTH('dbo.LienHe','TraLoi') IS NULL
   ALTER TABLE dbo.LienHe ADD TraLoi NVARCHAR(2000) NULL;
+GO
+
+-- Lịch sử đăng nhập thành công, được Backend ghi khi User/Admin đăng nhập.
+IF OBJECT_ID(N'dbo.LichSuDangNhap', N'U') IS NULL
+CREATE TABLE dbo.LichSuDangNhap (
+ MaLichSu BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_LichSuDangNhap PRIMARY KEY,
+ MaNguoiDung INT NOT NULL CONSTRAINT FK_LSDN_NguoiDung REFERENCES dbo.NguoiDung(MaNguoiDung) ON DELETE CASCADE,
+ ThoiGian DATETIME2(0) NOT NULL CONSTRAINT DF_LSDN_ThoiGian DEFAULT SYSUTCDATETIME(),
+ DiaChiIP NVARCHAR(64) NULL
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_LSDN_UserTime' AND object_id=OBJECT_ID(N'dbo.LichSuDangNhap'))
+ CREATE INDEX IX_LSDN_UserTime ON dbo.LichSuDangNhap(MaNguoiDung, ThoiGian DESC);
 GO

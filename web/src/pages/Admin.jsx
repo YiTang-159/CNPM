@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -83,6 +84,7 @@ export default function Admin() {
           <p>{t('ad_sub')}</p>
         </div>
         <div className="adm-tools">
+          <Link className="btn btn-sm" to="/admin/dashboard">Xem báo cáo tổng hợp →</Link>
           <div className="seg" role="group" aria-label={t('ad_range')}>
             {RANGES.map((n) => (
               <button key={n} type="button" aria-pressed={span === n} onClick={() => setSpan(n)}>{t('ad_r' + n)}</button>

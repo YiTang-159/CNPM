@@ -1,3 +1,12 @@
+## Cập nhật bản Tổng hợp hệ thống + báo cáo SQL
+
+- Dashboard Admin mới: `/admin/dashboard` (dữ liệu thực từ SQL Server, chỉ Admin)
+- Truy vấn SQL chạy độc lập: `db/bao-cao/`
+- Hướng dẫn triển khai an toàn: [`HUONG_DAN_TONG_HOP_HE_THONG.md`](HUONG_DAN_TONG_HOP_HE_THONG.md)
+- Quy tắc tổ chức file SQL: [`db/README-QUAN-LY-SQL.md`](db/README-QUAN-LY-SQL.md)
+
+---
+
 # Dubchef: thuyết minh tự động đa ngôn ngữ (Việt, Anh, Trung) cho video nấu ăn
 
 [![CI](https://github.com/YiTang-159/CNPM/actions/workflows/ci.yml/badge.svg)](https://github.com/YiTang-159/CNPM/actions/workflows/ci.yml)
@@ -171,3 +180,16 @@ Mã QR dẫn tới trang `/#/guest`: khách **không cần đăng nhập**, vào
 - **Địa chỉ trong mã:** mặc định là địa chỉ trang đang mở. Chạy ở `localhost` thì điện thoại không vào được, nên đặt `VITE_PUBLIC_URL` (địa chỉ web đã đăng, ví dụ `https://ten-ban.github.io/CNPM/`) trong `web/.env` rồi chạy lại. Trang Admin có cảnh báo khi địa chỉ chỉ mở được trên máy bạn.
 - Mã QR được tạo ngay trong trình duyệt bằng `web/src/utils/qr.js` (không cần thư viện ngoài, tối đa 213 byte).
 - Chưa có Backend: số liệu lưu trong `localStorage`; nút **Nạp dữ liệu mẫu** ở trang Mã QR khách thêm 60 ngày lượt quét giả. Có Backend: lưu ở bảng `QrScans` (SQL Server), xem `db/queries.sql`.
+
+## Bản cập nhật quản trị nghiệp vụ và SQL (11/2026)
+
+Xem **`HUONG_DAN_QUAN_TRI_THONG_MINH_VA_SQL.md`** để biết cách sử dụng quy trình
+biên tập/kiểm duyệt thuyết minh–phụ đề, hàng đợi phản hồi, phiên bản và lịch sử SQL.
+
+Báo cáo SSMS có thể mở trực tiếp tại **`db/BAO_CAO_TONG_HOP.sql`**. Các file trong
+`db/bao-cao/` là truy vấn chỉ đọc theo nghiệp vụ; `db/07-quan-tri-nghiep-vu.sql`
+là migration mới cho bảng đang có dữ liệu. **Không chạy mọi file SQL theo thứ tự
+ngẫu nhiên và không chạy PostgreSQL/Supabase SQL trong SSMS.**
+
+Đây là bản phát triển để kiểm thử trên máy có SQL Server và Docker, **chưa phải
+sản phẩm thương mại đã được thẩm định bảo mật, thanh toán và vận hành**.

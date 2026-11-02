@@ -1,7 +1,7 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { ADMIN_EMAIL, ADMIN_PASSWORD, SHARED, isAdmin } from '../api/client.js';
+import { isAdmin } from '../api/client.js';
 import { LANGS } from '../shared/i18n.js';
 
 const LANG_LABEL = { vi: 'VI', en: 'EN', zh: '中文' };
@@ -17,10 +17,7 @@ export default function AdminLayout() {
         <div className="adm-card">
           <h1>{t('ad_brand')}</h1>
           <p role="alert">{t(user ? 'ad_denied' : 'ad_need_login')}</p>
-          <p className="fine">
-            {t('ad_hint')} <strong>{ADMIN_EMAIL}</strong>
-            {!SHARED ? <> {t('ad_pass')} <strong>{ADMIN_PASSWORD}</strong></> : null}
-          </p>
+          <p className="fine">Chỉ tài khoản Admin có quyền trên SQL Server mới được truy cập. Vui lòng sử dụng thông tin đăng nhập do quản trị viên cấp.</p>
           <p style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {user ? null : <Link className="btn btn-primary" to="/login">{t('nav_login')}</Link>}
             <Link className="btn" to="/">{t('ad_back')}</Link>
@@ -39,18 +36,19 @@ export default function AdminLayout() {
         </Link>
         <p className="adm-tag">{t('ad_brand')}</p>
         <nav aria-label={t('ad_menu')} className="adm-nav">
+          <span className="adm-group-label">TỔNG QUAN</span>
+          <NavLink to="/admin/dashboard">Tổng hợp hệ thống</NavLink>
           <NavLink to="/admin" end>{t('ad_nav_overview')}</NavLink>
+          <span className="adm-group-label">TÀI KHOẢN & GIAO DỊCH</span>
           <NavLink to="/admin/users">{t('ad_nav_users')}</NavLink>
-          <NavLink to="/admin/videos">
-            Quản lý video
-          </NavLink>
-          <NavLink to="/admin/languages">
-            Quản lý ngôn ngữ
-          </NavLink>
+          <NavLink to="/admin/orders">Đơn hàng / Thanh toán</NavLink>
+          <NavLink to="/admin/feedback">Phản hồi / Liên hệ</NavLink>
+          <span className="adm-group-label">XỬ LÝ VIDEO</span>
+          <NavLink to="/admin/videos">Quản lý video</NavLink>
           <NavLink to="/admin/narrations">Quản lý thuyết minh</NavLink>
           <NavLink to="/admin/subtitles">Quản lý phụ đề</NavLink>
-          <NavLink to="/admin/feedback">Quản lý phản hồi</NavLink>
-          <NavLink to="/admin/orders">Đơn hàng / Thanh toán</NavLink>
+          <NavLink to="/admin/languages">Quản lý ngôn ngữ</NavLink>
+          <span className="adm-group-label">TƯƠNG TÁC</span>
           <NavLink to="/admin/qr">{t('ad_nav_qr')}</NavLink>
         </nav>
         <Link className="adm-back" to="/">← {t('ad_back')}</Link>

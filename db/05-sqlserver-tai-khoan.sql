@@ -1,3 +1,4 @@
+-- LƯU Ý: DI SẢN / LEGACY. Node.js sử dụng scrypt, không dùng usp_DangKy để tạo tài khoản website hiện tại.
 -- Dubchef - Bản SQL Server của db/supabase-accounts.sql và db/supabase-qr.sql (PostgreSQL)
 -- Chạy trên DubchefDB, SAU 01, 02, 03. Chạy lại nhiều lần vẫn an toàn.
 --
@@ -228,24 +229,9 @@ BEGIN
 END;
 GO
 
-/* ---------- Tài khoản Admin ----------
-   ĐỔI MẬT KHẨU ADMIN: thay 'DoiMatKhauNay123' (tối thiểu 8 ký tự) trước khi chạy.
-   Lưu ý: nếu API Node.js đã tạo admin@dubchef.vn trước (định dạng scrypt) thì đoạn này bỏ qua,
-   và admin đó chỉ đăng nhập được qua API, không đăng nhập được bằng usp_DangNhap. */
-IF NOT EXISTS (SELECT 1 FROM dbo.NguoiDung WHERE Email = N'admin@dubchef.vn')
-    INSERT dbo.NguoiDung (HoTen, Email, MatKhauBam, VaiTro)
-    VALUES (N'Admin', N'admin@dubchef.vn', dbo.fn_BamMatKhau(N'DoiMatKhauNay123', CRYPT_GEN_RANDOM(16)), 'admin');
-GO
-
-/* ---------- Chạy thử ----------
-EXEC dbo.usp_DangKy   @HoTen = N'Nguyễn Thị Yến Nhi', @Email = 'nhi@example.com', @Password = N'matkhau123';
-EXEC dbo.usp_DangNhap @Email = 'nhi@example.com',    @Password = N'matkhau123';          -- ok
-EXEC dbo.usp_DangNhap @Email = 'nhi@example.com',    @Password = N'sai-mat-khau';        -- invalid
-EXEC dbo.usp_DangNhap @Email = 'admin@dubchef.vn',   @Password = N'DoiMatKhauNay123';    -- ok + MaPhien
--- Lấy MaPhien ở dòng trên dán vào bên dưới:
--- EXEC dbo.usp_AdminUsers     @MaPhien = '<token>';
--- EXEC dbo.usp_AdminSetStatus @MaPhien = '<token>', @Email = 'nhi@example.com', @TrangThai = 'locked';
--- EXEC dbo.usp_DangNhap       @Email = 'nhi@example.com', @Password = N'matkhau123';   -- locked
-EXEC dbo.usp_LienHe   @HoTen = N'Nhi', @Email = 'nhi@example.com', @Message = N'Xin chào Dubchef';
-EXEC dbo.usp_QrScan_Ghi @MaKhach = 'abc_123', @NgonNgu = 'vi';
+/*
+  BỔ SUNG THỦ TỤC SQL LEGACY (chỉ dùng nếu cần chạy usp_* trực tiếp).
+  Backend Node.js hiện dùng scrypt và token do API cấp; KHÔNG tạo account admin
+  và KHÔNG chạy các EXEC thêm bản ghi ví dụ tại đây vì có thể làm sai dữ liệu.
+  Thử chức năng thật qua website hoặc các truy vấn CHỈ ĐỌC ở db/bao-cao.
 */

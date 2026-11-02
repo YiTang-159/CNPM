@@ -11,6 +11,7 @@ import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import { Terms, Privacy } from './pages/Legal.jsx';
 import Admin from './pages/Admin.jsx';
+import AdminDashboard from './pages/AdminDashboard.jsx';
 import AdminUsers from './pages/AdminUsers.jsx';
 import AdminQr from './pages/AdminQr.jsx';
 import Guest from './pages/Guest.jsx';
@@ -44,6 +45,7 @@ export default function App() {
       </Route>
       <Route path="admin" element={<AdminLayout />}>
         <Route index element={<Admin />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="videos" element={<AdminVideos />} />
         <Route path="languages" element={<AdminLanguages />} />

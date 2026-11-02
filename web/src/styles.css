@@ -402,3 +402,53 @@ footer{border-top:1px solid var(--line);background:var(--panel);padding:56px 0 3
 .password-control input::-ms-reveal,
 .password-control input::-ms-clear { display: none; }
 .adm-side { overflow-y: auto; }
+
+/* Dashboard tổng hợp, phân nhóm menu Admin */
+.adm-side { overflow-y:auto; }
+.adm-group-label { display:block; font-size:.68rem; letter-spacing:.085em; font-weight:800; color:var(--muted); margin:15px 12px 4px; }
+.adm-group-label:first-child { margin-top:4px; }
+.dashboard-kpi-link { display:block; text-decoration:none; color:inherit; border-radius:14px; }
+.dashboard-kpi-link:hover .kpi,.dashboard-kpi-link:focus-visible .kpi { border-color:var(--ink);box-shadow:0 0 0 2px color-mix(in srgb,var(--ink) 9%,transparent); }
+.dashboard-alerts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px; }
+.dashboard-alerts a { display:flex;flex-direction:column;gap:4px;padding:16px;border:1px solid var(--line);border-radius:12px;text-decoration:none;color:var(--ink);background:var(--bg); }
+.dashboard-alerts b { font-size:1.7rem; }
+.dashboard-alerts span { font-size:.88rem;color:var(--muted); }
+.dashboard-currencies { display:flex; flex-wrap:wrap;gap:12px;margin-top:16px; }
+.dashboard-currency { min-width:185px;display:flex;flex-direction:column;gap:4px;padding:14px;border:1px solid var(--line);border-radius:12px; }
+.dashboard-currency strong { font-size:1.13rem; }
+.dashboard-currency small { color:var(--muted); }
+.dashboard-tables { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px; }
+.dashboard-table { min-width:0; }
+.dashboard-table .utable { font-size:.83rem; }
+.dashboard-table td { overflow-wrap:anywhere; }
+@media(max-width:1100px) { .dashboard-tables {grid-template-columns:1fr;} }
+@media(max-width:760px) { .dashboard-alerts {grid-template-columns:1fr;} .adm-group-label { margin:6px 8px;} }
+
+/* Admin nghiệp vụ: bảng dữ liệu, trạng thái duyệt, hàng đợi hỗ trợ, nhật ký. */
+.ops-panel{margin-bottom:20px}
+.ops-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0 22px}
+.ops-kpi{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:17px 20px;display:grid;gap:5px}
+.ops-kpi strong{font-size:1.65rem;font-variant-numeric:tabular-nums}
+.ops-kpi span{color:var(--muted);font-size:.9rem}
+.ops-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ops-head h2{margin:0 0 8px}
+.ops-head p{margin:0 0 12px}
+.ops-toolbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:16px 0}
+.ops-toolbar label{flex:1 1 180px;min-width:160px;display:grid;gap:5px;font-size:.88rem;font-weight:600}
+.ops-toolbar input,.ops-toolbar select,.ops-reply textarea,.ops-panel textarea,.ops-number{padding:9px 11px;max-width:100%;width:100%;border:1px solid #aab9ca;border-radius:8px;background:var(--panel);color:var(--ink);font:inherit}
+.ops-toolbar button{min-height:43px}
+.ops-number{min-width:95px;width:115px}
+.ops-gap{margin:18px 0}
+.ops-state{display:inline-block;padding:4px 9px;border-radius:20px;font-size:.79rem;font-weight:700;white-space:nowrap;background:#f1f3f5;color:#445}
+.ops-state-draft,.ops-state-new{background:#eaf1fc;color:#2056a0}
+.ops-state-reviewing{background:#fff0cf;color:#754a00}
+.ops-state-published,.ops-state-resolved{background:#dff4e6;color:#226541}
+.ops-notice{padding:12px 14px;border:1px solid var(--line);background:var(--panel);border-radius:9px}
+.ops-feedback-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:18px;margin-top:16px}
+.ops-feedback-card{padding:20px;border:1px solid var(--line);border-radius:13px;background:var(--panel);min-width:0}
+.ops-feedback-card p{overflow-wrap:anywhere}
+.ops-message{white-space:pre-wrap;border-radius:9px;background:var(--bg);padding:13px;margin:12px 0}
+.ops-reply{display:grid;gap:7px;font-weight:600;font-size:.9rem}
+.ops-audit{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.ops-audit p{margin:8px 0}
+@media(max-width:700px){.ops-kpis{grid-template-columns:1fr}.ops-feedback-grid{grid-template-columns:1fr}}

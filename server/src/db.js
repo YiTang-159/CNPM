@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { ACTIVE_MINUTES, dayKey } from './stats.js';
 import { hashPassword } from './auth.js';
 import { attachWorkflows } from './workflows.js';
+import { attachAdminOperations } from './adminOperations.js';
 
 const DB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db');
 
@@ -112,6 +113,7 @@ export async function openRepo() {
   const pool = await connect(process.env.DB_NAME || 'DubchefDB');
   await runScript(pool, '02-schema.sql');
   await runScript(pool, '04-workflows.sql');
+  await runScript(pool, '07-quan-tri-nghiep-vu.sql');
   console.log('SQL Server sẵn sàng.');
 
   const repo = {
@@ -187,6 +189,12 @@ export async function openRepo() {
       return r.recordset[0] ? mapUser(r.recordset[0]) : null;
     },
 
+    async recordLogin(userId, ipAddress) {
+      await pool.request().input('id', sql.Int, userId)
+        .input('ip', sql.NVarChar(64), String(ipAddress || '').slice(0,64))
+        .query('INSERT dbo.LichSuDangNhap(MaNguoiDung,DiaChiIP) VALUES (@id,@ip)');
+    },
+
     /** Trả null nếu email đã có. */
     async createUser({ name, email, passwordHash, role = 'user' }) {
       try {
@@ -231,6 +239,50 @@ export async function openRepo() {
       `);
 
       return r.recordset;
+    },
+
+    /** Trang tổng hợp một chỗ: chỉ đọc dữ liệu thật, không có hàng mẫu. */
+    async dashboardSummary() {
+      const [statistics, users, videos, feedback, orders, currencies] = await Promise.all([
+        this.adminStatistics(),
+        pool.request().query(`SELECT TOP (6) MaNguoiDung AS id,HoTen AS name,Email AS email,
+          VaiTro AS role,TrangThai AS status,NgayTao AS createdAt
+          FROM dbo.NguoiDung ORDER BY NgayTao DESC,MaNguoiDung DESC`),
+        pool.request().query(`SELECT TOP (6) v.MaVideo AS id,v.TieuDe AS title,
+          v.TrangThai AS status,v.NgayTaiLen AS createdAt,n.Email AS email,
+          (SELECT COUNT(*) FROM dbo.ThuyetMinh tm WHERE tm.MaVideo=v.MaVideo) AS narrations,
+          (SELECT COUNT(*) FROM dbo.PhuDe pd WHERE pd.MaVideo=v.MaVideo) AS subtitles
+          FROM dbo.Video v JOIN dbo.NguoiDung n ON n.MaNguoiDung=v.MaNguoiDung
+          ORDER BY v.NgayTaiLen DESC,v.MaVideo DESC`),
+        pool.request().query(`SELECT TOP (6) p.MaPhanHoi AS id,u.Email AS email,
+          p.NoiDung AS message,p.TrangThai AS status,p.NgayTao AS createdAt
+          FROM dbo.PhanHoi p JOIN dbo.NguoiDung u ON u.MaNguoiDung=p.MaNguoiDung
+          ORDER BY p.NgayTao DESC,p.MaPhanHoi DESC`),
+        pool.request().query(`SELECT TOP (6) MaDonHang AS id,EmailKhachHang AS email,
+          SoTien AS amount,LoaiTien AS currency,TrangThai AS status,NgayTao AS createdAt
+          FROM dbo.DonHang ORDER BY NgayTao DESC,MaDonHang DESC`),
+        pool.request().query(`SELECT LoaiTien AS currency, COUNT(*) AS orders,
+          SUM(SoTien) AS amount FROM dbo.DonHang WHERE TrangThai='paid'
+          GROUP BY LoaiTien ORDER BY LoaiTien`),
+      ]);
+      const counts = await pool.request().query(`SELECT
+        (SELECT COUNT(*) FROM dbo.DonHang) AS totalOrders,
+        (SELECT COUNT(*) FROM dbo.DonHang WHERE TrangThai='pending') AS pendingOrders,
+        (SELECT COUNT(*) FROM dbo.PhanHoi WHERE TrangThai<>'resolved')
+          + (SELECT COUNT(*) FROM dbo.LienHe WHERE TrangThai<>'resolved') AS openFeedback,
+        (SELECT COUNT(*) FROM dbo.Video WHERE TrangThai='processing') AS processingVideos,
+        (SELECT COUNT(*) FROM dbo.ThuyetMinh WHERE TrangThaiDuyet='reviewing')
+          + (SELECT COUNT(*) FROM dbo.PhuDe WHERE TrangThaiDuyet='reviewing') AS pendingMediaReview,
+        (SELECT COUNT(*) FROM dbo.PhanHoi WHERE UuTien='high' AND TrangThai<>'resolved')
+          + (SELECT COUNT(*) FROM dbo.LienHe WHERE UuTien='high' AND TrangThai<>'resolved') AS urgentFeedback`);
+      return {
+        statistics: {...statistics,...counts.recordset[0]},
+        latest: {users:users.recordset,videos:videos.recordset,
+          feedback:feedback.recordset,orders:orders.recordset},
+        paidOrdersByCurrency:currencies.recordset,
+        generatedAt:new Date().toISOString(),
+        paymentNote:'Trạng thái paid trong dự án hiện là thanh toán mô phỏng, không xác minh tiền thật.'
+      };
     },
 
     // Thống kê tổng quan Admin từ SQL Server
@@ -312,5 +364,6 @@ export async function openRepo() {
     qrStats: (span, tz, now) => aggregate(pool, 'dbo.LuotQuetQR', 'NgayQuet', span, tz, now),
   };
   attachWorkflows(pool, repo);
+  attachAdminOperations(pool, repo);
   return repo;
 }

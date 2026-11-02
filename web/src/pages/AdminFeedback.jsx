@@ -36,11 +36,27 @@ export default function AdminFeedback() {
     } catch(e) {setMessage('Không lưu được: '+e.message);}
     finally {setBusy('');}
   }
-  async function toggleHistory(id) {
-    if (histories[id]) {setHistories(v=>({...v,[id]:null}));return;}
-    try {setHistories(v=>({...v,[id]:(await manageApi.feedbackHistory(id)).history||[]}));}
-    catch(e) {setMessage('Không đọc được lịch sử: '+e.message);}
+  
+async function toggleHistory(id) {
+  if (histories[id]) {
+    setHistories(v => ({
+      ...v,
+      [id]: null
+    }));
+    return;
   }
+
+  try {
+    const data = await manageApi.feedbackHistory(id);
+
+    setHistories(v => ({
+      ...v,
+      [id]: data.history || []
+    }));
+  } catch (e) {
+    setMessage('Không đọc được lịch sử: ' + e.message);
+  }
+}
   return <>
     <div className="adm-head"><div><h1>Trung tâm phản hồi & chăm sóc khách hàng</h1>
       <p>Quản lý cả phản hồi tài khoản và liên hệ khách. Phân loại ưu tiên, theo dõi trạng thái, trả lời và ghi lịch sử xử lý vào SQL Server.</p>

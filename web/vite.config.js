@@ -16,6 +16,15 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 5173
+    port: 5173,
+    // Frontend gọi /backend/api/* trên cùng hostname:5173.
+    // Vite chuyển tiếp sang API local:3000 => không cần IP LAN cố định và không bị lỗi CORS.
+    proxy: {
+      '/backend': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/backend/, ''),
+      },
+    },
   },
 });

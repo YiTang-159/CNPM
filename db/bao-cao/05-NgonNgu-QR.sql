@@ -1,26 +1,25 @@
--- BÁO CÁO DUBCHEF / CHỈ ĐỌC / TỪ SSMS CHỌN localhost,1433.
--- Mở trực tiếp file này -> Execute (F5); không INSERT/UPDATE/DELETE.
--- Cần chạy db/00-CAI-DAT-KHONG-XOA.sql nếu thiếu bảng.
-USE DubchefDB;
+﻿/*
+ DUBCHEF - BO BAO CAO QUAN TRI V3 / SQL SERVER 2022 / DubchefDB
+ CHI DOC: KHONG INSERT, UPDATE, DELETE, MERGE, CREATE, ALTER, DROP.
+ Khong can doi .env, docker-compose.yml, API hoac ket noi SSMS.
+ Thoi gian du lieu luu UTC; hien thi Viet Nam bang DATEADD(HOUR,7,...).
+ Giao dich 'success' la thanh toan duoc DB ghi nhan; neu website dang mo phong thanh toan,
+ KHONG hieu rang tien da duoc doi soat voi ngan hang.
+*/
+USE [DubchefDB];
 GO
 SET NOCOUNT ON;
 
--- Danh mục ngôn ngữ
-IF OBJECT_ID(N'dbo.NgonNgu',N'U') IS NOT NULL
-  EXEC sys.sp_executesql N'SELECT MaNgonNgu,TenNgonNgu,TenTiengAnh,TrangThai,NgayTao FROM dbo.NgonNgu ORDER BY MaNgonNgu';
-ELSE
-  SELECT N'Chưa đủ bảng cho báo cáo: NgonNgu. Kiểm tra file 00-CAI-DAT-KHONG-XOA.sql' AS ThongBao;
-
-
--- Thống kê QR theo ngày giờ Việt Nam
-IF OBJECT_ID(N'dbo.LuotQuetQR',N'U') IS NOT NULL
-  EXEC sys.sp_executesql N'SELECT CAST(DATEADD(HOUR,7,NgayQuet) AS DATE) AS NgayVN,COUNT(*) AS LuotQuet,COUNT(DISTINCT MaKhach) AS NguoiQuet FROM dbo.LuotQuetQR GROUP BY CAST(DATEADD(HOUR,7,NgayQuet) AS DATE) ORDER BY NgayVN DESC';
-ELSE
-  SELECT N'Chưa đủ bảng cho báo cáo: LuotQuetQR. Kiểm tra file 00-CAI-DAT-KHONG-XOA.sql' AS ThongBao;
-
-
--- Truy cập website theo ngày giờ Việt Nam
-IF OBJECT_ID(N'dbo.LuotTruyCap',N'U') IS NOT NULL
-  EXEC sys.sp_executesql N'SELECT CAST(DATEADD(HOUR,7,NgayTruyCap) AS DATE) AS NgayVN,COUNT(*) AS LuotXem,COUNT(DISTINCT MaKhach) AS KhachKhacNhau FROM dbo.LuotTruyCap GROUP BY CAST(DATEADD(HOUR,7,NgayTruyCap) AS DATE) ORDER BY NgayVN DESC';
-ELSE
-  SELECT N'Chưa đủ bảng cho báo cáo: LuotTruyCap. Kiểm tra file 00-CAI-DAT-KHONG-XOA.sql' AS ThongBao;
+-- 05 / NGON NGU, QR, LUOT TRUY CAP. Khong co thong tin ca nhan nhay cam.
+IF OBJECT_ID(N'dbo.NgonNgu',N'U') IS NULL OR OBJECT_ID(N'dbo.LuotQuetQR',N'U') IS NULL OR OBJECT_ID(N'dbo.LuotTruyCap',N'U') IS NULL
+BEGIN SELECT N'Thieu bang NgonNgu/LuotQuetQR/LuotTruyCap' AS ThongBao; RETURN; END;
+SELECT MaNgonNgu,TenNgonNgu,TenTiengAnh,TrangThai,DATEADD(HOUR,7,NgayTao) NgayTaoVN
+FROM dbo.NgonNgu ORDER BY TrangThai,MaNgonNgu;
+SELECT CAST(DATEADD(HOUR,7,NgayQuet) AS DATE) NgayVN,NgonNgu,COUNT_BIG(*) SoLuotQuet,COUNT(DISTINCT MaKhach) SoMaKhach
+FROM dbo.LuotQuetQR GROUP BY CAST(DATEADD(HOUR,7,NgayQuet) AS DATE),NgonNgu ORDER BY NgayVN DESC,NgonNgu;
+SELECT CAST(DATEADD(HOUR,7,NgayTruyCap) AS DATE) NgayVN,COUNT_BIG(*) SoLuotXem,COUNT(DISTINCT MaKhach) SoMaKhach
+FROM dbo.LuotTruyCap GROUP BY CAST(DATEADD(HOUR,7,NgayTruyCap) AS DATE) ORDER BY NgayVN DESC;
+-- 20 duong dan duoc xem nhieu nhat trong 30 ngay.
+SELECT TOP(20) DuongDan,COUNT_BIG(*) SoLuotXem,COUNT(DISTINCT MaKhach) SoMaKhach
+FROM dbo.LuotTruyCap WHERE NgayTruyCap>=DATEADD(DAY,-30,SYSUTCDATETIME())
+GROUP BY DuongDan ORDER BY SoLuotXem DESC,DuongDan;

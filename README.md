@@ -2,7 +2,7 @@
 
 - Dashboard Admin mới: `/admin/dashboard` (dữ liệu thực từ SQL Server, chỉ Admin)
 - Truy vấn SQL chạy độc lập: `db/bao-cao/`
-- Hướng dẫn triển khai an toàn: [`HUONG_DAN_TONG_HOP_HE_THONG.md`](HUONG_DAN_TONG_HOP_HE_THONG.md)
+- Hướng dẫn triển khai an toàn: [`HUONG_DAN_TONG_HOP_HE_THONG.md`](docs/HUONG_DAN_TONG_HOP_HE_THONG.md)
 - Quy tắc tổ chức file SQL: [`db/README-QUAN-LY-SQL.md`](db/README-QUAN-LY-SQL.md)
 
 ---
@@ -98,7 +98,7 @@ Dự án mobile ghim theo Expo SDK 51. Nếu muốn dùng SDK mới hơn, chạy
 
 ## Quy trình làm việc nhóm
 
-Xem `CONTRIBUTING.md` (nhánh, Pull Request, phát hành mobile, phân công) và mẫu PR trong `.github/pull_request_template.md`.
+Xem `docs/CONTRIBUTING.md` (nhánh, Pull Request, phát hành mobile, phân công) và mẫu PR trong `.github/pull_request_template.md`.
 
 ## Trang quản trị (`/#/admin`)
 
@@ -184,7 +184,7 @@ Mã QR dẫn tới trang `/#/guest`: khách **không cần đăng nhập**, vào
 
 ## Bản cập nhật quản trị nghiệp vụ và SQL (11/2026)
 
-Xem **`HUONG_DAN_QUAN_TRI_THONG_MINH_VA_SQL.md`** để biết cách sử dụng quy trình
+Xem **`docs/HUONG_DAN_QUAN_TRI_THONG_MINH_VA_SQL.md`** để biết cách sử dụng quy trình
 biên tập/kiểm duyệt thuyết minh–phụ đề, hàng đợi phản hồi, phiên bản và lịch sử SQL.
 
 Báo cáo SSMS có thể mở trực tiếp tại **`db/BAO_CAO_TONG_HOP.sql`**. Các file trong
@@ -194,3 +194,18 @@ ngẫu nhiên và không chạy PostgreSQL/Supabase SQL trong SSMS.**
 
 Đây là bản phát triển để kiểm thử trên máy có SQL Server và Docker, **chưa phải
 sản phẩm thương mại đã được thẩm định bảo mật, thanh toán và vận hành**.
+
+
+## Tài liệu và bố cục đã dọn gọn
+
+Các lệnh chạy trong tài liệu được thực hiện tại thư mục gốc project, trừ khi có chỉ dẫn khác.
+
+- [Hướng dẫn hệ thống](docs/HUONG_DAN_TONG_HOP_HE_THONG.md)
+- [Hướng dẫn quản trị và SQL](docs/HUONG_DAN_QUAN_TRI_THONG_MINH_VA_SQL.md)
+- [Hướng dẫn CI/CD](docs/HUONG_DAN_SUA_CI_CD.md)
+- [Quy ước làm việc nhóm](docs/CONTRIBUTING.md)
+- [Tài liệu Use Case](docs/Dubchef_FocusedUseCases.docx)
+
+Các tài liệu bổ sung được gom trong `docs/`; script SQL và tài liệu SQL tại `db/` được giữ nguyên vị trí để dùng với SSMS và Backend.
+Đã bỏ ba tệp không được sử dụng (`db/db.js`, `web/src/api/adminVideo.js`, `web/src/test/mockBackend.js`) và ghi chú cũ `THAY_DOI_MOI.md` mô tả trạng thái không còn khớp mã hiện tại.
+Cấu hình Docker, SQL, Expo, CI/CD, mã nguồn, bộ test và dữ liệu được giữ nguyên.

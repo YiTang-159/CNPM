@@ -26,7 +26,7 @@ Tài khoản cũ được tạo bằng `05-sqlserver-tai-khoan.sql` (hash SHA256
 
 Đơn hàng/nhắn tin cũ không có ID chủ tài khoản vẫn giữ trong SQL, không tự gán cho tài khoản mới chỉ vì email giống nhau. Bản ghi phản hồi cũ vẫn xem được bên admin.
 
-Backend tự migrate `02-schema.sql`, `04-workflows.sql` và `07-quan-tri-nghiep-vu.sql`. `03-admin.sql`, `05-sqlserver-tai-khoan.sql`, các file Supabase và `db/db.js` là tài liệu/cách làm cũ, không phải backend đang dùng. Không trộn các thủ tục xác thực cũ vào luồng web mới.
+Backend tự migrate `02-schema.sql`, `04-workflows.sql` và `07-quan-tri-nghiep-vu.sql`. `03-admin.sql`, `05-sqlserver-tai-khoan.sql`, các file Supabase là tài liệu/cách làm cũ, không phải backend đang dùng. Không trộn các thủ tục xác thực cũ vào luồng web mới.
 
 ## 3. Kiểm tra thủ công trên web và SSMS
 

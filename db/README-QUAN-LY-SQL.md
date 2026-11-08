@@ -2,7 +2,7 @@
 
 **Chọn `localhost,1433`, database `DubchefDB` trong SSMS.**
 
-Mở `../HUONG_DAN_QUAN_TRI_THONG_MINH_VA_SQL.md` để xem bảng ánh xạ chức năng User/Admin → bảng SQL, thứ tự migration, cách nâng cấp và kiểm thử.
+Mở `../docs/HUONG_DAN_QUAN_TRI_THONG_MINH_VA_SQL.md` để xem bảng ánh xạ chức năng User/Admin → bảng SQL, thứ tự migration, cách nâng cấp và kiểm thử.
 
 ## 1. Bảng cấu trúc (chạy có thứ tự, không phải báo cáo)
 

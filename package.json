@@ -5,6 +5,7 @@
   "description": "Dubchef - thuyết minh tự động đa ngôn ngữ (Việt, Anh, Trung) cho video nấu ăn",
   "scripts": {
     "setup:local": "node scripts/setup-local.mjs",
+    "report": "node server/scripts/bao-cao.mjs",
     "sync": "node scripts/sync-shared.mjs",
     "check:link": "node scripts/check-link.mjs",
     "test:shared": "node --test shared/i18n.test.mjs shared/pricing.test.mjs",

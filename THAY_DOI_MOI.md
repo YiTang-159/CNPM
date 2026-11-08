@@ -16,6 +16,13 @@
 - `AccountScreen.js`: hiện video, đơn hàng, phản hồi và form gửi phản hồi.
 - `shared/i18n.js`: thêm chuỗi `acc_*` (3 ngôn ngữ), đã chạy `npm run sync`.
 
+**SQL**
+- Thêm `db/08-bao-cao-chuyen-nghiep.sql`: 9 view báo cáo tiếng Việt trong schema `bc` (BaoCaoTongHop, NguoiDungHoatDong, VideoChiTiet, DonHangChiTiet, DoanhThuNgay, PhanHoiChuaXuLy, QuetQRNgay, KiemTraToanVen). Chỉ tạo view, không sửa dữ liệu.
+
+- Thêm `npm run report` (`server/scripts/bao-cao.mjs`): tạo báo cáo HTML A4 trong thư mục `bao-cao/` từ các view `bc.*`, mở bằng trình duyệt rồi Ctrl+P để lưu PDF.
+
+- Thêm `db/09-du-lieu-mau.sql` (dữ liệu mẫu để trình bày: email `@demo.dubchef.local`, tài khoản mẫu không đăng nhập được) và `db/09b-xoa-du-lieu-mau.sql` (xóa riêng dữ liệu mẫu).
+
 **Chưa làm / cần bạn kiểm tra**
 - Chưa chạy được test web, mobile, server (cần `npm install`): chỉ kiểm cú pháp, test `shared/` và các hàm `auth.js`.
 - Chưa có test UI cho màn Tài khoản mobile.

@@ -8,7 +8,7 @@ import { Transform } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import cors from 'cors';
 import { METHODS, newTransactionRef, priceOrder, validateOrder } from './orders.js';
-import { hashPassword, makeToken, readToken, verifyPassword } from './auth.js';
+import { hashPassword, isLegacyHash, makeToken, readToken, verifyPassword } from './auth.js';
 import { buildStats } from './stats.js';
 import { validMediaLines, validateFeedback, MEDIA_STATES } from './adminPolicy.js';
 
@@ -18,6 +18,9 @@ const VALID_LANG = /^[a-z]{2,8}$/;
 const STATUS = ['uploaded','processing','completed','failed','hidden'];
 const FEEDBACK_STATES = ['new','reviewing','resolved'];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Giới hạn đăng nhập sai: tối đa 60 lần / 15 phút cho mỗi địa chỉ IP, sau đó trả 429.
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILS = 60;
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 const publicUser = (u, secret) => ({ id: u.id, name: u.name, email: u.email, role: u.role, token: makeToken(u, secret) });
@@ -100,11 +103,32 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.status(201).json({ user: publicUser(user, secret) });
   }));
 
+  const loginFails = new Map();
+  const failsOf = (ip) => {
+    const now = Date.now();
+    const f = loginFails.get(ip);
+    if (!f || f.until < now) { loginFails.delete(ip); return 0; }
+    return f.count;
+  };
+  const addFail = (ip) => {
+    const now = Date.now();
+    const f = loginFails.get(ip);
+    loginFails.set(ip, f && f.until >= now ? { count: f.count + 1, until: f.until } : { count: 1, until: now + LOGIN_WINDOW_MS });
+    if (loginFails.size > 10000) for (const [k, v] of loginFails) if (v.until < now) loginFails.delete(k);
+  };
+
   app.post('/api/auth/login', wrap(async (req, res) => {
     const b = req.body || {};
+    if (failsOf(req.ip) >= LOGIN_MAX_FAILS) return res.status(429).json({ code: 'too_many' });
     const user = await repo.findUser(String(b.email || '').trim().toLowerCase());
-    if (!user || !verifyPassword(String(b.password || ''), user.hash)) return res.status(401).json({ code: 'invalid' });
+    const password = String(b.password || '');
+    if (!user || !verifyPassword(password, user.hash)) { addFail(req.ip); return res.status(401).json({ code: 'invalid' }); }
     if (user.status === 'locked') return res.status(403).json({ code: 'locked' });
+    // Băm SHA-256 cũ được nâng lên scrypt ngay sau lần đăng nhập đúng.
+    if (isLegacyHash(user.hash) && typeof repo.updatePasswordHash === 'function') {
+      const upgraded = hashPassword(password);
+      if (await repo.updatePasswordHash(user.email, upgraded, user.hash).catch(() => false)) user.hash = upgraded;
+    }
     if (typeof repo.recordLogin === 'function') {
       await repo.recordLogin(user.id, req.ip).catch(e => console.warn('Lỗi lưu lịch sử đăng nhập:', e.message));
     }
@@ -446,6 +470,8 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
+    if (err && err.type === 'entity.parse.failed') return res.status(400).json({ code: 'invalid_json' });
+    if (err && err.type === 'entity.too.large') return res.status(413).json({ code: 'too_large' });
     console.error(err);
     res.status(500).json({ code: 'server' });
   });

@@ -14,6 +14,6 @@ Mã nguồn sử dụng: `CNPM-main (4).zip`. File `dubchef test (2).zip` vượ
 
 Đã thử tải image SQL Server2022 chính thức. Registry chuyển tải sang `westus.data.mcr.microsoft.com`, bị chính sách mạng môi trường trả403. Đã lưu thêm miền này vào **cấu hình nháp** của môi trường, chưa áp dụng hoặc publish. Muốn kiểm thử ở cloud: review, lưu và publish cấu hình trong Environment Settings rồi chạy lại SQL integration. Không cần thao tác này nếu chạy mã nguồn với SQL Server trên máy bạn theo `HUONG_DAN_SQL.md`.
 
-Chưa kết nối hay thay đổi database trong ảnh của bạn. Cần chạy bản này trên máy có kết nối SQL đó, xác nhận `/api/health`, chạy kiểm thử SQL integration và kiểm tra `db/07-service-queries.sql`. Không thể khẳng định dữ liệu đã được ghi vào SQL của bạn trước khi thực hiện bước đó.
+Chưa kết nối hay thay đổi database trong ảnh của bạn. Cần chạy bản này trên máy có kết nối SQL đó, xác nhận `/api/health`, chạy kiểm thử SQL integration và chạy `db/06-kiem-tra-dong-bo-ssms.sql`. Không thể khẳng định dữ liệu đã được ghi vào SQL của bạn trước khi thực hiện bước đó.
 
 Thanh toán thật, xác minh email/khôi phục mật khẩu qua email và xuất MP4 có giọng thuyết minh chưa tích hợp; xem README để tránh nhầm với chức năng đã thực hiện.

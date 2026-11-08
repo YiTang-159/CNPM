@@ -1,14 +1,31 @@
 // Băm mật khẩu và token đăng nhập, chỉ dùng node:crypto (không thêm thư viện).
-import { randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
+import { randomBytes, scryptSync, timingSafeEqual, createHmac, createHash } from 'node:crypto';
 
 export function hashPassword(password) {
   const salt = randomBytes(16);
   return salt.toString('hex') + ':' + scryptSync(password, salt, 64).toString('hex');
 }
 
+const HEX = /^[0-9a-f]+$/i;
+
+/** Dạng băm cũ của SQL Server: `sha256$SALT_HEX$HASH_HEX`, với HASH = SHA-256(salt + mật khẩu UTF-16LE). */
+export const isLegacyHash = (stored) => /^sha256\$[0-9a-f]{2,}\$[0-9a-f]{64}$/i.test(String(stored || ''));
+
+function verifyLegacy(password, stored) {
+  const [, saltHex, hashHex] = stored.split('$');
+  if (saltHex.length % 2) return false;
+  const got = createHash('sha256').update(Buffer.concat([Buffer.from(saltHex, 'hex'), Buffer.from(password, 'utf16le')])).digest();
+  return timingSafeEqual(got, Buffer.from(hashHex, 'hex'));
+}
+
 export function verifyPassword(password, stored) {
-  const [saltHex, hashHex] = String(stored || '').split(':');
-  if (!saltHex || !hashHex) return false;
+  stored = String(stored || '');
+  if (isLegacyHash(stored)) return verifyLegacy(String(password), stored);
+  const parts = stored.split(':');
+  // Chỉ nhận đúng dạng `salt:hash` hợp lệ; chuỗi hỏng luôn bị từ chối, không ném lỗi.
+  if (parts.length !== 2) return false;
+  const [saltHex, hashHex] = parts;
+  if (!saltHex || !hashHex || saltHex.length % 2 || hashHex.length % 2 || !HEX.test(saltHex) || !HEX.test(hashHex)) return false;
   const want = Buffer.from(hashHex, 'hex');
   const got = scryptSync(password, Buffer.from(saltHex, 'hex'), want.length);
   return want.length === got.length && timingSafeEqual(want, got);

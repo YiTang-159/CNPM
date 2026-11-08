@@ -68,6 +68,7 @@ Sau lần `npm install` đầu tiên hãy commit các tệp `package-lock.json` 
   - Video dán bằng liên kết vẫn phải tự gõ lời thoại tay (trình duyệt không đọc được âm thanh của một trang khác vì lý do bảo mật CORS).
   - Lưu ý: model Whisper phải tải ~80–150MB ở lần chạy đầu (cần mạng, có cache lại cho lần sau), xử lý chậm hơn trên máy yếu. Đây là giải pháp AI chạy tại chỗ (client-side) để demo được ngay mà không cần chờ nhóm Backend làm API nhận dạng giọng nói riêng (yêu cầu 2/3) — khi nhóm Backend có API STT/AI mạnh hơn, có thể thay thế bằng cách gọi `web/src/api/client.js` thay vì chạy Whisper trong trình duyệt.
   - **Trên mobile**: cùng tính năng này được làm bằng thư viện native `whisper.rn` (tách âm thanh bằng `ffmpeg-kit-react-native`, model Whisper tải về máy). Đây là module native thật nên **không chạy được qua Expo Go** — phải `npx expo prebuild` rồi build app thật (xem `mobile/WHISPER_SETUP.md`). Nếu app mobile chưa được build theo cách này, màn Trải nghiệm vẫn hoạt động bình thường ở chế độ gõ tay lời thoại, chỉ riêng chế độ tự nhận diện sẽ báo "chưa khả dụng" thay vì chạy thật. Code: `mobile/src/utils/sttNative.js`.
+- Mobile (khi đặt `EXPO_PUBLIC_API_URL` và đăng nhập qua Backend): tab Tài khoản hiện video, đơn hàng, lịch sử phản hồi và cho gửi phản hồi cho quản trị viên.
 - Đăng ký, đăng nhập, gửi liên hệ có kiểm tra dữ liệu, báo lỗi theo ngôn ngữ, giữ phiên đăng nhập.
 - Hỗ trợ chế độ sáng/tối, bàn phím, trình đọc màn hình, giảm chuyển động.
 ## Kiểm thử và ESLint
@@ -117,7 +118,7 @@ Bảng điều khiển riêng cho quản trị viên (có thanh bên, không dù
 - 4 ô số liệu về **người quét mã**: hôm nay (so với hôm qua), trong kỳ 7/14/30 ngày (so với kỳ trước), tổng người quét (kèm tổng lượt quét), vừa quét trong 5 phút.
 - Biểu đồ người quét và lượt quét theo ngày. Người quét tính theo mã khách của trình duyệt nên một người quét nhiều lần vẫn là 1 người; mỗi lần quét ở phiên mới là 1 lượt.
 
-**Cách vào:** bấm **Đăng nhập**, dùng tài khoản quản trị có sẵn (không cần đăng ký): email `admin@dubchef.vn`, mật khẩu `admin12345` (đổi bằng `VITE_ADMIN_EMAIL`, `VITE_ADMIN_PASSWORD` trong `web/.env`), rồi bấm **Quản trị** trên menu hoặc vào `/#/admin`. Tài khoản khác không vào được.
+**Cách vào:** bấm **Đăng nhập**, dùng tài khoản quản trị có sẵn (không cần đăng ký): email `admin@dubchef.vn`, mật khẩu `admin12345` (chỉ ở chế độ demo KHÔNG có Backend; đổi bằng `VITE_ADMIN_EMAIL`, `VITE_ADMIN_PASSWORD` trong `web/.env`), rồi bấm **Quản trị** trên menu hoặc vào `/#/admin`. Tài khoản khác không vào được.
 
 **Cách đếm:** mỗi lần mở một trang, `Layout` gọi `trackVisit` (`web/src/api/analytics.js`). Mỗi trình duyệt có một mã khách (`dubchef-vid`), nên một người mở nhiều trang vẫn chỉ tính là 1 người truy cập trong ngày. Trang admin không tự tính vào số liệu.
 
@@ -137,7 +138,7 @@ Bảng điều khiển riêng cho quản trị viên (có thanh bên, không dù
 
 ### Dùng dữ liệu thật cho trang Admin
 
-1. Chạy CSDL + API: `docker compose up -d --build` (lần đầu tự tạo các bảng `Users`, `Visits`, `QrScans`, `Messages` và tài khoản quản trị từ `ADMIN_EMAIL` / `ADMIN_PASSWORD`, mặc định `admin@dubchef.vn` / `admin12345`).
+1. Chạy CSDL + API: `docker compose up -d --build` (lần đầu tự tạo các bảng `Users`, `Visits`, `QrScans`, `Messages` và tài khoản quản trị từ `ADMIN_EMAIL` / `ADMIN_PASSWORD`, email mặc định `admin@dubchef.vn`; mật khẩu lấy từ `ADMIN_PASSWORD` trong `.env`, tối thiểu 12 ký tự, không còn mật khẩu mặc định — chạy `npm run setup:local` để sinh ngẫu nhiên).
 2. Tạo `web/.env` với dòng `VITE_API_URL=http://localhost:3000`, rồi chạy lại `npm run dev` trong `web` (đổi biến `.env` phải khởi động lại).
 3. Đăng nhập bằng tài khoản admin ở trên, vào `/#/admin`. Các nút "Nạp dữ liệu mẫu" sẽ biến mất vì số liệu giờ là thật: người dùng đăng ký và lượt truy cập đều lưu trong SQL Server. Xem trực tiếp: `SELECT * FROM dbo.Users; SELECT TOP 50 * FROM dbo.Visits ORDER BY VisitId DESC; SELECT TOP 50 * FROM dbo.QrScans ORDER BY ScanId DESC;`
 4. Trước khi đưa lên mạng: đổi `ADMIN_PASSWORD`, đặt `TOKEN_SECRET` là chuỗi ngẫu nhiên dài, đặt `CORS_ORIGIN` đúng địa chỉ web. Ngày thống kê tính theo múi giờ UTC+7 (đổi bằng `STATS_TZ_HOURS`).

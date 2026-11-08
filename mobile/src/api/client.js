@@ -1,6 +1,6 @@
 /**
  * Lớp gọi API cho ứng dụng di động.
- * - Có EXPO_PUBLIC_API_URL: gọi Backend thật (POST /api/auth/register, /api/auth/login, /api/contact).
+ * - Có EXPO_PUBLIC_API_URL: gọi Backend thật (/api/auth/*, /api/contact, và các API có đăng nhập: /api/videos, /api/orders, /api/feedback).
  * - Không có: lưu tạm trong AsyncStorage của điện thoại (chỉ để demo khi chưa có Backend).
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,6 +24,7 @@ export function errorKey(err) {
   const c = err && err.code;
   if (c === 'exists') return 'e_exists';
   if (c === 'invalid') return 'e_login';
+  if (c === 'locked') return 'e_locked';
   return 'e_net';
 }
 
@@ -46,13 +47,13 @@ function hash(text) {
   return 'x' + (h >>> 0).toString(16);
 }
 
-async function remote(path, body) {
+async function remote(path, body, { method = body === undefined ? 'GET' : 'POST', token } = {}) {
   let res;
   try {
     res = await fetch(BASE + path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      method,
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (e) {
     throw new ApiError('net');
@@ -90,6 +91,24 @@ export const api = {
     list.push({ name, email, message, at: new Date().toISOString() });
     await write(K_MSGS, list);
     return { ok: true };
+  },
+
+  // Các API dưới đây cần Backend và token đăng nhập; không có Backend thì báo lỗi mạng, không giả lập dữ liệu.
+  async videos(token) {
+    if (!BASE || !token) throw new ApiError('net');
+    return (await remote('/api/videos', undefined, { token })).videos || [];
+  },
+  async orders(token) {
+    if (!BASE || !token) throw new ApiError('net');
+    return (await remote('/api/orders', undefined, { token })).orders || [];
+  },
+  async feedback(token) {
+    if (!BASE || !token) throw new ApiError('net');
+    return (await remote('/api/feedback', undefined, { token })).feedback || [];
+  },
+  async sendFeedback(token, { message, videoId = null }) {
+    if (!BASE || !token) throw new ApiError('net');
+    return remote('/api/feedback', { message, videoId }, { token });
   },
 };
 

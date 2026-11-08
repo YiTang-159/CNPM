@@ -26,11 +26,11 @@ Tài khoản cũ được tạo bằng `05-sqlserver-tai-khoan.sql` (hash SHA256
 
 Đơn hàng/nhắn tin cũ không có ID chủ tài khoản vẫn giữ trong SQL, không tự gán cho tài khoản mới chỉ vì email giống nhau. Bản ghi phản hồi cũ vẫn xem được bên admin.
 
-Chỉ `02-schema.sql` và `06-service.sql` được backend tự migrate. `03-admin.sql`, `05-sqlserver-tai-khoan.sql`, các file Supabase và `db/db.js` là tài liệu/cách làm cũ, không phải backend đang dùng. Không trộn các thủ tục xác thực cũ vào luồng web mới.
+Backend tự migrate `02-schema.sql`, `04-workflows.sql` và `07-quan-tri-nghiep-vu.sql`. `03-admin.sql`, `05-sqlserver-tai-khoan.sql`, các file Supabase và `db/db.js` là tài liệu/cách làm cũ, không phải backend đang dùng. Không trộn các thủ tục xác thực cũ vào luồng web mới.
 
 ## 3. Kiểm tra thủ công trên web và SSMS
 
-1. Đăng ký một khách hàng mới, đăng xuất, đăng nhập lại. Mở `db/07-service-queries.sql` trong SSMS: tài khoản phải có trong `NguoiDung` và có `LanDangNhapCuoi`.
+1. Đăng ký một khách hàng mới, đăng xuất, đăng nhập lại. Mở `db/06-kiem-tra-dong-bo-ssms.sql` trong SSMS: tài khoản phải có trong `NguoiDung` và có `LanDangNhapCuoi`.
 2. Vào Trải nghiệm, chọn video MP4/WebM/MOV dưới100MB, nhập lời thoại (hoặc nhận diện Whisper), xử lý, đặt tên dự án rồi bấm **Lưu dự án vào SQL**. Nếu lỗi, UI phải báo chưa lưu, không hiện thành công.
 3. Vào **Dự án của tôi**. Kiểm tra video, văn bản, phụ đề và tải SRT. Tải lại trang/đăng nhập ở trình duyệt khác vẫn thấy cùng dự án.
 4. Đăng nhập admin bằng thông tin trong `.env`. Vào **Thuyết minh**, sửa văn bản/trạng thái; vào **Phụ đề**, sửa nội dung và thời gian. Khách hàng tải lại danh sách để thấy thay đổi.

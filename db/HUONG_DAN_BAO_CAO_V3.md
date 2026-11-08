@@ -65,5 +65,5 @@ CNPM/
 - Mọi file báo cáo chỉ sử dụng `SELECT`, `IF`, `DECLARE`, `EXEC sys.sp_executesql` với truy vấn SELECT, `USE`, `SET NOCOUNT`, `GO`.
 - **Không có** `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `ALTER TABLE`, `CREATE TABLE` và không tự động đổi cấu trúc bảng.
 - Không in mật khẩu băm, token phiên, thông tin thẻ ngân hàng. Khi chia sẻ ảnh SSMS, che email, IP và mã tham chiếu giao dịch nếu cần.
-- Đã đối chiếu tên bảng/cột với các file `db/02-schema.sql`, `db/04-workflows.sql`, `db/06-service.sql` và `db/07-quan-tri-nghiep-vu.sql` của `CNPM(1).zip`. **Chưa kiểm thử kết nối trực tiếp vào SQL Server của bạn**; nếu schema trên máy khác ZIP, có thể cần điều chỉnh thêm.
+- Đã đối chiếu tên bảng/cột với các file `db/02-schema.sql`, `db/04-workflows.sql` và `db/07-quan-tri-nghiep-vu.sql` của `CNPM(1).zip`. **Chưa kiểm thử kết nối trực tiếp vào SQL Server của bạn**; nếu schema trên máy khác ZIP, có thể cần điều chỉnh thêm.
 - Dùng SSMS cho quản trị kỹ thuật; với doanh nghiệp thật, nên đưa dashboard tổng quan lên giao diện Admin website có phân quyền và cơ chế ghi nhật ký.

@@ -27,6 +27,13 @@ export function attachWorkflows(pool, repo) {
         .query('UPDATE dbo.NguoiDung SET HoTen=@name OUTPUT inserted.* WHERE Email=@email AND TrangThai=\'active\'');
       return r.recordset[0] ? { id: r.recordset[0].MaNguoiDung, name: r.recordset[0].HoTen, email: r.recordset[0].Email, role: r.recordset[0].VaiTro } : null;
     },
+    /** Nâng cấp băm cũ lên scrypt; chỉ ghi nếu băm hiện tại vẫn là băm cũ đã kiểm tra. */
+    async updatePasswordHash(email, newHash, oldHash) {
+      const r = await pool.request().input('email', sql.NVarChar(254), email)
+        .input('newHash', sql.VarChar(200), newHash).input('oldHash', sql.VarChar(200), oldHash)
+        .query('UPDATE dbo.NguoiDung SET MatKhauBam=@newHash WHERE Email=@email AND MatKhauBam=@oldHash');
+      return r.rowsAffected[0] > 0;
+    },
     async updatePassword(email, hash) {
       const r = await pool.request().input('email', sql.NVarChar(254), email).input('hash', sql.VarChar(200), hash)
         .query('UPDATE dbo.NguoiDung SET MatKhauBam=@hash WHERE Email=@email AND TrangThai=\'active\'');

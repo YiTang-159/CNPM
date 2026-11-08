@@ -67,10 +67,10 @@ describe('địa chỉ trong mã QR của khách', () => {
 
 describe('đếm lượt quét QR (chế độ lưu tạm)', () => {
   it('ghi một lượt mỗi phiên; người quét không trùng, lượt quét tính riêng', async () => {
-    expect(trackScan('vi')).toBe(true);
-    expect(trackScan('vi')).toBe(false); // tải lại trong cùng phiên không tính
+    expect(await trackScan('vi')).toEqual({ success: true, alreadyScanned: false });
+    expect(await trackScan('vi')).toEqual({ success: true, alreadyScanned: true }); // tải lại trong cùng phiên không tính
     sessionStorage.clear(); // phiên mới, cùng trình duyệt
-    expect(trackScan('en')).toBe(true);
+    expect(await trackScan('en')).toEqual({ success: true, alreadyScanned: false });
     const { stats } = await qrStats.load({ email: 'a@b.co' }, 7);
     expect(stats.total).toEqual({ visitors: 1, views: 2 });
     expect(stats.today).toEqual({ visitors: 1, views: 2 });
@@ -109,7 +109,7 @@ describe('trang /admin/qr', () => {
   it('admin thấy mã QR, số người quét, lượt quét và đổi khoảng thời gian', async () => {
     const user = userEvent.setup();
     loginAsAdmin();
-    trackScan('vi');
+    await trackScan('vi');
     renderApp('/admin/qr');
     expect(await screen.findByTestId('aq-total')).toHaveTextContent('1');
     expect(screen.getByTestId('aq-today')).toHaveTextContent('1');

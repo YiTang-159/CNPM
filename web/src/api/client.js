@@ -140,3 +140,28 @@ export const session = {
     try { localStorage.removeItem(K_SESSION); } catch (e) { /* bỏ qua */ }
   },
 };
+
+/** Gọi API có token, hỗ trợ JSON, tải tệp và tải video. */
+export async function request(path, { method = 'GET', token, body, raw = false, blob = false, signal, headers = {} } = {}) {
+  if (!BASE) throw new ApiError('net');
+  let response;
+  try {
+    response = await fetch(BASE + path, {
+      method, signal,
+      headers: { ...(!raw && body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...headers, ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+      ...(body === undefined ? {} : { body: raw ? body : JSON.stringify(body) }),
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') throw error;
+    throw new ApiError('net');
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const error = new ApiError(data.code || 'server');
+    error.status = response.status;
+    throw error;
+  }
+  if (blob) return response.blob();
+  return response.status === 204 ? { ok: true } : response.json();
+}

@@ -3,7 +3,9 @@
 name: CD Web
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -18,19 +20,29 @@ concurrency:
 
 jobs:
   deploy:
+    # Chỉ triển khai commit main đã qua toàn bộ CI; vẫn cho phép chạy tay.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - name: Cài đặt, lint và test
         working-directory: web
         run: |
-          npm install
+          npm ci
           npm run lint
           npm test
       - name: Build
@@ -38,6 +50,9 @@ jobs:
         env:
           # Tùy chọn: Settings > Variables > VITE_API_URL (địa chỉ Backend)
           VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_PAYMENT_API_URL: ${{ vars.VITE_PAYMENT_API_URL || vars.VITE_API_URL }}
+          VITE_PUBLIC_URL: ${{ vars.VITE_PUBLIC_URL }}
+          VITE_ALLOW_LOCAL_DEMO: "false"
           # Đếm lượt quét QR bằng Supabase (không cần Backend riêng): xem db/supabase-qr.sql
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}

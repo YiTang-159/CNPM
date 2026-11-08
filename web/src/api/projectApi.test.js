@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { projectApi } from './projectApi.js';
 
+vi.hoisted(() => { vi.stubEnv('VITE_API_URL', 'https://api.example.test'); });
+
 const user = { token: 'customer-token' };
 afterEach(() => vi.unstubAllGlobals());
 

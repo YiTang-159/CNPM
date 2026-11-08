@@ -6,6 +6,9 @@ on:
     branches: [main, develop]
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -20,7 +23,7 @@ jobs:
         with:
           node-version: 20
       - name: Test nội dung 3 ngôn ngữ
-        run: node --test shared/i18n.test.mjs
+        run: node --test shared/i18n.test.mjs shared/pricing.test.mjs
       - name: Kiểm tra web/mobile đã đồng bộ với shared
         run: |
           node scripts/sync-shared.mjs

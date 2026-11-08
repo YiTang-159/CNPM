@@ -9,6 +9,11 @@ export default defineConfig({
   // đúng backend WebAssembly cần thiết — định dạng mặc định 'iife' của Vite không hỗ trợ việc này.
   worker: { format: 'es' },
   test: {
+    env: {
+      VITE_API_URL: '', VITE_PAYMENT_API_URL: '', VITE_PUBLIC_URL: '',
+      VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '',
+      VITE_ALLOW_LOCAL_DEMO: 'true',
+    },
     environment: 'jsdom', // giả lập trình duyệt để test giao diện
     setupFiles: ['./src/test/setup.js'],
     include: ['src/**/*.test.{js,jsx}'],

@@ -1,3 +1,5 @@
+import { formatMinorMoney } from '../shared/format.js';
+import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -7,7 +9,7 @@ import { Kpi } from '../components/AdminWidgets.jsx';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 const number = (n) => new Intl.NumberFormat('vi-VN').format(Number(n ?? 0));
 const date = (v) => v ? new Date(v).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '—';
-const money = (n, currency) => `${number(n)} ${String(currency || '').trim()}`;
+const money = (n, currency) => formatMinorMoney(n,currency);
 const summaryCards = [
   ['totalUsers', 'Người dùng', '/admin/users', 'Tài khoản đã tạo'],
   ['totalVideos', 'Video', '/admin/videos', 'Video đã tải lên'],
@@ -56,6 +58,7 @@ export default function AdminDashboard() {
   useEffect(() => { const controller = new AbortController();load(controller.signal);
     return () => controller.abort(); }, [load]);
 
+  useAutoRefresh(() => load());
   const st = data?.statistics || {};
   const latest = data?.latest || {};
   return <>

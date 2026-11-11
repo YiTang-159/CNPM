@@ -54,3 +54,12 @@ test('hết hạn mức miễn phí (responseStatus khác 200) thì báo lỗi l
   const fx = async () => ({ ok: true, json: async () => ({ responseStatus: 403, responseData: { translatedText: 'MYMEMORY WARNING' } }) });
   await assert.rejects(translateText('a', 'vi', 'en', fx), (e) => e instanceof TranslateError && e.code === 'limit');
 });
+
+test('disabled target languages are not requested; original transcript remains available', async () => {
+  const calls=[];
+  const fake=async url=>{calls.push(url);return {ok:true,json:async()=>({responseStatus:200,responseData:{translatedText:'Hello'}})};};
+  const result=await translateLines(['Xin chào'],'vi',fake,['en']);
+  assert.deepEqual(result,[{vi:'Xin chào',en:'Hello'}]);
+  assert.equal(calls.length,1);
+  assert.ok(calls[0].includes('vi|en'));
+});

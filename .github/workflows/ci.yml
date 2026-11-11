@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 20
       - name: Test nội dung 3 ngôn ngữ
-        run: node --test shared/i18n.test.mjs shared/pricing.test.mjs
+        run: node --test shared/*.test.mjs
       - name: Kiểm tra web/mobile đã đồng bộ với shared
         run: |
           node scripts/sync-shared.mjs
@@ -37,8 +37,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Test luật đơn hàng và cách tính giá ở máy chủ
-        run: node --test server/test/orders.test.mjs
+      - name: Cài và kiểm thử toàn bộ Backend
+        run: |
+          npm ci --prefix server
+          npm test --prefix server
 
   web:
     name: Web (React.js)
@@ -81,3 +83,29 @@ jobs:
         run: npm test
       - name: Đóng gói JavaScript cho Android (kiểm tra import, cú pháp)
         run: npx expo export --platform android --output-dir dist
+
+  sql-integration:
+    name: SQL Server và toàn bộ Admin
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: IntegrationOnly!2026
+        ports:
+          - 1433:1433
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci --prefix server
+      - name: Kiểm thử SQL trên database tạm riêng biệt
+        env:
+          DB_INTEGRATION: 'true'
+          DB_HOST: 127.0.0.1
+          DB_PORT: '1433'
+          DB_USER: sa
+          DB_PASSWORD: IntegrationOnly!2026
+        run: node --test server/test/sql.integration.test.mjs

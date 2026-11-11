@@ -1,3 +1,5 @@
+import { formatMinorMoney } from '../shared/format.js';
+import SavedVideo from '../components/SavedVideo.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -14,6 +16,7 @@ export default function Account() {
   const [feedback, setFeedback] = useState([]);
   const [msg, setMsg] = useState('');
   const [form, setForm] = useState({ message: '', videoId: '' });
+  const [viewing,setViewing] = useState(null);
   const [busy, setBusy] = useState(false);
   const refresh = useCallback(async () => {
     if (!user?.token) return;
@@ -54,6 +57,7 @@ export default function Account() {
   if (!user) return <div className="wrap page-head"><h1>Tài khoản</h1><p><Link to="/login" state={{ from: '/account' }}>Đăng nhập để xem dữ liệu của bạn.</Link></p></div>;
   return <div className="wrap"><div className="page-head"><h1>Tài khoản của tôi</h1><p>Dữ liệu được quản lý từ SQL Server – DubchefDB.</p></div>
     {msg ? <p role="status" className="adm-note">{msg}</p> : null}
+    {viewing ? <SavedVideo video={viewing} onClose={() => setViewing(null)} /> : null}
     <div className="account-grid">
       <section className="panel"><h2>Thông tin hồ sơ</h2><form onSubmit={updateProfile}>
         <label>Họ và tên<input value={name} maxLength={100} required onChange={e => setName(e.target.value)} /></label>
@@ -68,11 +72,11 @@ export default function Account() {
         <button className="btn btn-sm" onClick={refresh}>Làm mới</button>
         <ul className="list">{videos.map(v => <li key={v.id}><strong>#{v.id} {v.title}</strong>
           <p>Trạng thái: {v.status} · {v.originalLanguage} · {new Date(v.createdAt).toLocaleString('vi-VN')}</p>
-          {v.videoUrl ? <button className="btn btn-sm" onClick={() => download(v.id, v.fileName)}>Tải video</button> : <small>Chưa lưu xong tệp video</small>}
+          {v.videoUrl ? <><button className="btn btn-sm" onClick={() => setViewing(v)}>Xem kết quả</button><button className="btn btn-sm" onClick={() => download(v.id, v.fileName)}>Tải video</button></> : <small>Chưa lưu xong tệp video</small>}
         </li>)}</ul>{!videos.length ? <p>Chưa có video.</p> : null}</section>
       <section className="panel"><h2>Đơn hàng của tôi</h2><p><Link to="/pricing" className="btn btn-sm">Bảng giá</Link></p>
         <ul className="list">{myOrders.map(o => <li key={o.id}>
-          <strong>Đơn #{o.id}</strong><p>{Number(o.amountMinor).toLocaleString('vi-VN')} {o.currency} · {o.status}</p>
+          <strong>Đơn #{o.id}</strong><p>{formatMinorMoney(o.amountMinor,o.currency)} · {o.status}</p>
           <small>{new Date(o.createdAt).toLocaleString('vi-VN')}</small>
         </li>)}</ul>{!myOrders.length ? <p>Chưa có đơn hàng.</p> : null}
       </section>

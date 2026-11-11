@@ -1,35 +1,43 @@
-# BỘ SQL DUBCHEF – SƠ ĐỒ VAI TRÒ
+# SQL Server của phiên bản hiện tại
 
-**Chọn `localhost,1433`, database `DubchefDB` trong SSMS.**
+Cấu trúc chuẩn là `NgonNgu` trong PhuDe/ThuyetMinh, `NoiDung` JSON các dòng text/start/end, metadata Video gồm TenTep/DungLuong/DinhDang. Tên `MaNgonNgu` vẫn là khóa chính của bảng danh mục NgonNgu; không nhầm với cột của bảng nội dung.
 
-Mở `../docs/HUONG_DAN_QUAN_TRI_THONG_MINH_VA_SQL.md` để xem bảng ánh xạ chức năng User/Admin → bảng SQL, thứ tự migration, cách nâng cấp và kiểm thử.
+## Cài và nâng cấp
 
-## 1. Bảng cấu trúc (chạy có thứ tự, không phải báo cáo)
+Khuyến nghị chạy Docker API: `docker compose up -d --build`. `openRepo()` tự chạy preflight, 02-schema, 04-workflows và 07-quan-tri-nghiep-vu. Tên database được chọn từ DB_NAME, mặc định DubchefDB; API không thực thi USE DubchefDB bên trong pool của database khác. DB_SKIP_CREATE=true dùng khi database đã có và login không có quyền tạo database.
 
-- `01-create-database.sql` → `02-schema.sql` → `04-workflows.sql` → `07-quan-tri-nghiep-vu.sql`.
-- `03-admin.sql`: stored procedures thống kê (tùy chọn, sau schema).
-- `00-CAI-DAT-KHONG-XOA.sql`: bộ cài đặt tích hợp **các lệnh 01,02,04,03,07** để chạy thủ công, có IF EXISTS/CREATE OR ALTER; sao lưu trước.
-- `05-sqlserver-tai-khoan.sql`: **legacy**, cơ chế SHA-256 không tương thích scrypt của website Node.js. **Không dùng để tạo tài khoản web**.
-- `supabase-accounts.sql`, `supabase-qr.sql`: **PostgreSQL**, không dùng trong SSMS.
+Nếu cài bằng SSMS, chạy **00-CAI-DAT-KHONG-XOA.sql** một lần, trên cùng SQL Server API sử dụng. Đây là file tổng hợp không xóa dữ liệu và không chèn dữ liệu mẫu; chạy lại chỉ bổ sung cấu trúc còn thiếu. Không cần chạy lần lượt tất cả file trong thư mục.
 
-Backend Node khi khởi động tự kiểm tra/cài lần lượt 01, 02, 04, 07. Có thể dùng 07 cho nâng cấp database cũ, không cần chạy 00 nếu database đã đủ bảng.
+Nếu preflight phát hiện cấu trúc cũ MaNgonNgu/ThuTu/BatDau/KetThuc trong bảng nội dung hoặc Video thiếu metadata, lệnh dừng trước khi áp dụng migration. Sao lưu database và đối chiếu cấu trúc; không xóa bảng để vượt qua lỗi. Bộ ZIP gốc được kiểm tra dùng bộ 04-workflows JSON; script 06-service tạo cấu trúc khác đã được thay bằng chỉ dẫn tương thích để tránh tạo nhầm.
 
-## 2. Truy vấn báo cáo (F5 để xem Results)
+## Tra cứu và báo cáo
 
-- `bao-cao/00-TONG-HOP.sql`: KPI cơ bản.
-- `bao-cao/01-NguoiDung.sql`: tài khoản, login.
-- `bao-cao/02-Video-ThuyetMinh-PhuDe.sql`: video, nội dung, **tách JSON thành dòng phụ đề**.
-- `bao-cao/03-PhanHoi-LienHe.sql`: khách gửi và Admin trả lời.
-- `bao-cao/04-DonHang-DoanhThu.sql`: đơn và giao dịch **mô phỏng**.
-- `bao-cao/05-NgonNgu-QR.sql`: danh mục ngôn ngữ, truy cập và QR.
-- `bao-cao/06-KiemDuyet-LichSu.sql`: trạng thái duyệt, phiên bản, ưu tiên và audit.
-- **`BAO_CAO_TONG_HOP.sql`** hoặc `queries.sql`: tất cả báo cáo trên trong một file để chạy F5 và xem nhiều bảng.
+- `queries.sql`, `BAO_CAO_TONG_HOP.sql`, `bao-cao/00-TONG-HOP.sql`: truy vấn tổng hợp chỉ đọc.
+- `bao-cao/01..09`: truy vấn theo từng chức năng, gồm lịch sử đăng nhập và đối soát.
+- `03-admin.sql`, `08-bao-cao-chuyen-nghiep.sql`: thủ tục/view tùy chọn cho SSMS; API dùng truy vấn tham số hóa trực tiếp.
+- `05-sqlserver-tai-khoan.sql`: tiện ích tài khoản cũ, không cần chạy cho đăng ký qua Web/Mobile; không tự thay mật khẩu tài khoản hiện tại.
+- `09-du-lieu-mau.sql` và `09b-xoa-du-lieu-mau.sql`: chỉ dùng chủ động cho dữ liệu mẫu; không nằm trong cài tự động.
+- `supabase-*.sql`: PostgreSQL cho phương án Supabase cũ, **không chạy trong SSMS**. Cấu hình `/backend` trong bản này dùng SQL Server.
+- `06-service.sql`, `07-service-queries.sql`: chỉ thông báo đường chạy chuẩn; không tạo bộ bảng thứ hai.
 
-**Báo cáo không ghi dữ liệu.** Nếu kết quả rỗng, tạo dữ liệu bằng thao tác User/Admin trên website. Đừng chạy các file `supabase-*.sql` trong SSMS.
+Mật khẩu đăng nhập ứng dụng không phải mật khẩu sa. Giữ DB_PASSWORD cũ khi dùng volume SQL đã có: đổi biến môi trường không đổi mật khẩu sa của volume cũ. Không chạy docker compose down -v nếu muốn giữ dữ liệu.
 
-## 3. Xử lý lỗi
+## Dữ liệu cần kiểm tra
 
-- API `Login failed for user sa`: kiểm tra `.env` và mật khẩu SQL thật, không xóa volume.
-- `Invalid object name`: thiếu schema/migration; sao lưu rồi chạy file tạo bảng đúng thứ tự.
-- `Invalid column name`: DB cũ chưa được nâng cấp 07 hoặc schema đã lệch; ngừng thử ALTER/DROP tùy tiện.
-- Mất `localhost:3000/api/health`: kiểm tra `docker compose logs api --tail=80`.
+```sql
+USE DubchefDB;
+SELECT TOP(20) MaNguoiDung,HoTen,Email,VaiTro,TrangThai FROM dbo.NguoiDung ORDER BY MaNguoiDung DESC;
+SELECT TOP(20) * FROM dbo.Video ORDER BY MaVideo DESC;
+SELECT TOP(20) * FROM dbo.ThuyetMinh ORDER BY MaThuyetMinh DESC;
+SELECT TOP(20) * FROM dbo.PhuDe ORDER BY MaPhuDe DESC;
+SELECT TOP(20) * FROM dbo.PhanHoi ORDER BY MaPhanHoi DESC;
+SELECT TOP(20) * FROM dbo.LienHe ORDER BY MaLienHe DESC;
+SELECT TOP(20) * FROM dbo.DonHang ORDER BY MaDonHang DESC;
+SELECT TOP(20) * FROM dbo.GiaoDich ORDER BY MaGiaoDich DESC;
+SELECT * FROM dbo.NgonNgu;
+SELECT TOP(20) * FROM dbo.LichSuNoiDung ORDER BY MaLichSu DESC;
+SELECT TOP(20) * FROM dbo.LichSuXuLyPhanHoi ORDER BY MaLichSu DESC;
+SELECT TOP(20) * FROM dbo.LichSuDangNhap ORDER BY MaLichSu DESC;
+```
+
+Trong PhuDe/ThuyetMinh, NoiDung là JSON. Tệp video gốc nằm trong volume uploads; TTS chưa được xuất thành tệp audio. Thời gian lưu UTC, báo cáo hiển thị Việt Nam bằng DATEADD(HOUR,7,...). DonHang và GiaoDich hiện chỉ mô phỏng khi PAYMENT_DEMO=true.

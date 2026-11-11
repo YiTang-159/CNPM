@@ -25,7 +25,7 @@ export function verifyPassword(password, stored) {
   // Chỉ nhận đúng dạng `salt:hash` hợp lệ; chuỗi hỏng luôn bị từ chối, không ném lỗi.
   if (parts.length !== 2) return false;
   const [saltHex, hashHex] = parts;
-  if (!saltHex || !hashHex || saltHex.length % 2 || hashHex.length % 2 || !HEX.test(saltHex) || !HEX.test(hashHex)) return false;
+  if (saltHex.length !== 32 || hashHex.length !== 128 || !saltHex || !hashHex || saltHex.length % 2 || hashHex.length % 2 || !HEX.test(saltHex) || !HEX.test(hashHex)) return false;
   const want = Buffer.from(hashHex, 'hex');
   const got = scryptSync(password, Buffer.from(saltHex, 'hex'), want.length);
   return want.length === got.length && timingSafeEqual(want, got);
@@ -36,20 +36,23 @@ const sign = (body, secret) => createHmac('sha256', secret).update(body).digest(
 
 /** Token ký HMAC: `payload.chữ_ký`. Hết hạn sau `days` ngày. */
 export function makeToken(user, secret, now = Date.now(), days = 7) {
-  const body = b64(JSON.stringify({ email: user.email, role: user.role, exp: now + days * 86400000 }));
+  const body = b64(JSON.stringify({ id: user.id, email: user.email, role: user.role, exp: now + days * 86400000 }));
   return body + '.' + sign(body, secret);
 }
 
 /** Trả { email, role } nếu token đúng và còn hạn, ngược lại null. */
 export function readToken(token, secret, now = Date.now()) {
-  const [body, sig] = String(token || '').split('.');
+  const parts = String(token || '').split('.');
+  if (parts.length !== 2) return null;
+  const [body, sig] = parts;
   if (!body || !sig) return null;
   const want = Buffer.from(sign(body, secret));
   const got = Buffer.from(sig);
   if (want.length !== got.length || !timingSafeEqual(want, got)) return null;
   try {
     const p = JSON.parse(Buffer.from(body, 'base64url').toString());
-    return p.exp > now ? { email: p.email, role: p.role } : null;
+    return Number.isFinite(p.exp) && p.exp > now && typeof p.email === 'string' && ['admin', 'user'].includes(p.role)
+      ? { ...(p.id == null ? {} : { id: p.id }), email: p.email, role: p.role } : null;
   } catch (e) {
     return null;
   }

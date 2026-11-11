@@ -39,7 +39,7 @@ async function connect(database, tries = 60) {
 
 /** Chạy một file .sql, tách các lô bằng dòng GO. */
 async function runScript(pool, file) {
-  const text = await readFile(join(DB_DIR, file), 'utf8');
+  const text = (await readFile(join(DB_DIR, file), 'utf8')).replace(/^\s*USE\s+\[?DubchefDB\]?\s*;?\s*$/gim, '');
   for (const batch of text.split(/^\s*GO\s*$/im)) {
     if (batch.trim()) await pool.request().batch(batch);
   }
@@ -106,17 +106,23 @@ async function aggregate(pool, table, col, span, tz, now = Date.now()) {
 
 /** Tạo CSDL + bảng (nếu chưa có) rồi trả về các hàm thao tác dữ liệu. */
 export async function openRepo() {
-  const master = await connect('master');
-  await runScript(master, '01-create-database.sql');
-  await master.close();
+  const database = process.env.DB_NAME || 'DubchefDB';
+  if (!/^[A-Za-z][A-Za-z0-9_]{0,127}$/.test(database)) throw new Error('DB_NAME không hợp lệ');
+  if (process.env.DB_SKIP_CREATE !== 'true') {
+    const master = await connect('master');
+    try { await master.request().query(`IF DB_ID(N'${database}') IS NULL CREATE DATABASE [${database}]`); }
+    finally { await master.close(); }
+  }
 
   const pool = await connect(process.env.DB_NAME || 'DubchefDB');
+  await runScript(pool, '00-PREFLIGHT.sql');
   await runScript(pool, '02-schema.sql');
   await runScript(pool, '04-workflows.sql');
   await runScript(pool, '07-quan-tri-nghiep-vu.sql');
   console.log('SQL Server sẵn sàng.');
 
   const repo = {
+    close: () => pool.close(),
     async ping() {
       await pool.request().query('SELECT 1 AS ok');
     },
@@ -320,6 +326,9 @@ export async function openRepo() {
     },
 
     async deleteUser(email) {
+      const orders = await pool.request().input('email', sql.NVarChar(254), email)
+        .query('SELECT TOP(1) MaDonHang FROM dbo.DonHang WHERE EmailKhachHang=@email');
+      if (orders.recordset.length) throw Object.assign(new Error('has_data'), {number:547});
       const r = await pool.request().input('email', sql.NVarChar(254), email)
         .query(`DELETE FROM dbo.NguoiDung WHERE Email = @email AND VaiTro = 'user'`);
       return r.rowsAffected[0] > 0;

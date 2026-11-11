@@ -1,74 +1,43 @@
-# Hướng dẫn SQL Server và kiểm tra luồng dịch vụ
+# SQL Server của phiên bản hiện tại
 
-## 1. Kết nối đúng SQL Server trong ảnh
+Cấu trúc chuẩn là `NgonNgu` trong PhuDe/ThuyetMinh, `NoiDung` JSON các dòng text/start/end, metadata Video gồm TenTep/DungLuong/DinhDang. Tên `MaNgonNgu` vẫn là khóa chính của bảng danh mục NgonNgu; không nhầm với cột của bảng nội dung.
 
-Ảnh SSMS cho thấy server `127.0.0.1,14330`, database `DubchefDB`. Đây là SQL Server trên máy của bạn; `127.0.0.1` trong máy cloud là một máy khác. Mã nguồn đã được nối SQL nhưng cần chạy backend trên máy có kết nối đến SQL Server của bạn để thấy dữ liệu trong SSMS đó.
+## Cài và nâng cấp
 
-Chạy `npm run setup:local` tại thư mục dự án. Chỉnh `.env`: `DB_HOST=127.0.0.1`, `DB_PORT=14330`, `DB_NAME=DubchefDB`, `DB_USER=sa`, `DB_PASSWORD` là mật khẩu của SQL đang chạy, `DB_TRUST_CERT=true` chỉ cho SQL phát triển dùng chứng chỉ tự ký. `npm start` sẽ tự tạo bảng còn thiếu. Nếu database đã có và user không có quyền tạo database, đặt `DB_SKIP_CREATE=true`; user vẫn cần quyền tạo/đổi các bảng và đọc/ghi dữ liệu.
+Khuyến nghị chạy Docker API: `docker compose up -d --build`. `openRepo()` tự chạy preflight, 02-schema, 04-workflows và 07-quan-tri-nghiep-vu. Tên database được chọn từ DB_NAME, mặc định DubchefDB; API không thực thi USE DubchefDB bên trong pool của database khác. DB_SKIP_CREATE=true dùng khi database đã có và login không có quyền tạo database.
 
-Không chạy đồng thời container SQL mới vào đúng cổng SQL hiện có. Nếu dùng Docker toàn bộ dự án và vẫn giữ SQL cũ, chọn `SQL_PORT=14331`; hai SQL Server này có dữ liệu riêng.
+Nếu cài bằng SSMS, chạy **00-CAI-DAT-KHONG-XOA.sql** một lần, trên cùng SQL Server API sử dụng. Đây là file tổng hợp không xóa dữ liệu và không chèn dữ liệu mẫu; chạy lại chỉ bổ sung cấu trúc còn thiếu. Không cần chạy lần lượt tất cả file trong thư mục.
 
-## 2. Bảng dữ liệu
+Nếu preflight phát hiện cấu trúc cũ MaNgonNgu/ThuTu/BatDau/KetThuc trong bảng nội dung hoặc Video thiếu metadata, lệnh dừng trước khi áp dụng migration. Sao lưu database và đối chiếu cấu trúc; không xóa bảng để vượt qua lỗi. Bộ ZIP gốc được kiểm tra dùng bộ 04-workflows JSON; script 06-service tạo cấu trúc khác đã được thay bằng chỉ dẫn tương thích để tránh tạo nhầm.
 
-| Chức năng | Bảng |
-|---|---|
-| Tài khoản, vai trò, trạng thái, lần đăng nhập cuối | `dbo.NguoiDung` |
-| Dự án/video và chủ sở hữu | `dbo.Video` |
-| Lời thuyết minh theo dự án/ngôn ngữ | `dbo.ThuyetMinh` |
-| Phụ đề, thứ tự, mốc bắt đầu/kết thúc từng ngôn ngữ | `dbo.PhuDe` |
-| Nội dung liên hệ/phản hồi và câu trả lời admin | `dbo.LienHe` |
-| Đơn hàng và giao dịch mô phỏng nếu bật | `dbo.DonHang`, `dbo.GiaoDich` |
-| Lượt xem, lượt mở QR | `dbo.LuotTruyCap`, `dbo.LuotQuetQR` |
+## Tra cứu và báo cáo
 
-Video không lưu VARBINARY trong SQL: file nằm ở `server/uploads/`, SQL lưu đường dẫn và chủ sở hữu. Phải sao lưu cả SQL và thư mục uploads/volume. API video yêu cầu phiên hợp lệ và đúng chủ sở hữu/admin.
+- `queries.sql`, `BAO_CAO_TONG_HOP.sql`, `bao-cao/00-TONG-HOP.sql`: truy vấn tổng hợp chỉ đọc.
+- `bao-cao/01..09`: truy vấn theo từng chức năng, gồm lịch sử đăng nhập và đối soát.
+- `03-admin.sql`, `08-bao-cao-chuyen-nghiep.sql`: thủ tục/view tùy chọn cho SSMS; API dùng truy vấn tham số hóa trực tiếp.
+- `05-sqlserver-tai-khoan.sql`: tiện ích tài khoản cũ, không cần chạy cho đăng ký qua Web/Mobile; không tự thay mật khẩu tài khoản hiện tại.
+- `09-du-lieu-mau.sql` và `09b-xoa-du-lieu-mau.sql`: chỉ dùng chủ động cho dữ liệu mẫu; không nằm trong cài tự động.
+- `supabase-*.sql`: PostgreSQL cho phương án Supabase cũ, **không chạy trong SSMS**. Cấu hình `/backend` trong bản này dùng SQL Server.
+- `06-service.sql`, `07-service-queries.sql`: chỉ thông báo đường chạy chuẩn; không tạo bộ bảng thứ hai.
 
-Tài khoản cũ được tạo bằng `05-sqlserver-tai-khoan.sql` (hash SHA256 kèm salt) được kiểm tra tương thích và tự nâng sang scrypt sau lần đăng nhập thành công.
+Mật khẩu đăng nhập ứng dụng không phải mật khẩu sa. Giữ DB_PASSWORD cũ khi dùng volume SQL đã có: đổi biến môi trường không đổi mật khẩu sa của volume cũ. Không chạy docker compose down -v nếu muốn giữ dữ liệu.
 
-Đơn hàng/nhắn tin cũ không có ID chủ tài khoản vẫn giữ trong SQL, không tự gán cho tài khoản mới chỉ vì email giống nhau. Bản ghi phản hồi cũ vẫn xem được bên admin.
+## Dữ liệu cần kiểm tra
 
-Backend tự migrate `02-schema.sql`, `04-workflows.sql` và `07-quan-tri-nghiep-vu.sql`. `03-admin.sql`, `05-sqlserver-tai-khoan.sql`, các file Supabase là tài liệu/cách làm cũ, không phải backend đang dùng. Không trộn các thủ tục xác thực cũ vào luồng web mới.
-
-## 3. Kiểm tra thủ công trên web và SSMS
-
-1. Đăng ký một khách hàng mới, đăng xuất, đăng nhập lại. Mở `db/06-kiem-tra-dong-bo-ssms.sql` trong SSMS: tài khoản phải có trong `NguoiDung` và có `LanDangNhapCuoi`.
-2. Vào Trải nghiệm, chọn video MP4/WebM/MOV dưới100MB, nhập lời thoại (hoặc nhận diện Whisper), xử lý, đặt tên dự án rồi bấm **Lưu dự án vào SQL**. Nếu lỗi, UI phải báo chưa lưu, không hiện thành công.
-3. Vào **Dự án của tôi**. Kiểm tra video, văn bản, phụ đề và tải SRT. Tải lại trang/đăng nhập ở trình duyệt khác vẫn thấy cùng dự án.
-4. Đăng nhập admin bằng thông tin trong `.env`. Vào **Thuyết minh**, sửa văn bản/trạng thái; vào **Phụ đề**, sửa nội dung và thời gian. Khách hàng tải lại danh sách để thấy thay đổi.
-5. Khách hàng gửi phản hồi khi đã đăng nhập. Admin mở **Phản hồi**, nhập câu trả lời và lưu. Khách hàng tải lại `/account` để thấy câu trả lời. Tin liên hệ gửi khi chưa đăng nhập vẫn nằm trong hộp admin; không tự gán quyền xem lịch sử riêng tư chỉ dựa vào email do khách vãng lai nhập.
-6. Admin khóa khách hàng. Khách hàng phải bị từ chối khi gọi API với cả phiên cũ. Khách A không được đọc file/dự án/đơn của khách B.
-7. Đơn thanh toán mặc định giữ `pending`; chưa có nhà cung cấp thanh toán thì không được tự ghi `paid` chỉ vì bấm nút.
-
-Các trang web không trực tiếp kết nối SQL; chúng gọi Node API, API dùng truy vấn có tham số. Không đưa chuỗi kết nối/mật khẩu DB vào mã React.
-
-## 4. Chạy kiểm thử SQL thật
-
-Khởi động SQL trước. Có thể dùng script PowerShell sau để nạp riêng các biến DB từ `.env` (không in giá trị):
-
-```powershell
-Get-Content .env | ForEach-Object {
-  if ($_ -match '^(DB_[A-Z_]+)=(.*)$') {
-    [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
-  }
-}
-$env:DB_INTEGRATION='true'
-node --test server/test/sql.integration.test.mjs
+```sql
+USE DubchefDB;
+SELECT TOP(20) MaNguoiDung,HoTen,Email,VaiTro,TrangThai FROM dbo.NguoiDung ORDER BY MaNguoiDung DESC;
+SELECT TOP(20) * FROM dbo.Video ORDER BY MaVideo DESC;
+SELECT TOP(20) * FROM dbo.ThuyetMinh ORDER BY MaThuyetMinh DESC;
+SELECT TOP(20) * FROM dbo.PhuDe ORDER BY MaPhuDe DESC;
+SELECT TOP(20) * FROM dbo.PhanHoi ORDER BY MaPhanHoi DESC;
+SELECT TOP(20) * FROM dbo.LienHe ORDER BY MaLienHe DESC;
+SELECT TOP(20) * FROM dbo.DonHang ORDER BY MaDonHang DESC;
+SELECT TOP(20) * FROM dbo.GiaoDich ORDER BY MaGiaoDich DESC;
+SELECT * FROM dbo.NgonNgu;
+SELECT TOP(20) * FROM dbo.LichSuNoiDung ORDER BY MaLichSu DESC;
+SELECT TOP(20) * FROM dbo.LichSuXuLyPhanHoi ORDER BY MaLichSu DESC;
+SELECT TOP(20) * FROM dbo.LichSuDangNhap ORDER BY MaLichSu DESC;
 ```
 
-Trên Bash:
-
-```sh
-set -a
-. ./.env
-set +a
-DB_INTEGRATION=true node --test server/test/sql.integration.test.mjs
-```
-
-Test tạo database tạm ngẫu nhiên và chỉ xóa database do chính test tạo. Kiểm tra đăng ký, đăng nhập, hash mật khẩu, SQL phụ đề/thuyết minh, phản hồi, phân quyền và dữ liệu còn sau khi đóng/mở kết nối và chạy migrate lại. Không chạy trên tài khoản không được phép tạo database kiểm thử.
-
-## 5. Đưa lên máy chủ
-
-Đặt `TOKEN_SECRET` dài và ổn định, mật khẩu admin/DB riêng; HTTPS ở reverse proxy; chỉ cho API truy cập SQL, không mở cổng SQL ra Internet. Dùng chứng chỉ DB tin cậy và `DB_TRUST_CERT=false` khi kết nối SQL bên ngoài môi trường phát triển. Compose chỉ bind cổng vào loopback; cấu hình reverse proxy để công khai web/API. Đặt giới hạn dung lượng và sao lưu uploads/SQL phù hợp hạ tầng; mỗi video tối đa100MB, mỗi tài khoản mặc định500MB, tổng uploads mặc định5GB. Có thể chỉnh `UPLOAD_QUOTA_MB` và `UPLOAD_TOTAL_QUOTA_MB` qua biến môi trường; một tài khoản chỉ có một upload đồng thời. Hiện không có cơ chế tự dọn file không còn được dự án tham chiếu.
-
-Thay `ADMIN_PASSWORD` trong `.env` không tự đổi mật khẩu của tài khoản admin đã tồn tại. Khi khởi tạo lần đầu, API tạo admin nếu email chưa có, không tự nâng quyền tài khoản khách hàng trùng email.
-
-GitHub Pages chỉ host giao diện tĩnh. Nếu dùng workflow CD Web, phải đặt repository variable `VITE_API_URL` là URL HTTPS backend đã triển khai và cấu hình `CORS_ORIGIN` cho đúng miền Pages. Thiếu biến này workflow không deploy; có thể dùng Docker để phục vụ web và API cùng tên miền.
+Trong PhuDe/ThuyetMinh, NoiDung là JSON. Tệp video gốc nằm trong volume uploads; TTS chưa được xuất thành tệp audio. Thời gian lưu UTC, báo cáo hiển thị Việt Nam bằng DATEADD(HOUR,7,...). DonHang và GiaoDich hiện chỉ mô phỏng khi PAYMENT_DEMO=true.

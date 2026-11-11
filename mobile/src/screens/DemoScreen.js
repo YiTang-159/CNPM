@@ -3,6 +3,9 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { Video } from 'expo-av';
 import * as Speech from 'expo-speech';
 import * as DocumentPicker from 'expo-document-picker';
+import { useAuth } from '../context/AuthContext';
+import { api, HAS_API } from '../api/client';
+import { saveMobileVideo } from '../api/video';
 import Screen from '../components/Screen';
 import Button from '../components/Button';
 import { Chip } from '../components/Controls';
@@ -22,6 +25,8 @@ const STT_PHASE_KEY = { model: 'd_stt_model', extract: 'd_stt_model', listen: 'd
 
 export default function DemoScreen() {
   const { t, lang } = useI18n();
+  const { user } = useAuth() || {};
+  const [saveStatus,setSaveStatus] = useState('');
   const c = useTheme();
   const s = useStyles();
   const videoRef = useRef(null);
@@ -106,6 +111,7 @@ export default function DemoScreen() {
   });
 
   const pick = async () => {
+    if (running) return;
     try {
       const res = await DocumentPicker.getDocumentAsync({ type: 'video/*', copyToCacheDirectory: true });
       if (!res.canceled && res.assets && res.assets[0]) {
@@ -148,7 +154,7 @@ export default function DemoScreen() {
         setStages(run(auto ? 1 : 0));
       }
 
-      const translated = await translateLines(lines, sourceLang);
+      const translated = await translateLines(lines, sourceLang, fetch, HAS_API ? (await api.languages()).languages.map(x => x.code) : ['vi','en','zh']);
       if (!translated.length) throw new TranslateError('empty');
       const withTime = timestamps
         ? translated.map((seg, n) => ({ ...seg, start: timestamps[n]?.start, end: timestamps[n]?.end }))
@@ -163,6 +169,13 @@ export default function DemoScreen() {
       setSubs({ [lang]: true });
       setStages(stageList.map(() => 'done'));
       setDone(true);
+      if (user?.token && HAS_API) {
+        setSaveStatus('Đang lưu video và kết quả vào máy chủ…');
+        try {
+          const id = await saveMobileVideo(user,file,sourceLang,withTime);
+          setSaveStatus(`Đã lưu video #${id}, thuyết minh và phụ đề vào SQL Server.`);
+        } catch { setSaveStatus('Xử lý xong nhưng chưa lưu thành công. Kiểm tra kết nối API rồi thử lại.'); }
+      } else setSaveStatus('Đăng nhập qua Backend để lưu video và kết quả vào SQL Server.');
     } catch (e) {
       const key = e instanceof SttError
         ? STT_ERR_KEY[e.code] || 'd_stt_err'
@@ -215,6 +228,7 @@ export default function DemoScreen() {
       </View>
 
       <Button title={running ? t('d_translating') : t('d_translate_btn')} onPress={start} disabled={running} />
+      {saveStatus ? <Text accessibilityLiveRegion="polite" style={s.note}>{saveStatus}</Text> : null}
       {translateErr ? <Text accessibilityLiveRegion="polite" style={[s.err, { marginTop: 10 }]}>{t(translateErr)}</Text> : null}
 
       {showPipe ? (

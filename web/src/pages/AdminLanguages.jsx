@@ -1,3 +1,4 @@
+import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useState } from 'react';
 import { manageApi } from '../api/workflows.js';
 
@@ -11,6 +12,7 @@ export default function AdminLanguages() {
     catch (err) { setInfo('Không đọc được dữ liệu: ' + err.message); }
   }, []);
   useEffect(() => { load(); }, [load]);
+  useAutoRefresh(load, !editing);
   async function submit(e) {
     e.preventDefault();
     try { await manageApi.addLanguage({ ...form, code: form.code.toLowerCase().trim() });

@@ -41,9 +41,9 @@ export async function translateText(text, from, to, fetchImpl = fetch) {
 }
 
 /** Dịch một câu sang cả 3 ngôn ngữ Việt, Anh, Trung, giữ nguyên bản ở ngôn ngữ nguồn. Trả về { vi, en, zh }. */
-export async function translateToAll(text, from, fetchImpl = fetch) {
+export async function translateToAll(text, from, fetchImpl = fetch, enabled = ['vi','en','zh']) {
   const trimmed = String(text).trim();
-  const targets = ['vi', 'en', 'zh'].filter((l) => l !== from);
+  const targets = enabled.filter((l) => l !== from && LANGPAIR[l]);
   const pairs = await Promise.all(targets.map(async (to) => [to, await translateText(trimmed, from, to, fetchImpl)]));
   const result = { [from]: trimmed };
   for (const [lang, val] of pairs) result[lang] = val;
@@ -53,11 +53,11 @@ export async function translateToAll(text, from, fetchImpl = fetch) {
 /** Dịch nhiều dòng (mỗi dòng một câu) sang cả 3 ngôn ngữ. Trả về mảng [{ vi, en, zh }, ...].
  *  Dịch TUẦN TỰ từng dòng (không bắn hết cùng lúc): dịch vụ MyMemory miễn phí sẽ chặn nếu nhận
  *  quá nhiều request dồn dập cùng lúc — dễ gặp khi video dài, Whisper tách ra rất nhiều câu ngắn. */
-export async function translateLines(lines, from, fetchImpl = fetch) {
+export async function translateLines(lines, from, fetchImpl = fetch, enabled = ['vi','en','zh']) {
   const clean = lines.map((l) => l.trim()).filter(Boolean);
   const out = [];
   for (let n = 0; n < clean.length; n += 1) {
-    out.push(await translateToAll(clean[n], from, fetchImpl));
+    out.push(await translateToAll(clean[n], from, fetchImpl, enabled));
     if (n < clean.length - 1) {
       await new Promise((r) => setTimeout(r, 250));
     }

@@ -25,6 +25,7 @@ services:
       - db
     environment:
       PORT: "3000"
+      PAYMENT_DEMO: ${PAYMENT_DEMO:-true}
       DB_HOST: db
       DB_PORT: "1433"
       DB_USER: sa

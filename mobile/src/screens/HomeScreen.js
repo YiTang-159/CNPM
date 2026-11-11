@@ -41,7 +41,7 @@ export default function HomeScreen({ navigation, route }) {
   const stamp = route && route.params && route.params.scrollTo ? route.params.ts : null;
   useEffect(() => {
     if (stamp) setTimeout(goFeatures, 50);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [stamp]);
 
   return (

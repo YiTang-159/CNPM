@@ -1,3 +1,4 @@
+process.env.EXPO_PUBLIC_ALLOW_LOCAL_DEMO = 'true';
 // Giả lập các phần cần điện thoại thật để test giao diện chạy được trên máy tính / CI
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')

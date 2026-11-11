@@ -1,57 +1,62 @@
-# Dubchef – Bản tổ chức chức năng và báo cáo SQL (01/11/2026)
+# Dubchef thuyết minh video đa ngôn ngữ
 
-## Đã bổ sung
+Bản thống nhất React Web, React Native Mobile, Node Express và SQL Server. Bộ sơ đồ UC Activity DFD nằm trong `docs/so-do`; tài liệu đã cập nhật là `docs/Dubchef_FocusedUseCases.docx`.
 
-- Trang quản trị **Tổng hợp hệ thống**: `http://localhost:5173/admin/dashboard`.
-- Admin chia menu rõ: Tổng quan → Tài khoản & giao dịch → Xử lý video → Tương tác.
-- Endpoint mới **GET `/api/admin/dashboard`** (chỉ Admin) lấy tổng hợp và các bản ghi mới từ SQL Server.
-- Lưu **lịch sử đăng nhập thành công** vào bảng `dbo.LichSuDangNhap`. Không lưu mật khẩu; ghi email qua khóa ngoại tài khoản.
-- SQL reports chia theo nhóm dưới `db/bao-cao/`, mở độc lập trong SSMS và nhấn **F5** để hiện nhiều bảng giống ảnh tham khảo. **Chỉ hiển thị dữ liệu thật**.
-- File `db/00-KIEM-TRA-CAU-TRUC.sql` kiểm tra các bảng; `db/00-CAI-DAT-KHONG-XOA.sql` tạo các bảng còn thiếu. Thứ tự đã ghép cho phù hợp.
-- `db/05-sqlserver-tai-khoan.sql`: bỏ những câu lệnh tự tạo admin và tự thêm tài khoản mẫu / liên hệ / lượt QR. Đây là SQL legacy, không phải code login được Backend sử dụng.
+## Chạy trên máy Windows
 
-## Cực kỳ quan trọng khi nâng cấp trên máy đã chạy Docker/SQL Server
+1. Mở Docker Desktop, mở terminal tại thư mục có `docker-compose.yml`.
+2. Chạy `npm run setup:local`. Lệnh chỉ bổ sung cấu hình Admin và token còn thiếu; giữ nguyên mật khẩu và kết nối SQL đang có. Xem `ADMIN_EMAIL`, `ADMIN_PASSWORD` trong `.env` để đăng nhập.
+3. Chạy `docker compose up -d --build`.
+4. Mở `http://localhost:3000/api/health`: cần `ok: true`, `db: true`.
+5. Chạy `npm ci --prefix web`, sau đó `npm run web`. Mở `http://localhost:5173`.
+6. SSMS kết nối `localhost,1433`, SQL Server Authentication với thông tin SQL hiện tại; chọn `DubchefDB`. Chạy `db/queries.sql` để xem tổng hợp.
 
-1. **Sao lưu** dự án đang chạy và DB `DubchefDB`, đặc biệt file `.env` ở thư mục gốc. ZIP **không** đi kèm file `.env` gốc (vì chứa mật khẩu). Giữ nguyên file `.env` hiện tại của bạn.
-2. Sao chép mã nguồn mới vào dự án (hoặc giải nén ZIP ra thư mục riêng rồi chuyển riêng `.env` hiện tại sang). **Không đổi** `DB_HOST=db` bên trong container và không thay port SSMS `localhost,1433`.
-3. Trong SSMS kết nối `localhost,1433`, chọn database `DubchefDB`; mở `db/00-KIEM-TRA-CAU-TRUC.sql` rồi nhấn `F5`. Nếu thiếu bảng, **sau khi sao lưu dữ liệu**, mở `db/00-CAI-DAT-KHONG-XOA.sql` rồi F5. Nếu bảng cũ bị trùng tên nhưng khác cột, dừng lại để so sánh và viết migration riêng; **không xóa bảng**.
-4. Trong VS Code terminal gốc dự án, cập nhật API mà không động vào container SQL:
+Không chạy `docker compose down -v` khi muốn giữ dữ liệu. Khi cập nhật, giải nén vào thư mục mới và dùng lại `.env` cũ; không chép `node_modules` hoặc `dist` từ bản cũ.
 
-   ```powershell
-   docker compose up -d --no-deps --build api
-   docker compose logs api --tail=40
-   ```
+`web/.env` dùng `/backend` qua Vite proxy đến API cổng 3000. Không đổi DB_HOST hoặc port Docker để chạy Web từ điện thoại. Web production GitHub Pages phải dùng URL Backend HTTPS công khai; proxy Vite không tồn tại trên Pages.
 
-   Cần thấy `SQL Server sẵn sàng.` và `API chạy ở http://localhost:3000`.
-5. Mở `http://localhost:3000/api/health` → mong đợi `{"ok":true,"db":true}`.
-6. Trong terminal mới chạy giao diện:
+## Mobile
 
-   ```powershell
-   cd web
-   npm ci
-   npm run dev
-   ```
+Chép `mobile/.env.example` thành `mobile/.env`. Đặt `EXPO_PUBLIC_API_URL=http://IP-LAN-MAY-CHAY-DOCKER:3000`, hoặc `http://10.0.2.2:3000` cho Android emulator. Chạy `npm ci --prefix mobile`, `npm run mobile`. Điện thoại thật và máy tính phải cùng mạng; cho phép cổng 3000 qua Windows Firewall khi cần.
 
-7. Đăng nhập tài khoản Admin hiện có, vào `http://localhost:5173/admin/dashboard`. Làm mới để nhận dữ liệu mới.
-8. Trong SSMS, **mở một file bất kỳ** thuộc `db/bao-cao` (ví dụ `00-TONG-HOP.sql`) nhấn **F5**. Các bảng Results hiện theo từng chức năng.
+Mobile có lưu metadata, tệp video và kết quả vào cùng Backend SQL sau khi xử lý. Khách chỉ xử lý tạm. Nhận diện Whisper native cần bản development có `whisper.rn` và model; Expo Go có thể dùng lời thoại nhập tay. Web tự nhận diện trong Worker, không có ô nhập URL/lời thoại.
 
-## Cách kiểm thử User → SQL → Admin
+## Admin và SQL
 
-| Test | Thao tác Web User | Kết quả SQL | Chỗ xem trong Admin |
-|---|---|---|---|
-| Tài khoản | Đăng ký và đăng nhập thử | `dbo.NguoiDung`, `dbo.LichSuDangNhap` | Tổng hợp; Người dùng |
-| Video | Đăng nhập rồi tải video ở `/demo` | `dbo.Video` | Video |
-| Thuyết minh, phụ đề | Xử lý video thành công, lưu kết quả | `dbo.ThuyetMinh`, `dbo.PhuDe` | Thuyết minh; Phụ đề |
-| Phản hồi | Gửi từ `/account`, hoặc khách dùng `/contact` | `dbo.PhanHoi` hoặc `dbo.LienHe` | Phản hồi |
-| Đơn hàng | Tạo đơn từ `/pricing` | `dbo.DonHang` | Đơn hàng |
-| QR/truy cập | Mở trang web/quét QR trải nghiệm | `dbo.LuotTruyCap`, `dbo.LuotQuetQR` | Tổng quan; QR |
+Các trang đang dùng chung bộ API `/api/videos`, `/api/feedback`, `/api/admin/media` và bảng SQL phiên bản JSON. Không còn bộ API projects/uploads riêng. SQL lưu văn bản/mốc thời gian và metadata; video nằm trong volume `dubchef-uploads`. Giọng đọc TTS chạy trên thiết bị, chưa xuất file audio/video ghép giọng.
 
-**Lưu ý:** SQL không tự tạo những bản ghi chỉ vì bạn mở và chạy báo cáo. Các kết quả trong ảnh ví dụ là minh họa; báo cáo mới không tự thêm video, tài khoản, phản hồi hay đơn hàng. Trong dự án, thanh toán hiện là **mô phỏng**, không phải tiền thực đã được xác nhận. Các bản thuyết minh đang lưu văn bản và timeline, không phải audio lồng tiếng xuất sẵn.
+Admin có: tổng hợp, truy cập, tài khoản, video, thuyết minh, phụ đề, ngôn ngữ, phản hồi/liên hệ, đơn/giao dịch và QR. Các trang tải lại định kỳ; trình sửa tạm dừng làm mới khi có dữ liệu đang nhập. Nội dung có draft → reviewing → published, số phiên bản và lịch sử SQL.
 
-## Những phần chưa thể xác minh ngoài máy của bạn
+Xóa tài khoản có dữ liệu liên kết bị từ chối để bảo toàn lịch sử; dùng khóa tài khoản. Ngôn ngữ ngoài vi/en/zh được lưu danh mục nhưng chưa cài bộ dịch mới. Các mã vi/en/zh được tắt sẽ không được gọi dịch trong lần xử lý tiếp theo; lời thoại gốc vẫn được giữ.
 
-- Không thể chạy trực tiếp kết nối `localhost,1433` trên máy bạn từ môi trường đóng gói.
-- Không thể kiểm thử toàn bộ luồng đăng ký/video/phụ đề với SQL thật hoặc build React nếu môi trường tạo ZIP thiếu thư viện npm.
-- Chỉ khởi tạo bảng **mới** khi chưa tồn tại. Với database cũ trùng tên bảng nhưng khác cột cần đối chiếu migration trước khi áp dụng, không tự thay đổi dữ liệu.
+## Thanh toán mô phỏng
 
-Xem thêm: `../db/README-QUAN-LY-SQL.md`, `HUONG_DAN_BAN_DA_CHINH_SUA.md`.
+`PAYMENT_DEMO=true` bật API mô phỏng thanh toán phục vụ demo môn học. `false` trả 503, không ghi đơn paid. Quét QR ở ứng dụng ngân hàng không tự xác minh tiền; dự án chưa tích hợp webhook ngân hàng/cổng thanh toán. QR `/guest` là QR trải nghiệm để đếm lượt mở trang, độc lập với thanh toán.
+
+## Kiểm thử
+
+```sh
+npm ci --prefix server
+npm ci --prefix web
+npm ci --prefix mobile
+npm test --prefix server
+node --test shared/*.test.mjs
+npm run lint
+npm test --prefix web
+npm test --prefix mobile -- --runInBand
+npm run build --prefix web
+npm run bundle --prefix mobile
+```
+
+SQL integration cần SQL Server phát triển. Test tạo database tên ngẫu nhiên riêng, không sử dụng DB_NAME thật; kiểm thử tất cả module Admin và dữ liệu sau khởi động lại, rồi chỉ xóa database tạm. Xem `docs/KIEM_THU.md`.
+
+CI chạy Shared, Web, Mobile, toàn bộ Backend và job SQL Server riêng. CD Web đòi biến GitHub `VITE_API_URL` HTTPS cùng Pages GitHub Actions. CD Mobile đòi `EXPO_TOKEN`, biến `EXPO_PUBLIC_API_URL` và dự án EAS đã liên kết; gắn tag `mobile-v*` hoặc chạy tay và chờ build hoàn thành. Có YAML không đồng nghĩa một lần triển khai đã thành công.
+
+## Tài liệu
+
+- `docs/Dubchef_FocusedUseCases.docx`: 20 Use Case, Activity, DFD ngữ cảnh/mức 1/mức 2, dữ liệu và kiến trúc.
+- `docs/so-do/*.drawio`: nguồn sửa bằng diagrams.net; PNG/SVG để xem.
+- `docs/so-do/DFD_Muc_2_MotTrang.drawio`: toàn bộ mức 2 trên một canvas.
+- `docs/KIEM_THU.md`: checklist test Web Mobile Admin SQL.
+- `docs/KET_QUA_KIEM_TRA.md`: kết quả kiểm tra và giới hạn xác minh.
+- `db/README-QUAN-LY-SQL.md`: đường chạy SQL chuẩn và các file tùy chọn.

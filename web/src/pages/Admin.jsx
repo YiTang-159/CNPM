@@ -1,3 +1,4 @@
+import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
@@ -23,9 +24,10 @@ export default function Admin() {
 
   const load = useCallback(() => {
     setFailed(false);
-    statsApi.load(user, span).then((r) => setSt(r.stats)).catch(() => setFailed(true));
+    return statsApi.load(user, span).then((r) => setSt(r.stats)).catch(() => setFailed(true));
   }, [user, span]);
-  useEffect(load, [load]);
+  useEffect(() => { load(); }, [load]);
+  useAutoRefresh(load);
   useEffect(() => {
     if (!HAS_API) {
       setSummaryLoading(false);

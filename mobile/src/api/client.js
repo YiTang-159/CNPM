@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL || '';
 export const HAS_API = Boolean(BASE);
+const LOCAL_DEMO = process.env.NODE_ENV === 'test' || (__DEV__ && process.env.EXPO_PUBLIC_ALLOW_LOCAL_DEMO === 'true');
 
 const K_USERS = 'dubchef-users';
 const K_SESSION = 'dubchef-session';
@@ -67,8 +68,13 @@ async function remote(path, body, { method = body === undefined ? 'GET' : 'POST'
 const norm = (s) => s.trim().toLowerCase();
 
 export const api = {
+  languages: () => remote('/api/languages'),
+  createVideo: (token,body) => remote('/api/videos',body,{token}),
+  saveResults: (token,id,segments) => remote(`/api/videos/${id}/results`,{segments},{token}),
+  videoResults: (token,id) => remote(`/api/videos/${id}/results`,undefined,{token}),
   async register({ name, email, password }) {
     if (BASE) return remote('/api/auth/register', { name, email, password });
+    if (!LOCAL_DEMO) throw new ApiError('net');
     const users = await read(K_USERS, []);
     if (users.some((u) => u.email === norm(email))) throw new ApiError('exists');
     const user = { name: name.trim(), email: norm(email) };
@@ -79,6 +85,7 @@ export const api = {
 
   async login({ email, password }) {
     if (BASE) return remote('/api/auth/login', { email, password });
+    if (!LOCAL_DEMO) throw new ApiError('net');
     const users = await read(K_USERS, []);
     const found = users.find((u) => u.email === norm(email));
     if (!found || found.hash !== hash(password)) throw new ApiError('invalid');
@@ -87,6 +94,7 @@ export const api = {
 
   async contact({ name, email, message }) {
     if (BASE) return remote('/api/contact', { name, email, message });
+    if (!LOCAL_DEMO) throw new ApiError('net');
     const list = await read(K_MSGS, []);
     list.push({ name, email, message, at: new Date().toISOString() });
     await write(K_MSGS, list);

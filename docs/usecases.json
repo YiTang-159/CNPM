@@ -1,0 +1,202 @@
+[
+  [
+    "Đăng ký tài khoản",
+    "Khách",
+    "Chưa có email trong hệ thống",
+    "Nhập tên, email, mật khẩu và xác nhận điều khoản",
+    "Kiểm tra biểu mẫu; gửi đăng ký; băm scrypt; tạo tài khoản SQL",
+    "Nhận token và phiên đăng nhập",
+    "Email trùng hoặc dữ liệu sai: hiển thị lỗi, cho nhập lại",
+    "POST /api/auth/register → NguoiDung"
+  ],
+  [
+    "Đăng nhập",
+    "Khách và quản trị viên",
+    "Đã có tài khoản đang hoạt động",
+    "Nhập email và mật khẩu",
+    "Kiểm tra mật khẩu; trạng thái tài khoản; ghi lịch sử đăng nhập",
+    "Lưu phiên và mở chức năng theo quyền",
+    "Sai mật khẩu, tài khoản khóa hoặc quá nhiều lần thử: từ chối",
+    "POST /api/auth/login → NguoiDung và LichSuDangNhap"
+  ],
+  [
+    "Cập nhật hồ sơ",
+    "Thành viên trên Web",
+    "Token hợp lệ",
+    "Nhập họ tên mới trong Tài khoản",
+    "Xác thực; kiểm tra tên; cập nhật SQL; cập nhật phiên",
+    "Hiển thị tên đã lưu",
+    "Tên rỗng hoặc token hết hạn: báo lỗi",
+    "PATCH /api/me → NguoiDung"
+  ],
+  [
+    "Đổi mật khẩu",
+    "Thành viên trên Web",
+    "Đăng nhập và biết mật khẩu hiện tại",
+    "Nhập mật khẩu hiện tại, mật khẩu mới và xác nhận",
+    "Kiểm tra mật khẩu cũ; băm mật khẩu mới; cập nhật SQL",
+    "Thông báo đổi mật khẩu thành công",
+    "Sai mật khẩu cũ hoặc xác nhận không khớp: nhập lại",
+    "PATCH /api/me/password → NguoiDung"
+  ],
+  [
+    "Xử lý video đa ngôn ngữ",
+    "Khách hoặc thành viên",
+    "Có tệp video hợp lệ; có mạng khi tải model hoặc dịch",
+    "Chọn video và ngôn ngữ nguồn",
+    "Web tự nhận diện Whisper; Mobile tự nhận diện hoặc dùng lời thoại nhập tay; dịch các ngôn ngữ được bật; tạo dữ liệu phát lại",
+    "Video phát cùng phụ đề và giọng đọc trên thiết bị",
+    "Không nhận diện được, dịch lỗi hoặc lưu lỗi: báo rõ, không giả báo đã lưu",
+    "Thành viên: POST /api/videos; PUT file; POST results → Video, PhuDe, ThuyetMinh, LichSuNoiDung và uploads"
+  ],
+  [
+    "Tùy chỉnh phát lại",
+    "Khách hoặc thành viên",
+    "Đã có kết quả xử lý trong trang Trải nghiệm",
+    "Chọn giọng đọc, phụ đề, tốc độ và vị trí phát",
+    "Áp dụng cài đặt; đồng bộ đoạn thoại theo vị trí video",
+    "Phát video với cài đặt mới",
+    "Thiếu giọng đọc: thông báo hoặc tắt giọng, vẫn xem phụ đề",
+    "TTS trên thiết bị; cài đặt phát tạm trong giao diện"
+  ],
+  [
+    "Tra cứu video đã lưu",
+    "Thành viên",
+    "Đã lưu video bằng tài khoản hiện tại",
+    "Mở Tài khoản và chọn video",
+    "Xác thực chủ sở hữu; đọc SQL; trên Web tải tệp được bảo vệ và mở kết quả",
+    "Web xem lại phụ đề, giọng đọc hoặc tải tệp gốc; Mobile xem danh sách",
+    "Không phải chủ sở hữu, tệp thiếu hoặc mất kết nối: báo lỗi",
+    "GET /api/videos; GET /api/videos/:id/file và /results"
+  ],
+  [
+    "Lập đơn và thanh toán mô phỏng",
+    "Thành viên trên Web",
+    "Đã đăng nhập; bật PAYMENT_DEMO để mô phỏng",
+    "Chọn số video, loại tiền, phương thức thanh toán",
+    "Tính giá ở máy chủ; tạo pending; xác thực chủ đơn; ghi giao dịch và paid trong transaction",
+    "Nhận mã giao dịch mô phỏng; SQL có đơn đã thanh toán",
+    "Sai chủ đơn: từ chối; mô phỏng tắt: 503; đơn đã trả: 409",
+    "POST /api/orders; POST /api/orders/:id/pay → DonHang và GiaoDich"
+  ],
+  [
+    "Tra cứu đơn hàng cá nhân",
+    "Thành viên",
+    "Token hợp lệ",
+    "Mở danh sách đơn hàng trong Tài khoản",
+    "Lọc đơn theo email từ token; trả trạng thái và số tiền",
+    "Chỉ thấy đơn thuộc tài khoản hiện tại",
+    "Token hết hạn hoặc SQL lỗi: báo lỗi",
+    "GET /api/orders → DonHang và GiaoDich"
+  ],
+  [
+    "Gửi liên hệ",
+    "Khách hoặc thành viên",
+    "Không bắt buộc đăng nhập",
+    "Nhập tên, email liên hệ và nội dung",
+    "Kiểm tra dữ liệu; ghi tin liên hệ SQL",
+    "Thông báo tiếp nhận, Admin thấy tin mới",
+    "Thiếu nội dung hoặc mất mạng: giữ dữ liệu để thử lại",
+    "POST /api/contact → LienHe; email liên hệ chưa được xác minh"
+  ],
+  [
+    "Gửi và xem phản hồi",
+    "Thành viên",
+    "Token hợp lệ; nếu chọn video thì phải là video của mình",
+    "Nhập nội dung phản hồi và mã video tùy chọn",
+    "Lấy danh tính từ token; ghi SQL; đọc phản hồi và trả lời riêng của tài khoản",
+    "Thấy phản hồi đã gửi và câu trả lời Admin",
+    "Video không thuộc tài khoản hoặc nội dung rỗng: từ chối",
+    "POST và GET /api/feedback → PhanHoi"
+  ],
+  [
+    "Đăng xuất",
+    "Thành viên hoặc quản trị viên",
+    "Có phiên đang lưu trên thiết bị",
+    "Chọn Đăng xuất",
+    "Xóa phiên trên thiết bị; cập nhật giao diện",
+    "Trở về trạng thái khách",
+    "Token đã cấp vẫn có hạn dùng đến khi hết hạn; khóa hoặc xóa tài khoản chặn request tiếp",
+    "localStorage hoặc AsyncStorage chỉ lưu phiên; SQL không bị xóa"
+  ],
+  [
+    "Quản lý tài khoản",
+    "Quản trị viên",
+    "Đăng nhập bằng quyền admin",
+    "Tìm tài khoản, khóa, mở khóa hoặc yêu cầu xóa",
+    "Kiểm tra quyền; đọc hoặc cập nhật NguoiDung; bảo vệ tài khoản có dữ liệu liên kết",
+    "Danh sách mới và trạng thái được lưu",
+    "Không cho sửa Admin bằng API này; có dữ liệu liên kết thì từ chối xóa và đề nghị khóa",
+    "GET PATCH DELETE /api/admin/users → NguoiDung"
+  ],
+  [
+    "Quản lý video",
+    "Quản trị viên",
+    "Token admin hợp lệ",
+    "Tìm, xem video, đổi trạng thái hoặc xác nhận xóa",
+    "Đọc SQL; mở tệp bảo vệ; cập nhật trạng thái hoặc xóa video và kết quả liên quan",
+    "SQL cập nhật; tệp được xóa khi xóa video thành công",
+    "Không tồn tại hoặc SQL lỗi: thông báo; không báo thành công giả",
+    "/api/admin/videos và /api/videos/:id/file → Video, PhuDe, ThuyetMinh, uploads"
+  ],
+  [
+    "Biên tập và duyệt nội dung",
+    "Quản trị viên",
+    "Có video; token admin hợp lệ",
+    "Chọn thuyết minh hoặc phụ đề, ngôn ngữ và các đoạn",
+    "Đọc phiên bản; kiểm tra mốc thời gian; lưu draft hoặc reviewing; chỉ xuất bản bản đã duyệt không sửa nội dung",
+    "Lưu nội dung, trạng thái, phiên bản và lịch sử trong transaction",
+    "Bản cũ: 409 conflict; xuất bản sai quy trình: 409; mốc sai: 400",
+    "GET PUT /api/admin/media/:kind/:id/:language và history → PhuDe, ThuyetMinh, LichSuNoiDung"
+  ],
+  [
+    "Quản lý ngôn ngữ",
+    "Quản trị viên",
+    "Token admin hợp lệ",
+    "Thêm mã, sửa tên hoặc bật tắt ngôn ngữ",
+    "Validate mã và tên; ghi SQL; công khai các mã được bật mà bộ dịch hỗ trợ",
+    "Danh mục mới được lưu và lần dịch sau dùng danh mục đang bật",
+    "Mã trùng: 409; mã ngoài vi/en/zh chỉ lưu danh mục, chưa thêm bộ dịch",
+    "/api/admin/languages và /api/languages → NgonNgu"
+  ],
+  [
+    "Xử lý phản hồi và liên hệ",
+    "Quản trị viên",
+    "Có yêu cầu hỗ trợ; token admin hợp lệ",
+    "Lọc yêu cầu, nhập trả lời, ưu tiên và trạng thái",
+    "Phân biệt nguồn f hoặc c; kiểm tra câu trả lời; ghi cập nhật và lịch sử cùng transaction",
+    "Thành viên xem trả lời cho PhanHoi; liên hệ khách được quản lý nội bộ",
+    "Đã giải quyết nhưng chưa trả lời: từ chối; không tồn tại: 404",
+    "/api/admin/feedback và history → PhanHoi, LienHe, LichSuXuLyPhanHoi"
+  ],
+  [
+    "Tra cứu đơn hàng quản trị",
+    "Quản trị viên",
+    "Token admin hợp lệ",
+    "Mở Đơn hàng và giao dịch",
+    "Truy vấn tối đa 500 đơn gần nhất cùng giao dịch thành công",
+    "Xem đơn, tiền, loại tiền, phương thức và mã tham chiếu",
+    "SQL lỗi: hiển thị lỗi; Admin không tự xác minh tiền thật",
+    "GET /api/admin/orders → DonHang và GiaoDich"
+  ],
+  [
+    "Xem tổng hợp và thống kê",
+    "Quản trị viên",
+    "Token admin hợp lệ",
+    "Chọn Tổng hợp, Tổng quan hoặc thống kê QR theo 7, 14, 30 ngày",
+    "Truy vấn bảng nghiệp vụ; nhóm theo ngày UTC cộng 7; tính tổng và so sánh kỳ trước",
+    "Hiện KPI, biểu đồ, dữ liệu mới; tự tải lại theo trang",
+    "Không truy cập được SQL: báo lỗi, không thay bằng dữ liệu mẫu",
+    "/api/admin/dashboard, /statistics, /overview, /qr → các bảng SQL"
+  ],
+  [
+    "Ghi nhận truy cập và quét QR",
+    "Khách hoặc thành viên",
+    "Có mã khách trên trình duyệt; API có thể truy cập",
+    "Mở trang hoặc mở liên kết QR tới trang guest",
+    "Validate dữ liệu; bỏ qua trang admin; ghi lượt truy cập hoặc quét QR",
+    "Sự kiện được lưu và thống kê Admin đọc được",
+    "Sự kiện không hợp lệ bị từ chối; quét QR trải nghiệm không phải thanh toán",
+    "POST /api/track và /api/qr-scan → LuotTruyCap và LuotQuetQR"
+  ]
+]

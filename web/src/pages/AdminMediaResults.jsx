@@ -1,3 +1,4 @@
+import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { manageApi } from '../api/workflows.js';
 
@@ -45,6 +46,7 @@ export default function AdminMediaResults({kind}) {
     finally { setLoading(false); }
   },[kind]);
   useEffect(() => { setEditor(null); load(); },[load]);
+  useAutoRefresh(load, !editor && !saving);
   const visible = useMemo(() => items.filter(x => {
     const s = filter.query.toLowerCase().trim();
     return (filter.status === 'all' || x.status === filter.status) &&
@@ -112,7 +114,7 @@ export default function AdminMediaResults({kind}) {
       <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Video</th><th>Khách hàng</th><th>Ngôn ngữ</th><th>Trạng thái</th><th>Phiên bản</th><th>Cập nhật</th><th>Thao tác</th></tr></thead>
         <tbody>{visible.map(row=><tr key={row.id}><td><b>#{row.videoId}</b> {row.title}</td><td>{row.userEmail}</td><td>{row.language}</td>
           <td><span className={`ops-state ops-state-${row.status}`}>{LABELS[row.status]||row.status}</span></td><td>v{row.version}</td>
-          <td>{row.updatedAt?new Date(row.updatedAt).toLocaleString('vi-VN'):'—'}</td><td><button className="btn btn-sm" onClick={()=>selectItem(row)}>Mở</button></td></tr>)}</tbody>
+          <td>{row.updatedAt?new Date(row.updatedAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'}):'—'}</td><td><button className="btn btn-sm" onClick={()=>selectItem(row)}>Mở</button></td></tr>)}</tbody>
       </table>{!loading && !visible.length?<p className="fine">Chưa có kết quả phù hợp. Hãy xử lý video từ trang User hoặc tạo bản mới bên dưới.</p>:null}</div>
     </section>
     <section className="panel ops-panel"><h2>Tạo {label.toLowerCase()} cho video đã tải lên</h2>
@@ -143,7 +145,7 @@ export default function AdminMediaResults({kind}) {
       <h3>Lịch sử chỉnh sửa</h3>
       {history.length?<div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Phiên bản</th><th>Trạng thái</th><th>Người sửa</th><th>Thời gian</th></tr></thead>
         <tbody>{history.map(h=><tr key={h.id}><td>v{h.version}</td><td>{LABELS[h.status]||h.status}</td><td>{h.editor}</td>
-          <td>{new Date(h.changedAt).toLocaleString('vi-VN')}</td></tr>)}</tbody></table></div>:<p className="fine">Chưa có lịch sử chỉnh sửa bằng Admin.</p>}
+          <td>{new Date(h.changedAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'})}</td></tr>)}</tbody></table></div>:<p className="fine">Chưa có lịch sử chỉnh sửa bằng Admin.</p>}
     </section>}
   </>;
 }

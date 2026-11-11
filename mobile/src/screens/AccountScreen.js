@@ -1,3 +1,4 @@
+import { formatMinorMoney } from '../shared/format.js';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import Screen from '../components/Screen';
@@ -68,7 +69,7 @@ function MyData({ user }) {
       <Text accessibilityRole="header" style={[s.h2, { marginTop: 20, marginBottom: 8 }]}>{t('acc_orders')}</Text>
       {data.orders.map((o) => (
         <View key={o.id} style={row}>
-          <Text style={{ color: c.ink, fontWeight: '600' }}>#{o.id} · {Number(o.amountMinor).toLocaleString() + ' ' + o.currency}</Text>
+          <Text style={{ color: c.ink, fontWeight: '600' }}>#{o.id} · {formatMinorMoney(o.amountMinor,o.currency)}</Text>
           <Text style={{ color: c.muted }}>{o.status}</Text>
         </View>
       ))}

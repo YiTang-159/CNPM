@@ -45,6 +45,12 @@ jobs:
           npm ci
           npm run lint
           npm test
+      - name: Kiểm tra cấu hình Backend
+        env:
+          API_URL: ${{ vars.VITE_API_URL }}
+        run: |
+          test -n "$API_URL" || (echo 'Thiếu variable VITE_API_URL của Backend HTTPS'; exit 1)
+          case "$API_URL" in https://*) ;; *) echo 'GitHub Pages cần Backend HTTPS công khai'; exit 1;; esac
       - name: Build
         working-directory: web
         env:

@@ -1,3 +1,4 @@
+import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { manageApi } from '../api/workflows.js';
 const states = {new:'Mới', reviewing:'Đang xử lý', resolved:'Đã giải quyết'};
@@ -57,6 +58,7 @@ async function toggleHistory(id) {
     setMessage('Không đọc được lịch sử: ' + e.message);
   }
 }
+  useAutoRefresh(load, !busy && !items.some(r => { const e=edits[r.id];return e && (e.reply!==(r.reply||'') || e.status!==r.status || e.priority!==(r.priority||'normal')); }));
   return <>
     <div className="adm-head"><div><h1>Trung tâm phản hồi & chăm sóc khách hàng</h1>
       <p>Quản lý cả phản hồi tài khoản và liên hệ khách. Phân loại ưu tiên, theo dõi trạng thái, trả lời và ghi lịch sử xử lý vào SQL Server.</p>
@@ -77,7 +79,7 @@ async function toggleHistory(id) {
             {item.videoId?` · Video #${item.videoId}`:''}</p></div>
           <span className={`ops-state ops-state-${item.status}`}>{states[item.status]||item.status}</span></div>
         <p className="ops-message">{item.message}</p>
-        <p className="fine">Gửi: {new Date(item.createdAt).toLocaleString('vi-VN')}{item.assignedTo?` · Xử lý bởi ${item.assignedTo}`:''}</p>
+        <p className="fine">Gửi: {new Date(item.createdAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'})}{item.assignedTo?` · Xử lý bởi ${item.assignedTo}`:''}</p>
         <div className="ops-toolbar"><label>Trạng thái<select aria-label={`Trạng thái ${item.id}`} value={edits[item.id]?.status||item.status}
           onChange={e=>change(item.id,'status',e.target.value)}>{Object.entries(states).map(([s,n])=><option key={s} value={s}>{n}</option>)}</select></label>
           <label>Độ ưu tiên<select aria-label={`Ưu tiên ${item.id}`} value={edits[item.id]?.priority||'normal'}
@@ -89,7 +91,7 @@ async function toggleHistory(id) {
           <button className="btn" onClick={()=>toggleHistory(item.id)}>Lịch sử {histories[item.id]?'▲':'▼'}</button></div>
         {histories[item.id]?<div className="ops-audit"><b>Lịch sử xử lý</b>
           {histories[item.id].length?histories[item.id].map(h=><p key={h.id} className="fine">
-            {new Date(h.changedAt).toLocaleString('vi-VN')} · {h.editor} · {states[h.status]} · {priorities[h.priority]}
+            {new Date(h.changedAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'})} · {h.editor} · {states[h.status]} · {priorities[h.priority]}
           </p>):<p className="fine">Chưa có lịch sử cập nhật.</p>}</div>:null}
       </article>)}</div>
       {!filtered.length?<p className="fine">Không có phản hồi phù hợp. Phản hồi mới của khách sẽ xuất hiện tại đây.</p>:null}

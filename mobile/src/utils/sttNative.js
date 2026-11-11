@@ -21,11 +21,11 @@ let _FileSystem = null;
 function loadNativeModules() {
   if (_whisperModule && _ffmpegModule && _FileSystem) return true;
   try {
-    // eslint-disable-next-line global-require
+     
     _whisperModule = require('whisper.rn');
-    // eslint-disable-next-line global-require
+     
     _ffmpegModule = require('ffmpeg-kit-react-native');
-    // eslint-disable-next-line global-require
+     
     _FileSystem = require('expo-file-system');
     return true;
   } catch (e) {

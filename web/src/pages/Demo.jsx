@@ -161,7 +161,7 @@ export default function Demo() {
   }, [voice, speed, segments]);
 
   const pickFile = (f) => {
-    if (!f) return;
+    if (!f || running) return;
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     setFile(f);
     setFileName(f.name);
@@ -266,7 +266,7 @@ export default function Demo() {
       let translated;
       if (translate) {
         setStages((s) => runStage(s, tIdx, 'run'));
-        translated = await translateLines(lines, sourceLang);
+        translated = await translateLines(lines, sourceLang, fetch, HAS_API ? (await workApi.languages()).languages.map(x => x.code) : ['vi','en','zh']);
         setStages((s) => runStage(s, tIdx, 'done'));
       } else {
         // Không dịch: mỗi đoạn chỉ có đúng ngôn ngữ gốc
@@ -283,8 +283,8 @@ export default function Demo() {
 
       setSegments(withTime);
       setI(0);
-      const outLangs = translate ? ['vi', 'en', 'zh'] : [sourceLang];
-      const wanted = translate ? lang : sourceLang;
+      const outLangs = ['vi','en','zh'].filter(l => typeof withTime[0]?.[l] === 'string');
+      const wanted = outLangs.includes(lang) ? lang : sourceLang;
       setVoice(firstAvailableVoice(wanted, outLangs));
       setSubs({ [wanted]: true });
       setStages((s) => runStage(s, vIdx, 'done'));
@@ -294,7 +294,7 @@ export default function Demo() {
         const id = await uploadRef.current;
         if (id) {
           try {
-            await workApi.saveResults(id, withTime);
+            await workApi.saveResults(id, withTime, sourceLang);
             setSaveStatus(`Đã lưu video #${id}, nội dung thuyết minh và phụ đề vào SQL Server thành công.`);
           } catch (saveError) {
             setSaveStatus('Xử lý xong trên trình duyệt nhưng lưu kết quả vào SQL Server bị lỗi: ' + saveError.message);
@@ -354,14 +354,14 @@ export default function Demo() {
         <div className="run-bar">
           <div className="ctl-group">
             <label htmlFor="src-lang" style={{ fontSize: '.9rem', fontWeight: 600 }}>{t('d_source_lang')}</label>
-            <select id="src-lang" value={sourceLang} onChange={(e) => setSourceLang(e.target.value)}>
+            <select id="src-lang" disabled={running} value={sourceLang} onChange={(e) => setSourceLang(e.target.value)}>
               <option value="vi">Tiếng Việt</option>
               <option value="en">English</option>
               <option value="zh">中文</option>
             </select>
           </div>
           <label className="ctl-group" style={{ fontSize: '.9rem', fontWeight: 600, gap: 8 }}>
-            <input type="checkbox" checked={translate} onChange={(e) => setTranslate(e.target.checked)} />
+            <input type="checkbox" disabled={running} checked={translate} onChange={(e) => setTranslate(e.target.checked)} />
             {t('d_opt_translate')}
           </label>
           <button className="btn btn-primary" type="button" onClick={start} disabled={running}>

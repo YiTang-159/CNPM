@@ -77,7 +77,7 @@ export function attachWorkflows(pool, repo) {
         .query('DELETE FROM dbo.Video OUTPUT deleted.DuongDan AS filePath WHERE MaVideo=@id');
       return r.recordset[0] || null;
     },
-    async saveVideoResult(id, status, results, actor = 'system') {
+    async saveVideoResult(id, status, results, actor = 'system', originalLanguage = null) {
       const tx = new sql.Transaction(pool);
       await tx.begin();
       try {
@@ -110,7 +110,8 @@ export function attachWorkflows(pool, repo) {
           }
         }
         await new sql.Request(tx).input('id', sql.Int, id).input('status', sql.VarChar(20), status)
-          .query('UPDATE dbo.Video SET TrangThai=@status WHERE MaVideo=@id');
+          .input('language',sql.VarChar(8),originalLanguage)
+          .query('UPDATE dbo.Video SET TrangThai=@status,NgonNguGoc=COALESCE(@language,NgonNguGoc) WHERE MaVideo=@id');
         await tx.commit();
       } catch (err) {
         await tx.rollback().catch(() => {});

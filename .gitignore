@@ -5,3 +5,10 @@ web/.env
 mobile/.env
 *.log
 .DS_Store
+
+# Cấu hình và thông tin đăng nhập chỉ dùng tại máy
+.env
+.env.*
+!.env.example
+server/uploads/
+uploads/

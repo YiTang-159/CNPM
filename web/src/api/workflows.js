@@ -32,7 +32,7 @@ export const workApi = {
     await request(`/api/videos/${video.id}/file`, { method: 'PUT', body: file, binary: true });
     return video.id;
   },
-  saveResults: (videoId, segments) => request(`/api/videos/${videoId}/results`, { method: 'POST', body: { segments } }),
+  saveResults: (videoId, segments, originalLanguage) => request(`/api/videos/${videoId}/results`, { method: 'POST', body: { segments, originalLanguage } }),
   videoResults: id => request(`/api/videos/${id}/results`),
   async downloadVideo(id) {
     const token = session.load()?.token;
@@ -47,9 +47,6 @@ export const workApi = {
 export const manageApi = {
   videos: () => request('/api/admin/videos'),
   videoResults: id => request(`/api/admin/videos/${id}/translations`),
-  saveLines: (id, kind, language, lines) => request(`/api/admin/videos/${id}/results/${kind}/${language}`, {
-    method: 'PATCH', body: { lines },
-  }),
   updateVideo: (id, status) => request(`/api/admin/videos/${id}`, { method: 'PATCH', body: { status } }),
   deleteVideo: id => request(`/api/admin/videos/${id}`, { method: 'DELETE' }),
   languages: () => request('/api/admin/languages'),

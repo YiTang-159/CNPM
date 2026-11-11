@@ -25,9 +25,15 @@ jobs:
           packager: npm
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
+      - name: Kiểm tra cấu hình Backend
+        env:
+          API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+        run: |
+          test -n "$API_URL" || (echo 'Thiếu variable EXPO_PUBLIC_API_URL của Backend HTTPS'; exit 1)
+          echo "EXPO_PUBLIC_API_URL=$API_URL" > .env
       - name: Build APK (chạy trên máy chủ Expo)
         run: |
-          eas build --platform android --profile preview --non-interactive --no-wait --json | tee eas-build.json
+          eas build --platform android --profile preview --non-interactive --wait --json | tee eas-build.json
       - name: Ghi liên kết bản build vào tóm tắt của lần chạy
         run: |
           {

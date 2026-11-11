@@ -1,3 +1,4 @@
+import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -7,7 +8,7 @@ import { adminApi } from '../api/admin.js';
 const PAGE = 8;
 const LOCALES = ['vi-VN', 'en-US', 'zh-CN'];
 
-const fmtDate = (L, iso) => (iso ? new Date(iso).toLocaleDateString(LOCALES[L]) : '–');
+const fmtDate = (L, iso) => (iso ? new Date(iso).toLocaleDateString(LOCALES[L], {timeZone:'Asia/Ho_Chi_Minh'}) : '–');
 
 /** Tìm theo tên/email (không phân biệt hoa thường) rồi sắp xếp. Hàm thuần, dễ kiểm thử. */
 export function filterUsers(users, query, sort) {
@@ -40,9 +41,10 @@ export default function AdminUsers() {
 
   const load = useCallback(() => {
     setFailed(false);
-    adminApi.users(user).then(setUsers).catch(() => setFailed(true));
+    return adminApi.users(user).then(setUsers).catch(() => setFailed(true));
   }, [user]);
-  useEffect(load, [load]);
+  useEffect(() => { load(); }, [load]);
+  useAutoRefresh(load);
 
   const rows = useMemo(() => filterUsers(users || [], query, sort), [users, query, sort]);
   const pages = Math.max(1, Math.ceil(rows.length / PAGE));

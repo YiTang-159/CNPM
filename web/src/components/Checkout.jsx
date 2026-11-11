@@ -87,6 +87,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   return (
     <section className="checkout" aria-labelledby="co-h">
       <h3 id="co-h">{t('co_title')}</h3>
+      <p className="fine">{t('co_demo_note')}</p>
 
       {!user ? (
         <>

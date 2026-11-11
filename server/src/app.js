@@ -2,7 +2,7 @@
 import express from 'express';
 import { mkdir, rename, unlink, stat } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { Transform } from 'node:stream';
 import { randomUUID } from 'node:crypto';
@@ -13,10 +13,9 @@ import { buildStats } from './stats.js';
 import { validMediaLines, validateFeedback, MEDIA_STATES } from './adminPolicy.js';
 
 const MAX_VIDEO = 150 * 1024 * 1024;
-const UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
+const DEFAULT_UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
 const VALID_LANG = /^[a-z]{2,8}$/;
 const STATUS = ['uploaded','processing','completed','failed','hidden'];
-const FEEDBACK_STATES = ['new','reviewing','resolved'];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Giới hạn đăng nhập sai: tối đa 60 lần / 15 phút cho mỗi địa chỉ IP, sau đó trả 429.
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -25,7 +24,9 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 
 const publicUser = (u, secret) => ({ id: u.id, name: u.name, email: u.email, role: u.role, token: makeToken(u, secret) });
 
-export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 7 } = {}) {
+export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 7, uploadDir = DEFAULT_UPLOAD_DIR, maxUploadBytes = MAX_VIDEO,
+  paymentDemo = process.env.PAYMENT_DEMO === 'true' } = {}) {
+  const UPLOAD_DIR = resolve(uploadDir);
   const app = express();
   app.use(cors({ origin: corsOrigin === '*' ? true : corsOrigin.split(',').map((s) => s.trim()) }));
   app.use(express.json({ limit: '1mb' }));
@@ -36,7 +37,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const who = token && readToken(token[1], secret);
     if (!who) return res.status(401).json({ code: 'auth' });
     const current = await repo.findUser(who.email);
-    if (!current || current.status !== 'active' || current.role !== who.role)
+    if (!current || current.status !== 'active' || current.role !== who.role || (current.id != null && current.id !== who.id))
       return res.status(401).json({ code: 'auth' });
     req.currentUser = current;
     next();
@@ -79,6 +80,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ code: 'invalid' });
     if (!METHODS.includes(method)) return res.status(400).json({ code: 'method' });
     if (await repo.orderEmail(id) !== req.currentUser.email) return res.status(404).json({ code: 'not_found' });
+    if (!paymentDemo) return res.status(503).json({ code: 'payment_unavailable' });
     const result = await repo.payOrder(id, { method, ref: newTransactionRef(method) });
     if (!result) return res.status(409).json({ code: 'not_payable' });
     res.json(result);
@@ -123,7 +125,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const user = await repo.findUser(String(b.email || '').trim().toLowerCase());
     const password = String(b.password || '');
     if (!user || !verifyPassword(password, user.hash)) { addFail(req.ip); return res.status(401).json({ code: 'invalid' }); }
-    if (user.status === 'locked') return res.status(403).json({ code: 'locked' });
+    if (user.status !== 'active') return res.status(403).json({ code: 'locked' });
     // Băm SHA-256 cũ được nâng lên scrypt ngay sau lần đăng nhập đúng.
     if (isLegacyHash(user.hash) && typeof repo.updatePasswordHash === 'function') {
       const upgraded = hashPassword(password);
@@ -165,8 +167,8 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const mimeType = String(b.mimeType || '').trim().toLowerCase();
     const originalLanguage = String(b.originalLanguage || '').trim();
     if (!title || title.length > 200 || !fileName || fileName.length > 255 ||
-        !Number.isSafeInteger(size) || size <= 0 || size > MAX_VIDEO ||
-        !/^video\/[a-z0-9.+-]{1,60}$/.test(mimeType) || !VALID_LANG.test(originalLanguage))
+        !Number.isSafeInteger(size) || size <= 0 || size > maxUploadBytes ||
+        !['video/mp4','video/webm','video/quicktime'].includes(mimeType) || !VALID_LANG.test(originalLanguage))
       return res.status(400).json({ code: 'invalid' });
     const record = await repo.createVideo(req.currentUser.email, { title, fileName, size, mimeType, originalLanguage });
     if (!record) return res.status(404).json({ code: 'not_found' });
@@ -178,7 +180,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     if (video.videoUrl) return res.status(409).json({ code: 'exists' });
     if (req.get('content-type')?.split(';')[0] !== 'application/octet-stream')
       return res.status(415).json({ code: 'invalid' });
-    if (Number(req.get('content-length')) > MAX_VIDEO) return res.status(413).json({ code: 'too_large' });
+    if (Number(req.get('content-length')) > maxUploadBytes) return res.status(413).json({ code: 'too_large' });
     await mkdir(UPLOAD_DIR, { recursive: true });
     const key = `${video.id}-${randomUUID()}.bin`;
     const tempPath = join(UPLOAD_DIR, key + '.part');
@@ -186,7 +188,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     let length = 0;
     const counter = new Transform({ transform(chunk, enc, cb) {
       length += chunk.length;
-      cb(length > MAX_VIDEO ? new Error('too_large') : null, chunk);
+      cb(length > maxUploadBytes ? new Error('too_large') : null, chunk);
     }});
     try {
       await pipeline(req, counter, createWriteStream(tempPath, { flags: 'wx' }));
@@ -207,7 +209,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     if (!video) return;
     if (!video.videoUrl) return res.status(404).json({ code: 'not_found' });
     // Chỉ mở đường dẫn đã sinh bên trong volume.
-    if (!video.videoUrl.startsWith(UPLOAD_DIR + '/')) return res.status(403).json({ code: 'forbidden' });
+    if (!video.videoUrl.startsWith(UPLOAD_DIR + sep)) return res.status(403).json({ code: 'forbidden' });
     const size = await stat(video.videoUrl).catch(() => null);
     if (!size) return res.status(404).json({ code: 'not_found' });
     res.type(video.mimeType).sendFile(video.videoUrl);
@@ -215,13 +217,16 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   app.post('/api/videos/:id/results', auth, wrap(async (req, res) => {
     const video = await videoFor(req, res);
     if (!video) return;
+    const originalLanguage = req.body?.originalLanguage;
+    if (originalLanguage != null && !['vi','en','zh'].includes(originalLanguage)) return res.status(400).json({code:'invalid'});
     const segments = req.body?.segments;
     if (!Array.isArray(segments) || !segments.length || segments.length > 2000 ||
         segments.some(s => !s || typeof s !== 'object' || !Object.keys(s).some(k => VALID_LANG.test(k)) ||
           ['vi','en','zh'].some(k => s[k] != null && (typeof s[k] !== 'string' || s[k].length > 4000)) ||
-          (s.start != null && (!Number.isFinite(s.start) || s.start < 0)) ||
-          (s.end != null && (!Number.isFinite(s.end) || s.end < 0))))
+          ((s.start != null || s.end != null) && (!Number.isFinite(s.start) || !Number.isFinite(s.end) || s.start < 0 || s.end <= s.start))))
       return res.status(400).json({ code: 'invalid' });
+    if (segments.some((s,i) => i > 0 && s.start != null && segments[i-1].end != null && s.start < segments[i-1].end))
+      return res.status(400).json({ code:'invalid' });
     const langs = [...new Set(segments.flatMap(s => Object.keys(s).filter(k => ['vi','en','zh'].includes(k) && typeof s[k] === 'string')))];
     if (!langs.length) return res.status(400).json({ code: 'invalid' });
     const result = { narrations: {}, subtitles: {} };
@@ -230,7 +235,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
       result.narrations[lang] = content;
       result.subtitles[lang] = content;
     }
-    await repo.saveVideoResult(video.id, 'completed', result, req.currentUser.email);
+    await repo.saveVideoResult(video.id, 'completed', result, req.currentUser.email, originalLanguage);
     res.json({ ok: true, languages: langs });
   }));
   app.get('/api/videos/:id/results', auth, wrap(async (req, res) => {
@@ -238,7 +243,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     if (!video) return;
     res.json(await repo.videoResults(video.id));
   }));
-  app.get('/api/languages', wrap(async (req, res) => res.json({ languages: await repo.languages() })));
+  app.get('/api/languages', wrap(async (req, res) => res.json({ languages: (await repo.languages()).filter(x => x.status === 'active' && ['vi','en','zh'].includes(x.code)) })));
 
   // ---- Phản hồi có tài khoản ----
   app.get('/api/feedback', auth, wrap(async (req, res) => {
@@ -424,7 +429,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const video = await videoFor(req, res, true);
     if (!video) return;
     await repo.deleteVideo(video.id);
-    if (video.videoUrl && video.videoUrl.startsWith(UPLOAD_DIR + '/')) await unlink(video.videoUrl).catch(() => {});
+    if (video.videoUrl && video.videoUrl.startsWith(UPLOAD_DIR + sep)) await unlink(video.videoUrl).catch(() => {});
     res.json({ ok: true });
   }));
   app.get('/api/admin/feedback', adminOnly, wrap(async (req, res) => {

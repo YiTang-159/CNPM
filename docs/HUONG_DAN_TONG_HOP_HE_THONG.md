@@ -54,7 +54,7 @@ CI chạy Shared, Web, Mobile, toàn bộ Backend và job SQL Server riêng. CD 
 
 ## Tài liệu
 
-- `docs/Dubchef_FocusedUseCases.docx`: 20 Use Case, Activity, DFD ngữ cảnh/mức 1/mức 2, dữ liệu và kiến trúc.
+- `docs/Dubchef_FocusedUseCases.docx`: 23 Use Case, Activity, DFD ngữ cảnh/mức 1/mức 2, dữ liệu và kiến trúc.
 - `docs/so-do/*.drawio`: nguồn sửa bằng diagrams.net; PNG/SVG để xem.
 - `docs/so-do/DFD_Muc_2_MotTrang.drawio`: toàn bộ mức 2 trên một canvas.
 - `docs/KIEM_THU.md`: checklist test Web Mobile Admin SQL.

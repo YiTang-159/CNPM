@@ -12,7 +12,7 @@ Ngày kiểm tra: 11 tháng 11 năm 2026. Bộ code dùng chung API videos/feedb
 | Vite build production | Thành công |
 | Expo export Android JavaScript/Hermes | Thành công; đây không phải build APK native |
 | Word phân tích hệ thống | Đã render và kiểm tra bố cục 45 trang |
-| Sơ đồ | 20 UC và Activity; DFD ngữ cảnh mức 1 mức 2; mức 2 một canvas; ERD miền dữ liệu kiến trúc |
+| Sơ đồ | 23 UC và Activity; DFD ngữ cảnh mức 1 mức 2; mức 2 một canvas; ERD miền dữ liệu kiến trúc |
 
 Các test API dùng repository giả xác minh hợp đồng, quyền, chủ sở hữu, cập nhật nội dung, xung đột phiên bản, mô phỏng thanh toán, tải tệp và dọn tệp khi lỗi. Các test giao diện dùng mock API/dịch/Whisper. Test Mobile mới kiểm tra thứ tự metadata → binary upload → results, không lưu kết quả khi upload lỗi, từ chối khách và video quá lớn. Test Shared mới xác nhận không gọi dịch sang ngôn ngữ đã tắt.
 

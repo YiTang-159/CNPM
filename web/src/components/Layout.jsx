@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { HAS_API } from '../api/client.js';
 import Header from './Header.jsx';
 import Footer from './Footer.jsx';
 import { trackVisit } from '../api/analytics.js';
@@ -34,9 +35,17 @@ export default function Layout() {
       <a className="skip" href="#main" onClick={skip}>{t('skip')}</a>
       <Header />
       <main id="main" tabIndex={-1} ref={mainRef}>
+        {import.meta.env.PROD && !HAS_API ? <p className="wrap note" role="note" style={{ paddingTop: 16 }}>
+          {[
+            'Website đang mở ở chế độ xem và trải nghiệm trên thiết bị. Đăng nhập, lưu dữ liệu và quản trị sẽ hoạt động khi kết nối máy chủ được cấu hình.',
+            'You can browse and try video processing on this device. Sign-in, saving and administration require a configured server connection.',
+            '您可以浏览网站并在设备上体验视频处理。登录、保存数据和管理功能需要配置服务器连接。',
+          ][L]}
+        </p> : null}
         <Outlet />
       </main>
       <Footer />
     </>
   );
 }
+

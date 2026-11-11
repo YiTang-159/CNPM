@@ -31,7 +31,7 @@ services:
       DB_USER: sa
       DB_PASSWORD: ${DB_PASSWORD:-Dubchef@12345}
       DB_NAME: DubchefDB
-      CORS_ORIGIN: "http://localhost:5173,http://192.168.0.109:5173"
+      CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:5173,http://192.168.0.109:5173,https://yitang-159.github.io}"
       # Tài khoản quản trị chỉ được tạo khi ADMIN_PASSWORD (>= 12 ký tự) được đặt trong .env (chạy: npm run setup:local).
       # Không đặt TOKEN_SECRET thì API tự sinh khóa ngẫu nhiên (đăng nhập lại sau mỗi lần khởi động).
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@dubchef.vn}
@@ -46,3 +46,4 @@ services:
 volumes:
   dubchef-data:
   dubchef-uploads:
+

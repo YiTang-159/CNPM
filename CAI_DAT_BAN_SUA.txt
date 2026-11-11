@@ -1,0 +1,17 @@
+SỬA GITHUB PAGES CHO DUBCHEF
+
+Gói chỉ gồm các file thay đổi; không chứa database, .env, mật khẩu hoặc dữ liệu cá nhân.
+
+1. Giải nén. Chép .github, web, docker-compose.yml và docs vào thư mục đồ án đang dùng. Chọn thay thế đúng các file trùng tên. Không xóa toàn bộ thư mục web/docs/.github cũ: gói này không phải toàn bộ source.
+2. Trong VS Code tại thư mục repo, xem Source Control để kiểm tra các file thay đổi rồi commit và push lên main bằng tài khoản GitHub của bạn.
+3. Trong GitHub Settings → Pages, Source phải là GitHub Actions. Mở Actions, chờ CI và CD Web thành công.
+4. Mở https://yitang-159.github.io/CNPM/. Nếu VITE_API_URL chưa có, trang công khai vẫn mở nhưng đăng nhập/lưu/Admin chưa kết nối SQL. Trên trang có thông báo điều này.
+5. Để dùng SQL Docker laptop từ Pages, làm theo docs/GITHUB_PAGES.md: mở tunnel HTTPS cho API cổng 3000, thêm VITE_API_URL vào GitHub Variables, rồi chạy lại CD Web.
+
+Các file thay đổi:
+- .github/workflows/cd-web.yml: cho phép build giao diện khi URL Backend trống; vẫn từ chối URL HTTP/local; không tự chuyển dữ liệu tài khoản sang Supabase.
+- web/src/components/Layout.jsx: báo rõ chế độ chưa kết nối Backend ở bản production.
+- docker-compose.yml: cho phép origin của Pages gọi API; giữ nguyên host/port SQL và volume; CORS_ORIGIN có thể đặt trong .env.
+- docs/GITHUB_PAGES.md: hướng dẫn dùng tunnel để Pages gọi SQL trên laptop.
+
+Đã kiểm tra: YAML hợp lệ, shell chấp nhận trống/HTTPS và từ chối HTTP/local, 99 test Web đạt, lint và build production không Backend thành công. Chưa deploy: GitHub connector trả 403 Resource not accessible by integration khi thử ghi. Chưa có URL tunnel laptop do phải chạy lệnh tại máy bạn.

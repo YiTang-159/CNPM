@@ -45,23 +45,31 @@ jobs:
           npm ci
           npm run lint
           npm test
-      - name: Kiểm tra cấu hình Backend
+      - name: Chọn cấu hình Backend
+        id: backend
         env:
           API_URL: ${{ vars.VITE_API_URL }}
         run: |
-          test -n "$API_URL" || (echo 'Thiếu variable VITE_API_URL của Backend HTTPS'; exit 1)
-          case "$API_URL" in https://*) ;; *) echo 'GitHub Pages cần Backend HTTPS công khai'; exit 1;; esac
+          if [ -z "$API_URL" ]; then
+            echo "url=" >> "$GITHUB_OUTPUT"
+            echo "Chưa đặt VITE_API_URL: xuất bản trang công khai; các chức năng SQL chờ Backend."
+          else
+            case "$API_URL" in
+              https://*) echo "url=${API_URL%/}" >> "$GITHUB_OUTPUT" ;;
+              *) echo "VITE_API_URL phải là URL HTTPS của Backend online hoặc tunnel."; exit 1 ;;
+            esac
+          fi
       - name: Build
         working-directory: web
         env:
-          # Tùy chọn: Settings > Variables > VITE_API_URL (địa chỉ Backend)
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
-          VITE_PAYMENT_API_URL: ${{ vars.VITE_PAYMENT_API_URL || vars.VITE_API_URL }}
+          # URL Backend HTTPS khi đã có; để trống vẫn xuất bản được giao diện công khai.
+          VITE_API_URL: ${{ steps.backend.outputs.url }}
+          VITE_PAYMENT_API_URL: ${{ vars.VITE_PAYMENT_API_URL || steps.backend.outputs.url }}
           VITE_PUBLIC_URL: ${{ vars.VITE_PUBLIC_URL }}
           VITE_ALLOW_LOCAL_DEMO: "false"
-          # Đếm lượt quét QR bằng Supabase (không cần Backend riêng): xem db/supabase-qr.sql
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          # Bản SQL Server không chuyển tài khoản sang Supabase khi thiếu URL API.
+          VITE_SUPABASE_URL: ""
+          VITE_SUPABASE_ANON_KEY: ""
         run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -69,3 +77,4 @@ jobs:
           path: web/dist
       - id: deployment
         uses: actions/deploy-pages@v4
+

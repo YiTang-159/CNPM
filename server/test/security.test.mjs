@@ -55,10 +55,10 @@ test('JSON hỏng trả 400 invalid_json; thân quá lớn trả 413 too_large',
   } finally { await s.close(); }
 });
 
-test('đăng nhập sai quá 60 lần bị chặn bằng 429', async () => {
+test('đăng nhập sai 10 lần bị chặn bằng 429', async () => {
   const s = await start([]);
   try {
-    for (let i = 0; i < 60; i++) assert.equal((await s.post('/api/auth/login', { email: 'x@x.vn', password: 'wrong' })).status, 401);
+    for (let i = 0; i < 10; i++) assert.equal((await s.post('/api/auth/login', { email: 'x@x.vn', password: 'wrong' })).status, 401);
     assert.equal((await s.post('/api/auth/login', { email: 'x@x.vn', password: 'wrong' })).status, 429);
   } finally { await s.close(); }
 });

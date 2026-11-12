@@ -16,7 +16,7 @@ export function attachWorkflows(pool, repo) {
   Object.assign(repo, {
     async adminOrders() {
       const r = await pool.request().query(`SELECT TOP (500) o.MaDonHang AS id,o.TenKhachHang AS name,
-        o.EmailKhachHang AS email,o.SoTien AS amount,o.LoaiTien AS currency,
+        o.EmailKhachHang AS email,o.MaNguoiDung AS userId,o.SoTien AS amount,o.LoaiTien AS currency,
         o.TrangThai AS status,o.NgayTao AS createdAt,p.PhuongThuc AS method,p.MaThamChieu AS paymentRef
         FROM dbo.DonHang o LEFT JOIN dbo.GiaoDich p ON p.MaDonHang=o.MaDonHang AND p.TrangThai='success'
         ORDER BY o.MaDonHang DESC`);
@@ -67,10 +67,26 @@ export function attachWorkflows(pool, repo) {
         .query('UPDATE dbo.Video SET DuongDan=@path WHERE MaVideo=@id');
       return r.rowsAffected[0] > 0;
     },
-    async setVideoStatus(id, status) {
-      const r = await pool.request().input('id', sql.Int, id).input('status', sql.VarChar(20), status)
-        .query('UPDATE dbo.Video SET TrangThai=@status WHERE MaVideo=@id');
-      return r.rowsAffected[0] > 0;
+    async setVideoStatus(id, status, actor = 'system') {
+      const tx = new sql.Transaction(pool);
+      await tx.begin();
+      try {
+        const r = await new sql.Request(tx).input('id', sql.Int, id)
+          .input('status', sql.VarChar(20), status)
+          .query(`UPDATE dbo.Video SET TrangThai=@status
+            OUTPUT deleted.TrangThai AS beforeStatus, inserted.TrangThai AS afterStatus
+            WHERE MaVideo=@id`);
+        if (!r.recordset.length) { await tx.rollback(); return false; }
+        if (r.recordset[0].beforeStatus === status) { await tx.rollback(); return true; }
+        await new sql.Request(tx).input('actor', sql.NVarChar(254), actor)
+          .input('target', sql.NVarChar(254), String(id))
+          .input('before', sql.NVarChar(40), r.recordset[0].beforeStatus)
+          .input('after', sql.NVarChar(40), status)
+          .query(`INSERT dbo.NhatKyQuanTri(Loai,DoiTuong,NguoiThucHien,GiaTriCu,GiaTriMoi)
+                  VALUES('video_status',@target,@actor,@before,@after)`);
+        await tx.commit();
+        return true;
+      } catch(e) { await tx.rollback().catch(()=>{}); throw e; }
     },
     async deleteVideo(id) {
       const r = await pool.request().input('id', sql.Int, id)
@@ -129,11 +145,12 @@ export function attachWorkflows(pool, repo) {
       const r = await pool.request().query('SELECT MaNgonNgu AS code,TenNgonNgu AS name,TenTiengAnh AS englishName,TrangThai AS status,NgayTao AS createdAt FROM dbo.NgonNgu ORDER BY MaNgonNgu');
       return r.recordset;
     },
-    async createLanguage({ code, name, englishName }) {
+    async createLanguage({ code, name, englishName, status = 'inactive' }) {
       try {
         await pool.request().input('code', sql.VarChar(8), code).input('name', sql.NVarChar(80), name)
           .input('en', sql.NVarChar(80), englishName)
-          .query('INSERT INTO dbo.NgonNgu (MaNgonNgu,TenNgonNgu,TenTiengAnh) VALUES (@code,@name,@en)');
+          .input('status', sql.VarChar(10), status)
+          .query('INSERT INTO dbo.NgonNgu (MaNgonNgu,TenNgonNgu,TenTiengAnh,TrangThai) VALUES (@code,@name,@en,@status)');
         return true;
       } catch (e) { if ([2601,2627].includes(e.number)) return false; throw e; }
     },

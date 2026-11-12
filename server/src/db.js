@@ -47,6 +47,8 @@ async function runScript(pool, file) {
 
 const mapOrder = (r) => ({
   id: r.MaDonHang,
+  userId: r.MaNguoiDung ?? null,
+  ownershipVerified: r.MaNguoiDung != null,
   name: r.TenKhachHang,
   email: r.EmailKhachHang,
   uploads: r.SoVideoDang,
@@ -119,6 +121,7 @@ export async function openRepo() {
   await runScript(pool, '02-schema.sql');
   await runScript(pool, '04-workflows.sql');
   await runScript(pool, '07-quan-tri-nghiep-vu.sql');
+  await runScript(pool, '10-an-toan-don-hang-va-nhat-ky.sql');
   console.log('SQL Server sẵn sàng.');
 
   const repo = {
@@ -128,17 +131,23 @@ export async function openRepo() {
     },
 
     async createOrder(o) {
+      // Không để client tự chỉ định chủ đơn hàng. Kiểm tra MaNguoiDung/email/trạng thái
+      // ngay trong cùng câu INSERT: không có tài khoản hợp lệ thì không tạo đơn.
       const r = await pool.request()
+        .input('uid', sql.Int, o.userId)
         .input('name', sql.NVarChar(100), o.name)
         .input('email', sql.NVarChar(254), o.email)
         .input('up', sql.Int, o.uploads)
         .input('out', sql.Int, o.outs)
         .input('cur', sql.Char(3), o.currency)
         .input('amt', sql.BigInt, o.amountMinor)
-        .query(`INSERT INTO dbo.DonHang (TenKhachHang, EmailKhachHang, SoVideoDang, SoVideoDich, LoaiTien, SoTien)
+        .query(`INSERT INTO dbo.DonHang (MaNguoiDung, TenKhachHang, EmailKhachHang,
+                  SoVideoDang, SoVideoDich, LoaiTien, SoTien)
                 OUTPUT inserted.*
-                VALUES (@name, @email, @up, @out, @cur, @amt)`);
-      return mapOrder(r.recordset[0]);
+                SELECT u.MaNguoiDung, @name, @email, @up, @out, @cur, @amt
+                FROM dbo.NguoiDung u
+                WHERE u.MaNguoiDung=@uid AND u.Email=@email AND u.TrangThai='active'`);
+      return r.recordset[0] ? mapOrder(r.recordset[0]) : null;
     },
 
     /** Đánh dấu đơn đã trả và ghi giao dịch trong cùng một transaction. Trả null nếu đơn không tồn tại hoặc đã trả. */
@@ -170,20 +179,26 @@ export async function openRepo() {
       }
     },
 
-    async orderEmail(id) {
-      const r = await pool.request().input('id', sql.Int, id)
-        .query('SELECT EmailKhachHang AS email FROM dbo.DonHang WHERE MaDonHang=@id');
-      return r.recordset[0]?.email || null;
+    // Chỉ chủ sở hữu xác thực bằng ID mới được thanh toán. Đơn cũ chưa liên kết
+    // được giữ trong báo cáo Admin, không cho user nhận bằng cách đoán email.
+    async orderOwner(id, userId) {
+      if (!Number.isSafeInteger(userId) || userId < 1) return false;
+      const r = await pool.request().input('id', sql.Int, id).input('uid', sql.Int, userId)
+        .query('SELECT TOP(1) MaDonHang FROM dbo.DonHang WHERE MaDonHang=@id AND MaNguoiDung=@uid');
+      return r.recordset.length > 0;
     },
 
-    async listOrders(email, limit = 20) {
+    async listOrders(email, limit = 20, userId) {
       const r = await pool.request()
         .input('email', sql.NVarChar(254), email)
+        .input('uid', sql.Int, userId)
         .input('n', sql.Int, limit)
         .query(`SELECT TOP (@n) o.*, p.MaThamChieu
                 FROM dbo.DonHang o
-                LEFT JOIN dbo.GiaoDich p ON p.MaDonHang = o.MaDonHang AND p.TrangThai = 'success'
-                WHERE o.EmailKhachHang = @email
+                OUTER APPLY (SELECT TOP (1) MaThamChieu FROM dbo.GiaoDich p
+                  WHERE p.MaDonHang=o.MaDonHang AND p.TrangThai='success'
+                  ORDER BY p.MaGiaoDich DESC) p
+                WHERE o.MaNguoiDung=@uid
                 ORDER BY o.NgayTao DESC, o.MaDonHang DESC`);
       return r.recordset.map(mapOrder);
     },
@@ -221,6 +236,14 @@ export async function openRepo() {
     async listUsers() {
       const r = await pool.request().query('SELECT * FROM dbo.NguoiDung ORDER BY NgayTao DESC, MaNguoiDung DESC');
       return r.recordset.map(mapUser);
+    },
+
+    async adminAudit(limit = 50) {
+      const r = await pool.request().input('n', sql.Int, limit)
+        .query(`SELECT TOP (@n) MaNhatKy AS id, Loai AS type, DoiTuong AS target,
+          NguoiThucHien AS actor, GiaTriCu AS previous, GiaTriMoi AS current,
+          ThoiGian AS at FROM dbo.NhatKyQuanTri ORDER BY MaNhatKy DESC`);
+      return r.recordset;
     },
 
     // Quản lý danh sách video
@@ -317,12 +340,26 @@ export async function openRepo() {
     },
 
     /** Chỉ đổi người dùng thường (không đụng tới quản trị viên). Trả true nếu có dòng được đổi. */
-    async setUserStatus(email, status) {
-      const r = await pool.request()
-        .input('email', sql.NVarChar(254), email)
-        .input('st', sql.VarChar(10), status)
-        .query(`UPDATE dbo.NguoiDung SET TrangThai = @st WHERE Email = @email AND VaiTro = 'user'`);
-      return r.rowsAffected[0] > 0;
+    async setUserStatus(email, status, actor = 'system') {
+      const tx = new sql.Transaction(pool);
+      await tx.begin();
+      try {
+        const r = await new sql.Request(tx).input('email', sql.NVarChar(254), email)
+          .input('st', sql.VarChar(10), status)
+          .query(`UPDATE dbo.NguoiDung SET TrangThai=@st
+            OUTPUT deleted.TrangThai AS beforeStatus, inserted.TrangThai AS afterStatus
+            WHERE Email=@email AND VaiTro='user'`);
+        if (!r.recordset.length) { await tx.rollback(); return false; }
+        if (r.recordset[0].beforeStatus === status) { await tx.rollback(); return true; }
+        await new sql.Request(tx).input('actor', sql.NVarChar(254), actor)
+          .input('target', sql.NVarChar(254), email)
+          .input('before', sql.NVarChar(40), r.recordset[0].beforeStatus)
+          .input('after', sql.NVarChar(40), status)
+          .query(`INSERT dbo.NhatKyQuanTri(Loai, DoiTuong, NguoiThucHien, GiaTriCu, GiaTriMoi)
+            VALUES('user_status', @target, @actor, @before, @after)`);
+        await tx.commit();
+        return true;
+      } catch(e) { await tx.rollback().catch(()=>{}); throw e; }
     },
 
     async deleteUser(email) {

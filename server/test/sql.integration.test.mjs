@@ -66,6 +66,8 @@ test('SQL Server migrations, all Admin modules, private data and restart persist
     assert.equal((await call('POST','/api/qr-scan',{visitorId:'sql-test',lang:'vi'})).status,204);
     const order=await call('POST','/api/orders',{name:u.name,email:u.email,uploads:1,outs:1,L:0},u.token);
     assert.equal(order.status,201);const oid=order.data.order.id;
+    assert.equal(order.data.order.userId,u.id);
+    assert.equal((await call('GET','/api/orders',null,other.token)).data.orders.length,0);
     assert.equal((await call('POST',`/api/orders/${oid}/pay`,{method:'qr'},other.token)).status,404);
     assert.equal((await call('POST',`/api/orders/${oid}/pay`,{method:'qr'},u.token)).status,200);
     assert.equal((await call('POST',`/api/orders/${oid}/pay`,{method:'qr'},u.token)).status,409);
@@ -83,11 +85,15 @@ test('SQL Server migrations, all Admin modules, private data and restart persist
     assert.equal((await call('PATCH','/api/admin/users',{email:u.email,status:'locked'},a.token)).status,200);
     assert.equal((await call('GET','/api/videos',null,u.token)).status,401);
     assert.equal((await call('PATCH','/api/admin/users',{email:u.email,status:'active'},a.token)).status,200);
+    assert.ok((await call('GET','/api/admin/audit',null,a.token)).data.activities.some(x=>x.type==='user_status'));
     assert.equal((await call('DELETE',`/api/admin/videos/${id}`,null,a.token)).status,200);
     assert.equal((await call('GET','/api/admin/videos',null,a.token)).data.videos.length,0);
     const check=await new sql.ConnectionPool(config(db)).connect();
     try{
       assert.equal((await check.request().query('SELECT COUNT(*) n FROM dbo.GiaoDich')).recordset[0].n,1);
+      assert.equal((await check.request().query('SELECT MaNguoiDung AS uid FROM dbo.DonHang WHERE MaDonHang='+oid)).recordset[0].uid,u.id);
+      assert.equal((await check.request().query("SELECT COUNT(*) n FROM sys.foreign_keys WHERE name='FK_DonHang_NguoiDung'")).recordset[0].n,1);
+      assert.equal((await check.request().query("SELECT COUNT(*) n FROM dbo.NhatKyQuanTri WHERE Loai='user_status'")).recordset[0].n,2);
       assert.ok((await check.request().query('SELECT COUNT(*) n FROM dbo.LichSuDangNhap')).recordset[0].n>=2);
     }finally{await check.close();}
   }finally{

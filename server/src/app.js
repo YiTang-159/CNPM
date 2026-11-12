@@ -15,11 +15,12 @@ import { validMediaLines, validateFeedback, MEDIA_STATES } from './adminPolicy.j
 const MAX_VIDEO = 150 * 1024 * 1024;
 const DEFAULT_UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
 const VALID_LANG = /^[a-z]{2,8}$/;
+const PROCESSING_LANGUAGES = new Set(['vi','en','zh']);
 const STATUS = ['uploaded','processing','completed','failed','hidden'];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// Giới hạn đăng nhập sai: tối đa 60 lần / 15 phút cho mỗi địa chỉ IP, sau đó trả 429.
+// Giới hạn đăng nhập sai: tối đa 10 lần / 15 phút/IP (chưa thay thế rate limit phân tán).
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const LOGIN_MAX_FAILS = 60;
+const LOGIN_MAX_FAILS = 10;
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 const publicUser = (u, secret) => ({ id: u.id, name: u.name, email: u.email, role: u.role, token: makeToken(u, secret) });
@@ -30,6 +31,14 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   const app = express();
   app.use(cors({ origin: corsOrigin === '*' ? true : corsOrigin.split(',').map((s) => s.trim()) }));
   app.use(express.json({ limit: '1mb' }));
+  app.disable('x-powered-by');
+  app.use((req, res, next) => {
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('Referrer-Policy', 'no-referrer');
+    res.set('X-Frame-Options', 'DENY');
+    if (/^\/api\/(admin|me|auth|orders)(\/|$)/.test(req.path)) res.set('Cache-Control', 'no-store');
+    next();
+  });
 
   // Xác thực lại với SQL ở mỗi request: khóa/xóa tài khoản sẽ vô hiệu hóa token cũ.
   const auth = wrap(async (req, res, next) => {
@@ -69,7 +78,10 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const v = validateOrder(req.body);
     if (v.error) return res.status(400).json({ code: v.error });
     if (v.value.email !== req.currentUser.email) return res.status(403).json({ code: 'forbidden' });
-    const order = await repo.createOrder({ ...v.value, name: req.currentUser.name, ...priceOrder(v.value) });
+    // Chủ sở hữu lấy từ token đã đối chiếu SQL, tuyệt đối không lấy MaNguoiDung từ form.
+    const order = await repo.createOrder({ ...v.value, userId: req.currentUser.id,
+      name: req.currentUser.name, ...priceOrder(v.value) });
+    if (!order) return res.status(409).json({ code: 'account_unavailable' });
     res.status(201).json({ order });
   }));
 
@@ -79,7 +91,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const method = req.body && req.body.method;
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ code: 'invalid' });
     if (!METHODS.includes(method)) return res.status(400).json({ code: 'method' });
-    if (await repo.orderEmail(id) !== req.currentUser.email) return res.status(404).json({ code: 'not_found' });
+    if (!await repo.orderOwner(id, req.currentUser.id)) return res.status(404).json({ code: 'not_found' });
     if (!paymentDemo) return res.status(503).json({ code: 'payment_unavailable' });
     const result = await repo.payOrder(id, { method, ref: newTransactionRef(method) });
     if (!result) return res.status(409).json({ code: 'not_payable' });
@@ -88,7 +100,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
 
   // Đơn hàng chỉ được xem bởi chính tài khoản đã tạo.
   app.get('/api/orders', auth, wrap(async (req, res) => {
-    res.json({ orders: await repo.listOrders(req.currentUser.email) });
+    res.json({ orders: await repo.listOrders(req.currentUser.email, 20, req.currentUser.id) });
   }));
 
   // ---- Tài khoản ----
@@ -131,6 +143,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
       const upgraded = hashPassword(password);
       if (await repo.updatePasswordHash(user.email, upgraded, user.hash).catch(() => false)) user.hash = upgraded;
     }
+    loginFails.delete(req.ip); // Một lần đăng nhập hợp lệ đặt lại bộ đếm của IP này.
     if (typeof repo.recordLogin === 'function') {
       await repo.recordLogin(user.id, req.ip).catch(e => console.warn('Lỗi lưu lịch sử đăng nhập:', e.message));
     }
@@ -218,16 +231,16 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const video = await videoFor(req, res);
     if (!video) return;
     const originalLanguage = req.body?.originalLanguage;
-    if (originalLanguage != null && !['vi','en','zh'].includes(originalLanguage)) return res.status(400).json({code:'invalid'});
+    if (originalLanguage != null && !PROCESSING_LANGUAGES.has(originalLanguage)) return res.status(400).json({code:'invalid'});
     const segments = req.body?.segments;
     if (!Array.isArray(segments) || !segments.length || segments.length > 2000 ||
         segments.some(s => !s || typeof s !== 'object' || !Object.keys(s).some(k => VALID_LANG.test(k)) ||
-          ['vi','en','zh'].some(k => s[k] != null && (typeof s[k] !== 'string' || s[k].length > 4000)) ||
+          [...PROCESSING_LANGUAGES].some(k => s[k] != null && (typeof s[k] !== 'string' || s[k].length > 4000)) ||
           ((s.start != null || s.end != null) && (!Number.isFinite(s.start) || !Number.isFinite(s.end) || s.start < 0 || s.end <= s.start))))
       return res.status(400).json({ code: 'invalid' });
     if (segments.some((s,i) => i > 0 && s.start != null && segments[i-1].end != null && s.start < segments[i-1].end))
       return res.status(400).json({ code:'invalid' });
-    const langs = [...new Set(segments.flatMap(s => Object.keys(s).filter(k => ['vi','en','zh'].includes(k) && typeof s[k] === 'string')))];
+    const langs = [...new Set(segments.flatMap(s => Object.keys(s).filter(k => PROCESSING_LANGUAGES.has(k) && typeof s[k] === 'string')))];
     if (!langs.length) return res.status(400).json({ code: 'invalid' });
     const result = { narrations: {}, subtitles: {} };
     for (const lang of langs) {
@@ -243,7 +256,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     if (!video) return;
     res.json(await repo.videoResults(video.id));
   }));
-  app.get('/api/languages', wrap(async (req, res) => res.json({ languages: (await repo.languages()).filter(x => x.status === 'active' && ['vi','en','zh'].includes(x.code)) })));
+  app.get('/api/languages', wrap(async (req, res) => res.json({ languages: (await repo.languages()).filter(x => x.status === 'active' && PROCESSING_LANGUAGES.has(x.code)) })));
 
   // ---- Phản hồi có tài khoản ----
   app.get('/api/feedback', auth, wrap(async (req, res) => {
@@ -377,14 +390,14 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
       throw e;
     }
   }));
-  app.get('/api/admin/languages', adminOnly, wrap(async (req, res) => res.json({ languages: await repo.languages() })));
+  app.get('/api/admin/languages', adminOnly, wrap(async (req, res) => res.json({ languages: (await repo.languages()).map(x => ({ ...x, processingSupported: PROCESSING_LANGUAGES.has(x.code) })) })));
   app.post('/api/admin/languages', adminOnly, wrap(async (req, res) => {
     const code = String(req.body?.code || '').toLowerCase().trim();
     const name = String(req.body?.name || '').trim();
     const englishName = String(req.body?.englishName || '').trim();
     if (!VALID_LANG.test(code) || !name || name.length > 80 || !englishName || englishName.length > 80)
       return res.status(400).json({ code: 'invalid' });
-    if (!await repo.createLanguage({ code, name, englishName })) return res.status(409).json({ code: 'exists' });
+    if (!await repo.createLanguage({ code, name, englishName, status: PROCESSING_LANGUAGES.has(code) ? 'active' : 'inactive' })) return res.status(409).json({ code: 'exists' });
     res.status(201).json({ ok: true });
   }));
   app.patch('/api/admin/languages/:code', adminOnly, wrap(async (req, res) => {
@@ -394,6 +407,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const status = req.body?.status;
     if (!VALID_LANG.test(code) || !name || name.length > 80 || !englishName || englishName.length > 80 || !['active','inactive'].includes(status))
       return res.status(400).json({ code: 'invalid' });
+    if (status === 'active' && !PROCESSING_LANGUAGES.has(code)) return res.status(409).json({code:'language_not_supported'});
     if (!await repo.updateLanguage(code, { name, englishName, status })) return res.status(404).json({ code: 'not_found' });
     res.json({ ok: true });
   }));
@@ -422,7 +436,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     if (!video) return;
     const status = String(req.body?.status || '');
     if (!STATUS.includes(status)) return res.status(400).json({ code: 'invalid' });
-    await repo.setVideoStatus(video.id, status);
+    await repo.setVideoStatus(video.id, status, req.currentUser.email);
     res.json({ ok: true });
   }));
   app.delete('/api/admin/videos/:id', adminOnly, wrap(async (req, res) => {
@@ -453,12 +467,16 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   app.get('/api/admin/orders', adminOnly, wrap(async (req, res) => {
     res.json({ orders: await repo.adminOrders() });
   }));
+  app.get('/api/admin/audit', adminOnly, wrap(async (req, res) => {
+    const count = Math.min(200, Math.max(1, Number.parseInt(req.query.limit, 10) || 50));
+    res.json({ activities: await repo.adminAudit(count) });
+  }));
 
   app.patch('/api/admin/users', adminOnly, wrap(async (req, res) => {
     const email = String((req.body && req.body.email) || '').trim().toLowerCase();
     const status = req.body && req.body.status;
     if (!['active', 'locked'].includes(status)) return res.status(400).json({ code: 'invalid' });
-    if (!(await repo.setUserStatus(email, status))) return res.status(404).json({ code: 'not_found' });
+    if (!(await repo.setUserStatus(email, status, req.currentUser.email))) return res.status(404).json({ code: 'not_found' });
     res.json({ ok: true });
   }));
 

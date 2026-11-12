@@ -25,8 +25,8 @@ async function fixture(options={}) {
     saveVideoResult:async(id,status,results)=>{videos.find(v=>v.id===id).results=results;},
     videoResults:async id=>videos.find(v=>v.id===id)?.results || {},
     createOrder:async b=>{const o={...b,id:orders.length+1,status:'pending'};orders.push(o);return o;},
-    orderEmail:async id=>orders.find(o=>o.id===id)?.email,
-    listOrders:async email=>orders.filter(o=>o.email===email),
+    orderOwner:async(id,userId)=>orders.some(o=>o.id===id && o.userId===userId),
+    listOrders:async(email,limit,userId)=>orders.filter(o=>o.userId===userId),
     payOrder:async(id)=>{const o=orders.find(o=>o.id===id&&o.status==='pending');if(!o)return null;o.status='paid';return {order:o};},
     addFeedback:async(email,message,videoId)=>{const f={id:feedback.length+1,email,message,videoId,status:'new'};feedback.push(f);return f;},
     userFeedback:async email=>feedback.filter(f=>f.email===email),
@@ -39,9 +39,9 @@ async function fixture(options={}) {
       const err=Number(old?.version||0)!==b.version?'conflict':mediaTransitionError(old,b.status,content);
       if(err) throw Object.assign(new Error(err),{code:err});
       const row={...b,content,version:b.version+1};media.set(k,row);history.push(row);return row;},
-    createLanguage:async b=>{if(languages.some(x=>x.code===b.code))return false;languages.push({...b,status:'active'});return true;},
+    createLanguage:async b=>{if(languages.some(x=>x.code===b.code))return false;languages.push(b);return true;},
     updateLanguage:async(code,b)=>{const l=languages.find(x=>x.code===code);if(!l)return false;Object.assign(l,b);return true;},
-    adminOrders:async()=>orders,dashboardSummary:async()=>({statistics:{totalVideos:videos.length}}),adminStatistics:async()=>({totalVideos:videos.length}),
+    adminOrders:async()=>orders,adminAudit:async()=>[],dashboardSummary:async()=>({statistics:{totalVideos:videos.length}}),adminStatistics:async()=>({totalVideos:videos.length}),
   };
   const uploadDir=await mkdtemp(join(tmpdir(),'dubchef-canonical-'));
   const server=createApp(repo,{secret:'test',uploadDir,...options}).listen(0,'127.0.0.1');
@@ -102,6 +102,9 @@ test('orders reject forged owner, isolate history, payment explicitly enabled an
     const body={name:'One',email:'one@example.com',uploads:1,outs:1,L:0};
     assert.equal((await f.call('POST','/api/orders',{...body,email:'two@example.com'})).status,403);
     assert.equal((await f.call('POST','/api/orders',body)).status,201);
+    assert.equal(f.orders[0].userId,1,'user ID comes from authenticated SQL user, not form');
+    assert.equal((await f.call('POST','/api/orders',{...body,userId:2})).status,201);
+    assert.equal(f.orders[1].userId,1,'ignore forged userId in body');
     assert.equal((await f.call('POST','/api/orders/1/pay',{method:'qr'},1)).status,404);
     assert.equal((await f.call('POST','/api/orders/1/pay',{method:'qr'})).status,503);
     assert.equal(f.orders[0].status,'pending');
@@ -112,6 +115,21 @@ test('orders reject forged owner, isolate history, payment explicitly enabled an
     assert.equal((await demo.call('POST','/api/orders/1/pay',{method:'qr'})).status,200);
     assert.equal((await demo.call('POST','/api/orders/1/pay',{method:'qr'})).status,409);
   }finally{await demo.close();}
+});
+test('audit API is restricted to admins',async()=>{
+  const f=await fixture();try{
+    assert.equal((await f.call('GET','/api/admin/audit',undefined,null)).status,401);
+    assert.equal((await f.call('GET','/api/admin/audit',undefined,0)).status,403);
+    assert.equal((await f.call('GET','/api/admin/audit',undefined,2)).status,200);
+    assert.equal((await f.call('GET','/api/admin/audit?limit=999',undefined,2)).status,200);
+    const fr=await f.call('POST','/api/admin/languages',{code:'es',name:'Tiếng Tây Ban Nha',englishName:'Spanish'},2);
+    assert.equal(fr.status,201);
+    assert.equal(f.repo.languages instanceof Function,true);
+    const catalog=(await f.call('GET','/api/admin/languages',undefined,2)).data.languages;
+    assert.equal(catalog.find(x=>x.code==='es').status,'inactive');
+    assert.equal(catalog.find(x=>x.code==='es').processingSupported,false);
+    assert.equal((await f.call('PATCH','/api/admin/languages/es',{name:'Tây Ban Nha',englishName:'Spanish',status:'active'},2)).status,409);
+  }finally{await f.close();}
 });
 test('member feedback uses token identity, private history and replies; guest contacts remain separate',async()=>{
   const f=await fixture();try{

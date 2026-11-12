@@ -31,7 +31,7 @@ export default function AdminOrders() {
   const pages=Math.max(1,Math.ceil(filtered.length/PAGE));
   const current=Math.min(page,pages-1);
   return <>
-    <div className="adm-head"><div><h1>Đơn hàng & thanh toán</h1><p>Tra cứu trạng thái đơn, phương thức và mã giao dịch. Thông tin được đọc từ SQL Server; trang này không tự xác nhận thanh toán.</p></div>
+    <div className="adm-head"><div><h1>Đơn hàng & thanh toán</h1><p>Tra cứu đơn hàng đã liên kết tài khoản và giao dịch. Trạng thái thanh toán trong môi trường demo KHÔNG xác nhận ngân hàng đã chuyển tiền.</p></div>
       <button type="button" className="btn btn-sm" disabled={loading} onClick={load}>Làm mới</button></div>
     <div className="ops-kpis">
       <div className="ops-kpi"><strong>{rows.length}</strong><span>Tổng đơn trong danh sách</span></div>
@@ -46,9 +46,10 @@ export default function AdminOrders() {
       <p className="adm-table-meta">Hiện {filtered.length}/{rows.length} đơn trong phạm vi API trả về (tối đa 500 đơn gần nhất).</p>
       {error&&<p className="ops-notice" role="alert">{error}</p>}
       {loading&&<p role="status">Đang tải đơn hàng…</p>}
-      <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Thành tiền</th><th>Trạng thái</th><th>Phương thức</th><th>Tham chiếu</th><th>Ngày tạo (VN)</th></tr></thead>
+      <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Liên kết tài khoản</th><th>Thành tiền</th><th>Trạng thái</th><th>Phương thức</th><th>Tham chiếu</th><th>Ngày tạo (VN)</th></tr></thead>
         <tbody>{filtered.slice(current*PAGE,(current+1)*PAGE).map(x=><tr key={x.id}>
           <td><strong>#{x.id}</strong></td><td>{x.name||'—'}<p className="fine">{x.email||'—'}</p></td>
+          <td>{x.userId!=null?`#${x.userId}`:<span className="adm-status" data-state="pending">Chưa xác minh</span>}</td>
           <td>{formatMinorMoney(x.amount,x.currency)}</td><td><span className="adm-status" data-state={x.status}>{labels[x.status]||x.status}</span></td>
           <td>{x.method||'—'}</td><td>{x.paymentRef||'—'}</td><td>{fmtDate(x.createdAt)}</td>
         </tr>)}</tbody></table></div>

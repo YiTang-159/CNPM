@@ -23,6 +23,7 @@ import AdminMediaResults from './pages/AdminMediaResults.jsx';
 import AdminFeedback from './pages/AdminFeedback.jsx';
 import AdminOrders from './pages/AdminOrders.jsx';
 import AdminQueue from './pages/AdminQueue.jsx';
+import AdminAudit from './pages/AdminAudit.jsx';
 import Account from './pages/Account.jsx';
 
 export default function App() {
@@ -55,6 +56,7 @@ export default function App() {
         <Route path="subtitles" element={<AdminMediaResults kind="subtitles" />} />
         <Route path="feedback" element={<AdminFeedback />} />
         <Route path="orders" element={<AdminOrders />} />
+        <Route path="audit" element={<AdminAudit />} />
         <Route path="qr" element={<AdminQr />} />
       </Route>
     </Routes>

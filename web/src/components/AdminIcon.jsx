@@ -14,6 +14,7 @@ const PATHS = {
   menu: ['M4 6h16','M4 12h16','M4 18h16'],
   close: ['M6 6l12 12','M18 6 6 18'],
   chevron: ['m9 18 6-6-6-6'],
+  history: ['M3 12a9 9 0 1 0 3-6.7','M3 4v5h5','M12 7v5l3 2'],
   refresh: ['M20 11a8 8 0 0 0-14-5L3 9','M3 3v6h6','M4 13a8 8 0 0 0 14 5l3-3','M15 15h6v6'],
 };
 export default function AdminIcon({ name, size = 18 }) {

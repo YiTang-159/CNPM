@@ -18,6 +18,7 @@ export const ADMIN_GROUPS = [
   ] },
   { title: 'CẤU HÌNH DANH MỤC', links: [
     { to: '/admin/languages', name: 'Ngôn ngữ', icon: 'globe', hint: 'Quản lý danh sách ngôn ngữ' },
+    { to: '/admin/audit', name: 'Nhật ký thao tác', icon: 'history', hint: 'Xem lịch sử thay đổi tài khoản và video' },
   ] },
 ];
 export const ADMIN_LINKS = ADMIN_GROUPS.flatMap(group => group.links);

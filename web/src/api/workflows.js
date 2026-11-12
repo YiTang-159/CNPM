@@ -60,4 +60,5 @@ export const manageApi = {
   saveMedia: (kind,id,language,data) => request(`/api/admin/media/${kind}/${id}/${language}`, {method:'PUT',body:data}),
   feedbackHistory: id => request(`/api/admin/feedback/${id}/history`),
   orders: () => request('/api/admin/orders'),
+  audit: () => request('/api/admin/audit?limit=200'),
 };

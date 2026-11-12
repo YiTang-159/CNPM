@@ -22,6 +22,7 @@ import AdminLanguages from './pages/AdminLanguages.jsx';
 import AdminMediaResults from './pages/AdminMediaResults.jsx';
 import AdminFeedback from './pages/AdminFeedback.jsx';
 import AdminOrders from './pages/AdminOrders.jsx';
+import AdminQueue from './pages/AdminQueue.jsx';
 import Account from './pages/Account.jsx';
 
 export default function App() {
@@ -46,6 +47,7 @@ export default function App() {
       <Route path="admin" element={<AdminLayout />}>
         <Route index element={<Admin />} />
         <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="queue" element={<AdminQueue />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="videos" element={<AdminVideos />} />
         <Route path="languages" element={<AdminLanguages />} />

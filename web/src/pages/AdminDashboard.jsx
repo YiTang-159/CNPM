@@ -63,12 +63,13 @@ export default function AdminDashboard() {
   const latest = data?.latest || {};
   return <>
     <div className="adm-head">
-      <div><h1>Tổng hợp hệ thống</h1><p>Dữ liệu thực từ DubchefDB · Cập nhật lần cuối: {date(data?.generatedAt)}</p></div>
-      <button type="button" className="btn btn-sm" onClick={() => load()}>Làm mới dữ liệu</button>
+      <div><h1>Tổng quan điều hành</h1><p>Số liệu vận hành từ SQL Server · Cập nhật: {date(data?.generatedAt)}</p></div>
+      <div className="adm-tools"><Link className="btn btn-sm" to="/admin/queue">Việc cần xử lý</Link><button type="button" className="btn btn-sm" onClick={() => load()}>Làm mới dữ liệu</button></div>
     </div>
     {loading && <p role="status">Đang tải dữ liệu từ SQL Server…</p>}
     {error && <p role="alert" className="err">{error}</p>}
     {data && <>
+      <div className="adm-work-head"><div><h2>Toàn cảnh hoạt động</h2><p>Chọn một chỉ số để đi đến trang quản lý tương ứng.</p></div><Link className="btn btn-sm" to="/admin/queue">Xem việc cần xử lý →</Link></div>
       <div className="kpis dashboard-kpis">
         {summaryCards.map(([key,title,to,description]) =>
           <Link to={to} className="dashboard-kpi-link" key={key}>
@@ -76,12 +77,12 @@ export default function AdminDashboard() {
           </Link>)}
       </div>
       <section className="panel">
-        <div className="panel-head"><h2>Cần chú ý</h2><span className="fine-i">Tự tổng hợp từ nhiều bảng</span></div>
+        <div className="panel-head"><h2>Những việc cần chú ý</h2><Link to="/admin/queue">Xem hàng đợi công việc →</Link></div>
         <div className="dashboard-alerts">
           <Link to="/admin/feedback"><b>{number(st.openFeedback)}</b><span>Phản hồi chưa giải quyết</span></Link>
           <Link to="/admin/videos"><b>{number(st.processingVideos)}</b><span>Video đang xử lý</span></Link>
           <Link to="/admin/orders"><b>{number(st.pendingOrders)}</b><span>Đơn hàng đang chờ</span></Link>
-          <Link to="/admin/narrations"><b>{number(st.pendingMediaReview)}</b><span>Thuyết minh / phụ đề chờ duyệt</span></Link>
+          <Link to="/admin/queue"><b>{number(st.pendingMediaReview)}</b><span>Thuyết minh / phụ đề chờ duyệt</span></Link>
           <Link to="/admin/feedback"><b>{number(st.urgentFeedback)}</b><span>Phản hồi ưu tiên cao cần xử lý</span></Link>
         </div>
       </section>

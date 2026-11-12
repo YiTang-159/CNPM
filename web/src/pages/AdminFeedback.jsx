@@ -1,12 +1,14 @@
+import { useSearchParams } from 'react-router-dom';
 import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { manageApi } from '../api/workflows.js';
 const states = {new:'Mới', reviewing:'Đang xử lý', resolved:'Đã giải quyết'};
 const priorities = {low:'Thấp',normal:'Bình thường',high:'Cao'};
 export default function AdminFeedback() {
+  const [params]=useSearchParams();
   const [items,setItems] = useState([]);
   const [edits,setEdits] = useState({});
-  const [filter,setFilter] = useState({q:'',status:'all',priority:'all'});
+  const [filter,setFilter] = useState({q:'',status:params.get('status')||'all',priority:'all'});
   const [message,setMessage] = useState('');
   const [histories,setHistories] = useState({});
   const [busy,setBusy] = useState('');
@@ -19,6 +21,7 @@ export default function AdminFeedback() {
     } catch(e) { setMessage('Không lấy được phản hồi từ SQL Server: '+e.message); }
   },[]);
   useEffect(()=>{load();},[load]);
+  useEffect(()=>{setFilter(old=>({...old,status:params.get('status')||'all'}));},[params]);
   const filtered=useMemo(()=>items.filter(r=>{
     const q=filter.q.trim().toLowerCase();
     return (filter.status==='all'||r.status===filter.status) &&

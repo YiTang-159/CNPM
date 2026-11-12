@@ -1,5 +1,6 @@
 import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { manageApi } from '../api/workflows.js';
 import { SubtitleEditor, NarrationEditor } from '../components/AdminMediaEditors.jsx';
 
@@ -24,6 +25,7 @@ function parseLines(value) {
 
 /** Một trang cho thuyết minh/phụ đề: danh sách -> biên tập -> kiểm duyệt -> lịch sử. */
 export default function AdminMediaResults({kind}) {
+  const [params] = useSearchParams();
   const isSubtitle = kind === 'subtitles';
   const label = isSubtitle ? 'Phụ đề' : 'Thuyết minh';
   const summary = isSubtitle
@@ -32,9 +34,9 @@ export default function AdminMediaResults({kind}) {
   const [videos,setVideos] = useState([]);
   const [items,setItems] = useState([]);
   const [languages,setLanguages] = useState(['vi','en','zh']);
-  const [filter,setFilter] = useState({query:'', status:'all', language:'all'});
+  const [filter,setFilter] = useState({query:params.get('videoId')||'', status:params.get('status')||'all', language:'all'});
   const [editor,setEditor] = useState(null);
-  const [newData,setNewData] = useState({videoId:'',language:'vi'});
+  const [newData,setNewData] = useState({videoId:params.get('videoId')||'',language:'vi'});
   const [history,setHistory] = useState([]);
   const [message,setMessage] = useState('');
   const [loading,setLoading] = useState(false);
@@ -50,6 +52,7 @@ export default function AdminMediaResults({kind}) {
     finally { setLoading(false); }
   },[kind]);
   useEffect(() => { setEditor(null); load(); },[load]);
+  useEffect(() => {const videoId=params.get('videoId')||''; setFilter(v=>({...v,query:videoId,status:params.get('status')||'all'}));setNewData(v=>({...v,videoId}));},[params]);
   useAutoRefresh(load, !editor && !saving);
   const visible = useMemo(() => items.filter(x => {
     const s = filter.query.toLowerCase().trim();
@@ -108,7 +111,7 @@ export default function AdminMediaResults({kind}) {
       <span className="media-page-kicker">{isSubtitle ? 'VĂN BẢN TRÊN VIDEO' : 'KỊCH BẢN GIỌNG ĐỌC'}</span>
       <h1>Quản lý {label.toLowerCase()}</h1>
       <p>{summary}</p>
-    </div><button className="btn btn-sm" type="button" onClick={load} disabled={loading}>Làm mới dữ liệu</button></div>
+    </div><div className="adm-tools"><Link className="btn btn-sm" to={isSubtitle ? '/admin/narrations' : '/admin/subtitles'}>{isSubtitle ? 'Qua thuyết minh' : 'Qua phụ đề'}</Link><button className="btn btn-sm" type="button" onClick={load} disabled={loading}>Làm mới</button></div></div>
     <div className={`media-flow-guide ${isSubtitle ? 'media-flow-subtitles' : 'media-flow-narrations'}`}>
       <div><strong>{isSubtitle ? 'Quy trình phụ đề' : 'Quy trình thuyết minh'}</strong>
         <span>{isSubtitle ? 'Đầu ra: văn bản có thời gian (.srt / .vtt)' : 'Đầu ra hiện tại: kịch bản lời đọc; nghe thử bằng trình duyệt'}</span></div>

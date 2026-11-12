@@ -1,6 +1,7 @@
 import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { manageApi } from '../api/workflows.js';
+import { SubtitleEditor, NarrationEditor } from '../components/AdminMediaEditors.jsx';
 
 const LABELS = { draft:'Bản nháp', reviewing:'Chờ duyệt', published:'Đã xuất bản' };
 const BLANK = () => ({ start:0, end:3, text:'' });
@@ -25,6 +26,9 @@ function parseLines(value) {
 export default function AdminMediaResults({kind}) {
   const isSubtitle = kind === 'subtitles';
   const label = isSubtitle ? 'Phụ đề' : 'Thuyết minh';
+  const summary = isSubtitle
+    ? 'Biên tập câu chữ, đồng bộ mốc thời gian và xuất SRT/VTT. Phiên bản và trạng thái kiểm duyệt lưu trong SQL Server.'
+    : 'Quản lý kịch bản lời đọc, nghe thử giọng đọc trình duyệt và kiểm duyệt nội dung. Phiên bản kịch bản lưu trong SQL Server.';
   const [videos,setVideos] = useState([]);
   const [items,setItems] = useState([]);
   const [languages,setLanguages] = useState(['vi','en','zh']);
@@ -80,6 +84,9 @@ export default function AdminMediaResults({kind}) {
     setEditor(old=>{const last=old.lines.at(-1);const start=Number(last?.end)||0;
       return {...old,lines:[...old.lines,{start,end:start+3,text:''}]};});
   }
+  function removeRow(index) {
+    setEditor(old => ({...old, lines:old.lines.filter((_, i) => i !== index)}));
+  }
   async function save() {
     if (!editor) return;
     if (!editor.lines.length || editor.lines.some((x,i)=>!x.text.trim() || !Number.isFinite(x.start) ||
@@ -91,19 +98,28 @@ export default function AdminMediaResults({kind}) {
       await manageApi.saveMedia(kind,editor.videoId,editor.language,{
         version:editor.version,status:editor.status,lines:editor.lines.map(x=>({
           start:x.start,end:x.end,text:x.text.trim()}))});
-      setMessage(`Đã lưu ${label.toLowerCase()} #${editor.videoId} (${editor.language}) vào SQL, có ghi lịch sử phiên bản.`);
       setEditor(null);setHistory([]);await load();
+      setMessage(`Đã lưu ${label.toLowerCase()} #${editor.videoId} (${editor.language}) vào SQL, có ghi lịch sử phiên bản.`);
     } catch(e) { setMessage('Không lưu được: '+errorText(e)); }
     finally { setSaving(false); }
   }
   return <>
-    <div className="adm-head"><div><h1>Quản lý {label.toLowerCase()}</h1>
-      <p>Quản lý theo quy trình: bản nháp → chờ duyệt → xuất bản. Nội dung, phiên bản và người sửa được lưu vào SQL Server.</p>
+    <div className={`adm-head media-page-heading ${isSubtitle ? 'media-page-subtitles' : 'media-page-narrations'}`}><div>
+      <span className="media-page-kicker">{isSubtitle ? 'VĂN BẢN TRÊN VIDEO' : 'KỊCH BẢN GIỌNG ĐỌC'}</span>
+      <h1>Quản lý {label.toLowerCase()}</h1>
+      <p>{summary}</p>
     </div><button className="btn btn-sm" type="button" onClick={load} disabled={loading}>Làm mới dữ liệu</button></div>
+    <div className={`media-flow-guide ${isSubtitle ? 'media-flow-subtitles' : 'media-flow-narrations'}`}>
+      <div><strong>{isSubtitle ? 'Quy trình phụ đề' : 'Quy trình thuyết minh'}</strong>
+        <span>{isSubtitle ? 'Đầu ra: văn bản có thời gian (.srt / .vtt)' : 'Đầu ra hiện tại: kịch bản lời đọc; nghe thử bằng trình duyệt'}</span></div>
+      <ol>{(isSubtitle
+        ? ['Chọn video và ngôn ngữ', 'Sửa câu chữ, kiểm tra mốc thời gian', 'Duyệt và xuất tệp phụ đề']
+        : ['Chọn video và ngôn ngữ', 'Soạn kịch bản, nghe thử giọng đọc', 'Duyệt và lưu phiên bản nội dung']).map(step => <li key={step}>{step}</li>)}</ol>
+    </div>
     <div className="ops-kpis">{Object.entries(LABELS).map(([state,name])=><div className="ops-kpi" key={state}>
       <strong>{counts[state]||0}</strong><span>{name}</span></div>)}</div>
     <section className="panel ops-panel">
-      <div className="ops-head"><h2>Danh sách {label.toLowerCase()}</h2><span className="fine">Hiện {visible.length}/{items.length} bản ghi (tối đa 500 bản gần nhất)</span></div>
+      <div className="ops-head"><h2>{isSubtitle ? 'Danh sách phụ đề theo video' : 'Danh sách kịch bản thuyết minh'}</h2><span className="fine">Hiện {visible.length}/{items.length} bản ghi (tối đa 500 bản gần nhất)</span></div>
       <div className="ops-toolbar">
         <label>Tìm video / email<input value={filter.query} placeholder="Tên video, email hoặc mã video" onChange={e=>setFilter(v=>({...v,query:e.target.value}))}/></label>
         <label>Trạng thái<select value={filter.status} onChange={e=>setFilter(v=>({...v,status:e.target.value}))}>
@@ -114,10 +130,11 @@ export default function AdminMediaResults({kind}) {
       <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Video</th><th>Khách hàng</th><th>Ngôn ngữ</th><th>Trạng thái</th><th>Phiên bản</th><th>Cập nhật</th><th>Thao tác</th></tr></thead>
         <tbody>{visible.map(row=><tr key={row.id}><td><b>#{row.videoId}</b> {row.title}</td><td>{row.userEmail}</td><td>{row.language}</td>
           <td><span className={`ops-state ops-state-${row.status}`}>{LABELS[row.status]||row.status}</span></td><td>v{row.version}</td>
-          <td>{row.updatedAt?new Date(row.updatedAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'}):'—'}</td><td><button className="btn btn-sm" onClick={()=>selectItem(row)}>Mở</button></td></tr>)}</tbody>
+          <td>{row.updatedAt?new Date(row.updatedAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'}):'—'}</td><td><button className="btn btn-sm" onClick={()=>selectItem(row)}>{isSubtitle ? 'Biên tập phụ đề' : 'Mở kịch bản'}</button></td></tr>)}</tbody>
       </table>{!loading && !visible.length?<p className="fine">Chưa có kết quả phù hợp. Hãy xử lý video từ trang User hoặc tạo bản mới bên dưới.</p>:null}</div>
     </section>
-    <section className="panel ops-panel"><h2>Tạo {label.toLowerCase()} cho video đã tải lên</h2>
+    <section className="panel ops-panel"><h2>{isSubtitle ? 'Tạo phụ đề cho video đã tải lên' : 'Tạo kịch bản thuyết minh cho video đã tải lên'}</h2>
+      <p className="fine">{isSubtitle ? 'Khởi tạo bộ câu chữ cần hiển thị trên video và thời gian xuất hiện.' : 'Khởi tạo kịch bản sẽ được dùng để thuyết minh bằng giọng nói. Chưa tạo tệp âm thanh.'}</p>
       <div className="ops-toolbar"><label>Video<select value={newData.videoId} onChange={e=>setNewData(v=>({...v,videoId:e.target.value}))}>
         <option value="">-- Chọn video --</option>{videos.map(v=><option key={v.id} value={v.id}>#{v.id} – {v.title} ({v.userEmail})</option>)}</select></label>
         <label>Ngôn ngữ<select value={newData.language} onChange={e=>setNewData(v=>({...v,language:e.target.value}))}>
@@ -133,15 +150,11 @@ export default function AdminMediaResults({kind}) {
       <div className="ops-toolbar"><label>Trạng thái kiểm duyệt<select value={editor.status} onChange={e=>setEditor(v=>({...v,status:e.target.value}))}>
         {Object.entries(LABELS).map(([s,t])=><option value={s} key={s}>{t}</option>)}</select></label>
         <p className="fine">Xuất bản chỉ khi bản ghi đang ở trạng thái Chờ duyệt. Mọi lần lưu đều ghi lịch sử.</p></div>
-      <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>#</th><th>Bắt đầu (giây)</th><th>Kết thúc (giây)</th><th>Nội dung</th><th></th></tr></thead>
-        <tbody>{editor.lines.map((r,i)=><tr key={i}><td>{i+1}</td>
-          <td><input aria-label={`Bắt đầu dòng ${i+1}`} className="ops-number" type="number" step="0.1" min="0" value={r.start} onChange={e=>patchRow(i,'start',e.target.value)}/></td>
-          <td><input aria-label={`Kết thúc dòng ${i+1}`} className="ops-number" type="number" step="0.1" min="0" value={r.end} onChange={e=>patchRow(i,'end',e.target.value)}/></td>
-          <td><textarea aria-label={`Nội dung dòng ${i+1}`} rows={2} maxLength={4000} value={r.text} onChange={e=>patchRow(i,'text',e.target.value)}/></td>
-          <td><button className="btn btn-sm" disabled={editor.lines.length===1} onClick={()=>setEditor(v=>({...v,lines:v.lines.filter((_,j)=>i!==j)}))}>Xóa dòng</button></td></tr>)}</tbody>
-      </table></div>
-      <div className="adm-actions ops-gap"><button className="btn" onClick={addRow}>+ Thêm dòng</button>
-        <button className="btn btn-primary" disabled={saving} onClick={save}>{saving?'Đang lưu…':'Lưu vào SQL Server'}</button></div>
+      {isSubtitle ? <SubtitleEditor key={`${editor.videoId}-${editor.language}`} editor={editor} patchRow={patchRow}
+        addRow={addRow} removeRow={removeRow} onNotice={setMessage} />
+        : <NarrationEditor key={`${editor.videoId}-${editor.language}`} editor={editor} patchRow={patchRow}
+          addRow={addRow} removeRow={removeRow} onNotice={setMessage} />}
+      <div className="adm-actions ops-gap"><button className="btn btn-primary" disabled={saving} onClick={save}>{saving?'Đang lưu…':'Lưu vào SQL Server'}</button></div>
       <h3>Lịch sử chỉnh sửa</h3>
       {history.length?<div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Phiên bản</th><th>Trạng thái</th><th>Người sửa</th><th>Thời gian</th></tr></thead>
         <tbody>{history.map(h=><tr key={h.id}><td>v{h.version}</td><td>{LABELS[h.status]||h.status}</td><td>{h.editor}</td>

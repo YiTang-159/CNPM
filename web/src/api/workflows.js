@@ -84,6 +84,8 @@ export const manageApi = {
   saveMedia: (kind,id,language,data) => request(`/api/admin/media/${kind}/${id}/${language}`, {method:'PUT',body:data}),
   feedbackHistory: id => request(`/api/admin/feedback/${id}/history`),
   orders: () => request('/api/admin/orders'),
+  orderOwnerCandidates: id => request(`/api/admin/orders/${id}/owner-candidates`),
+  linkOrderOwner: (id, data) => request(`/api/admin/orders/${id}/link-owner`, {method:'POST',body:data}),
   entitlements: email => request(`/api/admin/entitlements?email=${encodeURIComponent(email)}`),
   audit: () => request('/api/admin/audit?limit=200'),
 };

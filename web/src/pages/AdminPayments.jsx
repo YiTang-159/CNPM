@@ -7,6 +7,7 @@ import { adminHref } from '../utils/adminLinks.js';
 import { paymentFlag } from '../utils/adminPayments.js';
 import AdminCustomerContext from '../components/AdminCustomerContext.jsx';
 import AdminActiveFilter from '../components/AdminActiveFilter.jsx';
+import LegacyOwnerReview from '../components/LegacyOwnerReview.jsx';
 
 const vnDate = v => v ? new Date(v).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}) : '—';
 const flags = {all:'Tất cả',pending:'Chờ thanh toán',cancelled:'Đơn đã hủy',other:'Trạng thái khác',missing_ref:'Đã thanh toán, thiếu tham chiếu',unlinked:'Đã thanh toán, chưa liên kết tài khoản',unverified_source:'Mô phỏng hoặc chưa rõ nguồn',recorded:'payOS đã xác minh'};
@@ -56,7 +57,9 @@ export default function AdminPayments() {
         {rows.filter(r=>r.id===selected).map(row=><div key={row.id}><h3><AdminT vi={"Đơn hàng #"} />{row.id}</h3>
           <p><AdminT vi={"Trạng thái đơn:"} /> <strong>{tr(row.status)}</strong> <AdminT vi={"· Mã tài khoản:"} /> <strong>{row.userId ?? tr('Chưa liên kết')}</strong></p>
           <p><AdminT vi={"Mã tham chiếu:"} /> <strong>{row.paymentRef||tr('Chưa ghi nhận')}</strong> <AdminT vi={"· Phương thức:"} /> {row.method||'—'}</p>
-          <AdminCustomerContext email={row.email}/><Link className="btn btn-sm" to={adminHref('/admin/orders',{orderId:row.id})}><AdminT vi={"Xem đơn gốc"} /></Link></div>)}
+          <AdminCustomerContext email={row.email}/><Link className="btn btn-sm" to={adminHref('/admin/orders',{orderId:row.id})}><AdminT vi={"Xem đơn gốc"} /></Link>
+          {row.userId==null&&<LegacyOwnerReview order={row} onLinked={async()=>{setSelected(null);await load();}}/>}
+          </div>)}
       </div>}
     </section>
   </>;

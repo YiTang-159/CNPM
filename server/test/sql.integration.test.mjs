@@ -36,6 +36,39 @@ test('SQL Server migrations, all Admin modules, private data and restart persist
     assert.equal((await call('POST','/api/auth/login',{email:u.email,password:'wrong'})).status,401);
     assert.equal((await call('POST','/api/auth/login',{email:u.email,password:'KhachIntegration123!'})).status,200);
     const other=(await call('POST','/api/auth/register',{name:'Khác',email:'other@integration.example',password:'OtherIntegration123!'})).data.user;
+    // Legacy orders are never linked on email alone. Admin must record reviewed evidence.
+    let oldId;
+    const conn=await new sql.ConnectionPool(config(db)).connect();
+    try {
+      const old=(await conn.request().input('email',sql.NVarChar(254),u.email)
+        .query(`INSERT dbo.DonHang(TenKhachHang,EmailKhachHang,SoVideoDang,SoVideoDich,LoaiTien,SoTien,TrangThai)
+          OUTPUT inserted.MaDonHang AS id
+          VALUES(N'Khách Việt',@email,2,2,'VND',90000,'paid')`)).recordset[0];
+      oldId=old.id;
+    }finally{await conn.close();}
+    const legacyPath=`/api/admin/orders/${oldId}`;
+    assert.equal((await call('GET',legacyPath+'/owner-candidates',null,u.token)).status,403);
+    assert.equal((await call('POST',legacyPath+'/link-owner',{userId:u.id},a.token)).status,400);
+    const hints=await call('GET',legacyPath+'/owner-candidates',null,a.token);
+    assert.equal(hints.data.order.userId,null);
+    assert.equal(hints.data.candidates.length,1);
+    assert.equal(hints.data.candidates[0].id,u.id);
+    const proof={userId:u.id,evidenceType:'support_ticket',evidenceRef:'TICKET-VERIFIED-0001',
+      note:'Admin verified an independent historical support ticket.',confirmed:true};
+    assert.equal((await call('POST',legacyPath+'/link-owner',{...proof,userId:other.id},a.token)).status,409);
+    assert.equal((await call('POST',legacyPath+'/link-owner',proof,a.token)).status,200);
+    assert.equal((await call('POST',legacyPath+'/link-owner',proof,a.token)).status,409);
+    assert.equal((await call('GET','/api/orders',null,u.token)).data.orders.some(o=>o.id===oldId),true);
+    assert.equal((await call('GET','/api/me/entitlements',null,u.token)).data.uploadsRemaining,0,
+      'linking a paid legacy order must not grant credits');
+    const auditConn=await new sql.ConnectionPool(config(db)).connect();
+    try {
+      assert.equal((await auditConn.request().input('id',sql.Int,oldId)
+        .query('SELECT COUNT(*) AS n FROM dbo.XacMinhChuDonHang WHERE MaDonHang=@id')).recordset[0].n,1);
+      assert.equal((await auditConn.request().input('id',sql.Int,oldId)
+        .query('SELECT MaNguoiDung AS uid FROM dbo.DonHang WHERE MaDonHang=@id')).recordset[0].uid,u.id);
+      assert.equal((await auditConn.request().query('SELECT COUNT(*) n FROM dbo.QuyenLoiGoi')).recordset[0].n,0);
+    }finally{await auditConn.close();}
     // Credits are granted only after actual demo payment (in this isolated test DB).
     assert.equal((await call('GET','/api/me/entitlements',null,u.token)).data.uploadsRemaining,0);
     const order=await call('POST','/api/orders',{name:u.name,email:u.email,uploads:1,outs:1,L:0},u.token);

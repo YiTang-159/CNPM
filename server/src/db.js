@@ -7,6 +7,7 @@ import { ACTIVE_MINUTES, dayKey } from './stats.js';
 import { hashPassword } from './auth.js';
 import { attachWorkflows } from './workflows.js';
 import { attachAdminOperations } from './adminOperations.js';
+import { attachLegacyOrders } from './legacyOrders.js';
 import { lockAccount, charge, grantPaidOrder, refundUnfinishedUpload, balance } from './entitlements.js';
 
 const DB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db');
@@ -126,6 +127,7 @@ export async function openRepo() {
   await runScript(pool, '10-an-toan-don-hang-va-nhat-ky.sql');
   await runScript(pool, '11-nguon-xac-nhan-thanh-toan.sql');
   await runScript(pool, '12-quyen-su-dung-goi.sql');
+  await runScript(pool, '13-doi-soat-chu-don-hang-cu.sql');
   console.log('SQL Server sẵn sàng.');
 
   const repo = {
@@ -225,7 +227,7 @@ export async function openRepo() {
         .input('n', sql.Int, limit)
         .query(`SELECT TOP (@n) o.*, p.MaThamChieu, p.NguonXacNhan
                 FROM dbo.DonHang o
-                OUTER APPLY (SELECT TOP (1) MaThamChieu FROM dbo.GiaoDich p
+                OUTER APPLY (SELECT TOP (1) MaThamChieu, NguonXacNhan FROM dbo.GiaoDich p
                   WHERE p.MaDonHang=o.MaDonHang AND p.TrangThai='success'
                   ORDER BY p.MaGiaoDich DESC) p
                 WHERE o.MaNguoiDung=@uid
@@ -441,5 +443,6 @@ export async function openRepo() {
   };
   attachWorkflows(pool, repo);
   attachAdminOperations(pool, repo);
+  attachLegacyOrders(pool, repo);
   return repo;
 }

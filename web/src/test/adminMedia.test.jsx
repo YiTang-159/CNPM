@@ -1,5 +1,6 @@
 import { beforeEach,describe,expect,it,vi } from 'vitest';
 import { render,screen } from '@testing-library/react';
+import { renderAdminComponent } from './adminTestUtils.jsx';
 import userEvent from '@testing-library/user-event';
 import AdminMediaResults from '../pages/AdminMediaResults.jsx';
 import SavedVideo from '../components/SavedVideo.jsx';
@@ -13,7 +14,7 @@ beforeEach(()=>{
 });
 describe('Current Admin media workflow',()=>{
  it('opens SQL content and saves exact video language version and timeline',async()=>{
-  const user=userEvent.setup();render(<AdminMediaResults kind="narrations"/>);
+  const user=userEvent.setup();renderAdminComponent(<AdminMediaResults kind="narrations"/>);
   await user.click(await screen.findByRole('button',{name:'Mở kịch bản'}));
   expect(await screen.findByDisplayValue('Đun nước')).toBeInTheDocument();expect(screen.getByText('admin@example.com')).toBeInTheDocument();
   await user.clear(screen.getByLabelText('Nội dung dòng 1'));await user.type(screen.getByLabelText('Nội dung dòng 1'),'Lời mới');
@@ -21,19 +22,19 @@ describe('Current Admin media workflow',()=>{
   expect(manageApi.saveMedia).toHaveBeenCalledWith('narrations',1,'vi',{version:2,status:'draft',lines:[{start:0,end:3,text:'Lời mới'}]});
  });
  it('invalid timing never sends a save request',async()=>{
-  const user=userEvent.setup();render(<AdminMediaResults kind="subtitles"/>);await user.click(await screen.findByRole('button',{name:'Biên tập phụ đề'}));
+  const user=userEvent.setup();renderAdminComponent(<AdminMediaResults kind="subtitles"/>);await user.click(await screen.findByRole('button',{name:'Biên tập phụ đề'}));
   const end=await screen.findByLabelText('Kết thúc dòng 1');await user.clear(end);await user.type(end,'0');
   await user.click(screen.getByRole('button',{name:'Lưu vào SQL Server'}));expect(manageApi.saveMedia).not.toHaveBeenCalled();
   expect(screen.getByRole('status')).toHaveTextContent('không chồng lấn');
  });
  it('version conflict preserves the unsaved editor and explains reload',async()=>{
   manageApi.saveMedia.mockRejectedValue(Object.assign(new Error('conflict'),{code:'conflict'}));
-  const user=userEvent.setup();render(<AdminMediaResults kind="subtitles"/>);await user.click(await screen.findByRole('button',{name:'Biên tập phụ đề'}));
+  const user=userEvent.setup();renderAdminComponent(<AdminMediaResults kind="subtitles"/>);await user.click(await screen.findByRole('button',{name:'Biên tập phụ đề'}));
   await screen.findByLabelText('Nội dung dòng 1');await user.click(screen.getByRole('button',{name:'Lưu vào SQL Server'}));
   expect(await screen.findByText(/Bản ghi đã được người khác sửa/)).toBeInTheDocument();expect(screen.getByLabelText('Nội dung dòng 1')).toHaveValue('Đun nước');
  });
  it('subtitle editing shows timeline preview and subtitle file exports, but no voice panel',async()=>{
-  const user=userEvent.setup();render(<AdminMediaResults kind="subtitles"/>);
+  const user=userEvent.setup();renderAdminComponent(<AdminMediaResults kind="subtitles"/>);
   await user.click(await screen.findByRole('button',{name:'Biên tập phụ đề'}));
   expect(screen.getByRole('region',{name:'Xem trước phụ đề theo thời gian'})).toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Xuất SRT'})).toBeInTheDocument();
@@ -41,7 +42,7 @@ describe('Current Admin media workflow',()=>{
   expect(screen.queryByRole('button',{name:'Nghe toàn bộ'})).not.toBeInTheDocument();
  });
  it('narration editing shows speech preview and script instead of subtitle exports',async()=>{
-  const user=userEvent.setup();render(<AdminMediaResults kind="narrations"/>);
+  const user=userEvent.setup();renderAdminComponent(<AdminMediaResults kind="narrations"/>);
   await user.click(await screen.findByRole('button',{name:'Mở kịch bản'}));
   expect(screen.getByRole('button',{name:'Nghe toàn bộ'})).toBeInTheDocument();
   expect(screen.getByRole('button',{name:'Xuất kịch bản TXT'})).toBeInTheDocument();

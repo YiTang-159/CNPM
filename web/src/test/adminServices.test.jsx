@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { renderAdminComponent } from './adminTestUtils.jsx';
 import userEvent from '@testing-library/user-event';
 import AdminNarrations from '../pages/AdminNarrations.jsx';
 import AdminSubtitles from '../pages/AdminSubtitles.jsx';
@@ -20,7 +21,7 @@ describe('quản trị dịch vụ dùng API SQL', () => {
     const fetchMock = vi.fn((url, options) => options.method === 'PATCH'
       ? ok({ narration: { ...record, ...JSON.parse(options.body) } }) : ok({ narrations: [record] }));
     vi.stubGlobal('fetch', fetchMock);
-    render(<AdminNarrations />);
+    renderAdminComponent(<AdminNarrations />);
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Chỉnh sửa thuyết minh' }));
     await user.clear(screen.getByLabelText('Nội dung thuyết minh'));
@@ -40,7 +41,7 @@ describe('quản trị dịch vụ dùng API SQL', () => {
     const fetchMock = vi.fn((url, options) => options.method === 'PATCH'
       ? ok({ subtitle: { ...record, ...JSON.parse(options.body) } }) : ok({ subtitles: [record] }));
     vi.stubGlobal('fetch', fetchMock);
-    render(<AdminSubtitles />);
+    renderAdminComponent(<AdminSubtitles />);
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Chỉnh sửa phụ đề' }));
     await user.clear(screen.getByLabelText('Bắt đầu (giây)'));
@@ -66,7 +67,7 @@ describe('quản trị dịch vụ dùng API SQL', () => {
       return ok({ feedback: [saved] });
     });
     vi.stubGlobal('fetch', fetchMock);
-    render(<AdminFeedback />);
+    renderAdminComponent(<AdminFeedback />);
     const user = userEvent.setup();
     await screen.findByText('Tôi cần sửa phụ đề.');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Trạng thái 3' }), 'resolved');
@@ -85,7 +86,7 @@ describe('quản trị dịch vụ dùng API SQL', () => {
   it('hiển thị lỗi quyền truy cập và cho phép tải lại từ máy chủ', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ code: 'forbidden' }) }).mockImplementation(() => ok({ videos: [] }));
     vi.stubGlobal('fetch', fetchMock);
-    render(<AdminVideos />);
+    renderAdminComponent(<AdminVideos />);
     expect(await screen.findByRole('status')).toHaveTextContent('forbidden');
     await userEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());

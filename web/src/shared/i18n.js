@@ -2336,4 +2336,11 @@ export const ADMIN_TRANSLATIONS = {
   "Duyệt, xuất bản và tải MP3/MP4": ["Review, publish and download MP3/MP4", "审核、发布并下载 MP3/MP4"],
   "Khởi tạo kịch bản; sau khi duyệt và xuất bản có thể tạo MP3/MP4 trên máy chủ.": ["Create a script; after review and publishing, generate MP3/MP4 on the server.", "创建脚本，审核并发布后可在服务器生成 MP3/MP4。"],
 
+  "Nguồn xác nhận thanh toán": ["Payment verification source", "支付验证来源"],
+  "Nguồn xác nhận": ["Verification source", "验证来源"],
+  "Mô phỏng hoặc chưa rõ nguồn": ["Demo or unverified legacy payment", "模拟或历史未核实支付"],
+  "payOS đã xác minh": ["Verified by payOS", "已由 payOS 验证"],
+  "Các đơn paid có thể gồm dữ liệu mô phỏng và payOS. Chỉ giao dịch có NguonXacNhan=payos mới được xác minh qua webhook.": ["Paid orders can include demo and payOS data. Only NguonXacNhan=payos identifies a verified webhook.", "已付款订单可能包含演示及 payOS 数据。只有 NguonXacNhan=payos 表示已通过 webhook 验证。"],
+  "phải kiểm tra NguonXacNhan: payos (webhook đã xác minh), demo (mô phỏng) hoặc legacy_unknown (dữ liệu cũ). Không coi demo/dữ liệu cũ là tiền ngân hàng đã nhận.": ["must be checked against NguonXacNhan: payos (verified webhook), demo (simulation) or legacy_unknown (historical). Never treat demo/legacy records as confirmed bank funds.", "必须检查 NguonXacNhan：payos（已验证 webhook）、demo（模拟）或 legacy_unknown（历史记录）。不得将模拟或历史记录视为实际到账。"],
+
 };

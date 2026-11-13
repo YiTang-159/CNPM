@@ -271,7 +271,7 @@ ad_menu:["Menu quản trị","Admin menu","管理菜单"],
 ad_nav_overview:["Tổng quan","Overview","总览"],
 ad_nav_users:["Người dùng","Users","用户"],
 ad_back:["Về trang web","Back to site","返回网站"],
-ad_title:["Tổng quan truy cập","Traffic overview","访问总览"],
+ad_title:["Thống kê truy cập","Traffic analytics","访问数据分析"],
 ad_sub:["Số người truy cập hệ thống theo ngày và so với kỳ trước.","Visitors to the system by day, compared with the previous period.","按日统计访问系统的人数，并与上一周期对比。"],
 ad_users_title:["Quản lý người dùng","User management","用户管理"],
 ad_users_sub:["Xem, tìm kiếm, khóa hoặc xóa người dùng đã đăng ký.","View, search, lock or delete registered users.","查看、搜索、锁定或删除已注册用户。"],
@@ -385,6 +385,10 @@ aq_copy:["Sao chép liên kết","Copy link","复制链接"],
 aq_copied:["Đã sao chép","Copied","已复制"],
 aq_download:["Tải mã (SVG)","Download (SVG)","下载二维码（SVG）"],
 aq_localhost:["Địa chỉ này chỉ mở được trên máy bạn. Đặt VITE_PUBLIC_URL (địa chỉ web đã đăng) để điện thoại quét được.","This address only opens on your own computer. Set VITE_PUBLIC_URL (your deployed site) so phones can scan it.","此地址仅能在本机打开。请设置 VITE_PUBLIC_URL（已部署的网址），手机才能扫码访问。"],
+  pwd_show: ["Hiện mật khẩu", "Show password", "显示密码"],
+  pwd_hide: ["Ẩn mật khẩu", "Hide password", "隐藏密码"],
+  pwd_show_short: ["Hiện", "Show", "显示"],
+  pwd_hide_short: ["Ẩn", "Hide", "隐藏"],
 };
 
 export const CUES=[
@@ -396,3 +400,1947 @@ export const CUES=[
 
 /* Giá minh họa: [gói Miễn phí, Người sáng tạo, Xưởng phim] theo từng ngôn ngữ (VND, USD, CNY) */
 export const PRICES=[[0,250000,750000],[0,10,30],[0,70,200]];
+// Shared Admin UI translations (Vietnamese key -> [English, Simplified Chinese]).
+// Preserve content coming from SQL Server and API: translate interface labels only.
+export const ADMIN_TRANSLATIONS = {
+  "Thống kê truy cập": [
+    "Traffic analytics",
+    "访问统计"
+  ],
+  "Theo dõi người truy cập và lượt xem theo thời gian. Dữ liệu vận hành, đơn hàng và công việc nằm tại Tổng quan hệ thống.": [
+    "Track visitors and page views over time. Operations, orders and tasks are in System Overview.",
+    "按时间跟踪访客和浏览量。运营、订单和任务数据请查看系统总览。"
+  ],
+  "Về tổng quan": [
+    "Back to overview",
+    "返回总览"
+  ],
+  "Không tải được thống kê. Kiểm tra kết nối API hoặc đăng nhập lại.": [
+    "Unable to load analytics. Check the API connection or sign in again.",
+    "无法加载统计数据。请检查 API 连接或重新登录。"
+  ],
+  "Trạng thái tài khoản": [
+    "Account status",
+    "账户状态"
+  ],
+  "Trạng thái video": [
+    "Video status",
+    "视频状态"
+  ],
+  "Lỗi API": [
+    "API error",
+    "API 错误"
+  ],
+  "Nhật ký quản trị": [
+    "Admin activity log",
+    "管理员操作日志"
+  ],
+  "Tra cứu ai đã thay đổi trạng thái tài khoản hoặc video, giá trị trước/sau và thời gian ghi nhận tại SQL Server. Chỉ Admin mới được xem.": [
+    "See who changed an account or video status, before/after values, and timestamps recorded in SQL Server. Admin access only.",
+    "查看谁更改了账户或视频状态、修改前后的值以及 SQL Server 记录的时间。仅管理员可访问。"
+  ],
+  "Làm mới": [
+    "Refresh",
+    "刷新"
+  ],
+  "Tìm người thực hiện hoặc đối tượng": [
+    "Search actor or target",
+    "搜索操作人或对象"
+  ],
+  "Email, mã video, trạng thái…": [
+    "Email, video ID, status…",
+    "邮箱、视频 ID、状态…"
+  ],
+  "Loại thao tác": [
+    "Action type",
+    "操作类型"
+  ],
+  "Tất cả": [
+    "All",
+    "全部"
+  ],
+  "Tài khoản": [
+    "Account",
+    "账户"
+  ],
+  "Hiển thị": [
+    "Showing",
+    "显示"
+  ],
+  "thao tác gần nhất (tối đa 200). Kiểm duyệt phụ đề, thuyết minh và phản hồi có lịch sử riêng tại trang tương ứng.": [
+    "recent actions (up to 200). Subtitle, narration and feedback reviews have separate history on their respective pages.",
+    "条最近的操作（最多 200 条）。字幕、配音和反馈审核记录可在相应页面查看。"
+  ],
+  "Đang tải nhật ký…": [
+    "Loading activity log…",
+    "正在加载操作日志…"
+  ],
+  "Thời gian (VN)": [
+    "Time (Vietnam)",
+    "时间（越南）"
+  ],
+  "Thao tác": [
+    "Action",
+    "操作"
+  ],
+  "Đối tượng": [
+    "Target",
+    "对象"
+  ],
+  "Người thực hiện": [
+    "Performed by",
+    "操作人"
+  ],
+  "Không tìm thấy thao tác phù hợp.": [
+    "No matching actions found.",
+    "未找到匹配的操作。"
+  ],
+  "Chưa có thay đổi được ghi nhận.": [
+    "No changes recorded yet.",
+    "尚无已记录的更改。"
+  ],
+  "Người dùng": [
+    "Users",
+    "用户"
+  ],
+  "Tài khoản đã tạo": [
+    "Accounts created",
+    "已创建账户"
+  ],
+  "Video đã tải lên": [
+    "Videos uploaded",
+    "已上传视频"
+  ],
+  "Thuyết minh": [
+    "Narration",
+    "配音"
+  ],
+  "Bản nội dung đã lưu": [
+    "Saved scripts",
+    "已保存脚本"
+  ],
+  "Phụ đề": [
+    "Subtitles",
+    "字幕"
+  ],
+  "Bản phụ đề đã lưu": [
+    "Saved subtitle versions",
+    "已保存字幕版本"
+  ],
+  "Phản hồi": [
+    "Feedback",
+    "反馈"
+  ],
+  "Gồm phản hồi và liên hệ": [
+    "Includes feedback and contact requests",
+    "包含反馈和联系请求"
+  ],
+  "Đơn hàng": [
+    "Orders",
+    "订单"
+  ],
+  "Bao gồm mọi trạng thái": [
+    "All statuses included",
+    "包含所有状态"
+  ],
+  "Ngôn ngữ": [
+    "Languages",
+    "语言"
+  ],
+  "Danh mục ngôn ngữ": [
+    "Language catalog",
+    "语言目录"
+  ],
+  "Lượt quét QR": [
+    "QR scans",
+    "二维码扫描"
+  ],
+  "Lượt quét ghi nhận": [
+    "Scans recorded",
+    "已记录扫描量"
+  ],
+  "Xem tất cả →": [
+    "View all →",
+    "查看全部 →"
+  ],
+  "Chưa có dữ liệu trong SQL Server.": [
+    "No data in SQL Server.",
+    "SQL Server 中暂无数据。"
+  ],
+  "Trang tổng hợp cần kết nối Backend SQL Server.": [
+    "Overview requires a SQL Server backend connection.",
+    "总览需要连接 SQL Server 后端。"
+  ],
+  "Vui lòng đăng nhập lại tài khoản Admin.": [
+    "Please sign in to your Admin account again.",
+    "请重新登录管理员账户。"
+  ],
+  "Phiên Admin không hợp lệ hoặc không đủ quyền.": [
+    "Admin session is invalid or access is denied.",
+    "管理员会话无效或无权访问。"
+  ],
+  "Lỗi kết nối máy chủ.": [
+    "Server connection error.",
+    "服务器连接错误。"
+  ],
+  "Tổng quan điều hành": [
+    "Operations overview",
+    "运营总览"
+  ],
+  "Số liệu vận hành từ SQL Server · Cập nhật:": [
+    "Live data from SQL Server · Updated:",
+    "来自 SQL Server 的实时数据 · 更新时间："
+  ],
+  "Việc cần xử lý": [
+    "Action required",
+    "待办事项"
+  ],
+  "Làm mới dữ liệu": [
+    "Refresh data",
+    "刷新数据"
+  ],
+  "Đang tải dữ liệu từ SQL Server…": [
+    "Loading data from SQL Server…",
+    "正在从 SQL Server 加载数据…"
+  ],
+  "Toàn cảnh hoạt động": [
+    "Operations snapshot",
+    "运营概览"
+  ],
+  "Chọn một chỉ số để đi đến trang quản lý tương ứng.": [
+    "Select a metric to open its management page.",
+    "选择指标以进入对应的管理页面。"
+  ],
+  "Xem việc cần xử lý →": [
+    "View action items →",
+    "查看待办事项 →"
+  ],
+  "Điều hành theo quy trình": [
+    "Operations workflow",
+    "运营流程"
+  ],
+  "Đi nhanh từ khách hàng đến giao dịch và nội dung": [
+    "Navigate from customers to transactions and content",
+    "从客户快速查看交易与内容"
+  ],
+  "Các quy trình quản trị": [
+    "Admin workflows",
+    "管理流程"
+  ],
+  "1. Khách hàng": [
+    "1. Customers",
+    "1. 客户"
+  ],
+  "Trạng thái và lịch sử liên quan": [
+    "Status and related history",
+    "状态及相关记录"
+  ],
+  "2. Gói & chính sách giá": [
+    "2. Plans & pricing policy",
+    "2. 套餐与定价政策"
+  ],
+  "Kiểm tra đơn giá đang áp dụng": [
+    "Review current pricing",
+    "查看当前价格"
+  ],
+  "3. Đơn hàng": [
+    "3. Orders",
+    "3. 订单"
+  ],
+  "Tra cứu và liên kết tài khoản": [
+    "Search and link accounts",
+    "查找并关联账户"
+  ],
+  "4. Đối soát": [
+    "4. Reconciliation",
+    "4. 对账"
+  ],
+  "Kiểm tra giao dịch mô phỏng": [
+    "Review simulated transactions",
+    "检查模拟交易"
+  ],
+  "5. Video & nội dung": [
+    "5. Videos & content",
+    "5. 视频与内容"
+  ],
+  "Biên tập, kiểm duyệt kết quả": [
+    "Edit and review results",
+    "编辑并审核结果"
+  ],
+  "Những việc cần chú ý": [
+    "Items needing attention",
+    "需要关注的事项"
+  ],
+  "Xem hàng đợi công việc →": [
+    "View work queue →",
+    "查看工作队列 →"
+  ],
+  "Phản hồi chưa giải quyết": [
+    "Unresolved feedback",
+    "未解决的反馈"
+  ],
+  "Video đang xử lý": [
+    "Videos processing",
+    "正在处理的视频"
+  ],
+  "Đơn hàng đang chờ": [
+    "Pending orders",
+    "待处理订单"
+  ],
+  "Thuyết minh / phụ đề chờ duyệt": [
+    "Narration / subtitles awaiting review",
+    "待审核的配音／字幕"
+  ],
+  "Phản hồi ưu tiên cao cần xử lý": [
+    "High-priority feedback awaiting action",
+    "待处理的高优先级反馈"
+  ],
+  "Đơn đã đánh dấu thanh toán theo loại tiền": [
+    "Orders marked paid by currency",
+    "按币种统计已标记付款的订单"
+  ],
+  "Quản lý đơn hàng →": [
+    "Manage orders →",
+    "管理订单 →"
+  ],
+  "đơn": [
+    "orders",
+    "笔订单"
+  ],
+  "Chưa có đơn nào được đánh dấu đã thanh toán.": [
+    "No orders marked paid yet.",
+    "暂无标记为已付款的订单。"
+  ],
+  "Người dùng mới": [
+    "New users",
+    "新用户"
+  ],
+  "Họ tên": [
+    "Full name",
+    "姓名"
+  ],
+  "Trạng thái": [
+    "Status",
+    "状态"
+  ],
+  "Thời điểm": [
+    "Time",
+    "时间"
+  ],
+  "Video mới tải": [
+    "Recently uploaded videos",
+    "最近上传的视频"
+  ],
+  "Chủ sở hữu": [
+    "Owner",
+    "所有者"
+  ],
+  "Kết quả": [
+    "Results",
+    "结果"
+  ],
+  "Phản hồi gần nhất": [
+    "Recent feedback",
+    "最新反馈"
+  ],
+  "Người gửi": [
+    "Sender",
+    "发送人"
+  ],
+  "Nội dung": [
+    "Content",
+    "内容"
+  ],
+  "Ngày": [
+    "Date",
+    "日期"
+  ],
+  "Đơn hàng mới nhất": [
+    "Recent orders",
+    "最新订单"
+  ],
+  "Khách hàng": [
+    "Customer",
+    "客户"
+  ],
+  "Số tiền": [
+    "Amount",
+    "金额"
+  ],
+  "Mỗi thông tin có trang quản lý chi tiết. Dashboard chỉ đọc và không thay đổi bản ghi.": [
+    "Each item has a detailed management page. The dashboard is read-only.",
+    "每项数据都有对应的管理页面。仪表盘仅供查看。"
+  ],
+  "Mới": [
+    "New",
+    "新建"
+  ],
+  "Đang xử lý": [
+    "In progress",
+    "处理中"
+  ],
+  "Đã giải quyết": [
+    "Resolved",
+    "已解决"
+  ],
+  "Thấp": [
+    "Low",
+    "低"
+  ],
+  "Bình thường": [
+    "Normal",
+    "普通"
+  ],
+  "Không lấy được phản hồi từ SQL Server: ": [
+    "Could not fetch feedback from SQL Server: ",
+    "无法从 SQL Server 获取反馈："
+  ],
+  "Cần nhập câu trả lời trước khi chuyển sang Đã giải quyết.": [
+    "A reply is required before marking the request resolved.",
+    "标记为已解决前必须填写回复。"
+  ],
+  "Không lưu được: ": [
+    "Could not save: ",
+    "无法保存："
+  ],
+  "Không đọc được lịch sử: ": [
+    "Could not read history: ",
+    "无法读取历史记录："
+  ],
+  "Trung tâm phản hồi & chăm sóc khách hàng": [
+    "Feedback & customer support center",
+    "反馈与客户支持中心"
+  ],
+  "Quản lý cả phản hồi tài khoản và liên hệ khách. Phân loại ưu tiên, theo dõi trạng thái, trả lời và ghi lịch sử xử lý vào SQL Server.": [
+    "Manage account feedback and contact requests. Set priority, track status, reply, and record handling history in SQL Server.",
+    "管理账户反馈和联系请求。设置优先级、跟踪状态、回复并将处理记录保存到 SQL Server。"
+  ],
+  "Tìm phản hồi": [
+    "Search feedback",
+    "搜索反馈"
+  ],
+  "Tên, email, nội dung": [
+    "Name, email or message",
+    "姓名、邮箱或内容"
+  ],
+  "Ưu tiên": [
+    "Priority",
+    "优先级"
+  ],
+  "yêu cầu · Chuyển Đã giải quyết bắt buộc có câu trả lời · Thao tác lưu có ghi người xử lý và lịch sử.": [
+    "requests · A reply is required to mark a request resolved · Saved changes record the operator and history.",
+    "条请求 · 标记已解决前必须回复 · 保存时记录操作人及历史。"
+  ],
+  "Trang liên hệ": [
+    "Contact page",
+    "联系页面"
+  ],
+  "Mở video liên quan →": [
+    "Open related video →",
+    "打开相关视频 →"
+  ],
+  "Gửi:": [
+    "Sent:",
+    "发送时间："
+  ],
+  "Độ ưu tiên": [
+    "Priority level",
+    "优先级"
+  ],
+  "Trả lời của Admin": [
+    "Admin reply",
+    "管理员回复"
+  ],
+  "Nhập phản hồi để gửi lại trong tài khoản khách hàng…": [
+    "Enter a reply to send to the customer's account…",
+    "输入要发送到客户账户的回复…"
+  ],
+  "Đang lưu…": [
+    "Saving…",
+    "正在保存…"
+  ],
+  "Lưu xử lý": [
+    "Save changes",
+    "保存处理结果"
+  ],
+  "Lịch sử": [
+    "History",
+    "历史记录"
+  ],
+  "Lịch sử xử lý": [
+    "Handling history",
+    "处理历史"
+  ],
+  "Chưa có lịch sử cập nhật.": [
+    "No update history yet.",
+    "暂无更新记录。"
+  ],
+  "Không có phản hồi phù hợp. Phản hồi mới của khách sẽ xuất hiện tại đây.": [
+    "No matching feedback. New customer feedback appears here.",
+    "没有匹配的反馈。新的客户反馈会显示在这里。"
+  ],
+  "Không thêm được ngôn ngữ: ": [
+    "Could not add language: ",
+    "无法添加语言："
+  ],
+  "Quản lý ngôn ngữ": [
+    "Language management",
+    "语言管理"
+  ],
+  "Tiếng Việt, Anh, Trung đã tích hợp. Ngôn ngữ mới chỉ được lưu vào danh mục ở trạng thái tạm ngưng cho đến khi có bộ xử lý thực tế.": [
+    "Vietnamese, English and Chinese are integrated. New languages are listed as inactive until a processing engine is implemented.",
+    "已集成越南语、英语和中文。新语言在处理引擎接入前仅列入目录并保持停用。"
+  ],
+  "Ngôn ngữ trong danh mục": [
+    "Languages in catalog",
+    "目录中的语言"
+  ],
+  "Đang hoạt động": [
+    "Active",
+    "已启用"
+  ],
+  "Đã tạm ngưng": [
+    "Inactive",
+    "已停用"
+  ],
+  "+ Thêm ngôn ngữ mới": [
+    "+ Add language",
+    "+ 添加语言"
+  ],
+  "Mã (vd: vi)": [
+    "Code (e.g. vi)",
+    "代码（例如 vi）"
+  ],
+  "Tên tiếng Việt": [
+    "Vietnamese name",
+    "越南语名称"
+  ],
+  "Tên tiếng Anh": [
+    "English name",
+    "英语名称"
+  ],
+  "Thêm": [
+    "Add",
+    "添加"
+  ],
+  "Tìm ngôn ngữ": [
+    "Search languages",
+    "搜索语言"
+  ],
+  "Mã hoặc tên ngôn ngữ": [
+    "Code or language name",
+    "代码或语言名称"
+  ],
+  "Tạm ngưng": [
+    "Inactive",
+    "停用"
+  ],
+  "Hiện": [
+    "Showing",
+    "显示"
+  ],
+  "ngôn ngữ. Chỉnh sửa trạng thái phải bấm Lưu để cập nhật SQL Server.": [
+    "languages. Select Save to update their status in SQL Server.",
+    "种语言。修改状态后请点击“保存”以更新 SQL Server。"
+  ],
+  "Mã": [
+    "Code",
+    "代码"
+  ],
+  "Khả năng xử lý": [
+    "Processing support",
+    "处理支持"
+  ],
+  "Đã hỗ trợ": [
+    "Supported",
+    "已支持"
+  ],
+  "Chưa tích hợp": [
+    "Not integrated",
+    "尚未集成"
+  ],
+  "Lưu": [
+    "Save",
+    "保存"
+  ],
+  "Hủy": [
+    "Cancel",
+    "取消"
+  ],
+  "Sửa": [
+    "Edit",
+    "编辑"
+  ],
+  "Không có ngôn ngữ phù hợp bộ lọc.": [
+    "No languages match the filters.",
+    "没有符合筛选条件的语言。"
+  ],
+  "Bản nháp": [
+    "Draft",
+    "草稿"
+  ],
+  "Chờ duyệt": [
+    "Pending review",
+    "待审核"
+  ],
+  "Đã xuất bản": [
+    "Published",
+    "已发布"
+  ],
+  "Bản ghi đã được người khác sửa. Hãy tải lại trước khi lưu.": [
+    "Someone else changed this record. Reload before saving.",
+    "其他人已修改此记录。请重新加载后保存。"
+  ],
+  "Cần chuyển sang Chờ duyệt trước khi xuất bản.": [
+    "Move to Pending review before publishing.",
+    "发布前请先将状态更改为“待审核”。"
+  ],
+  "Nội dung đã xuất bản cần được chuyển về Bản nháp trước khi sửa.": [
+    "Return published content to Draft before editing.",
+    "编辑已发布内容前请将其改回“草稿”。"
+  ],
+  "Có lỗi xảy ra": [
+    "An error occurred",
+    "发生错误"
+  ],
+  "Biên tập câu chữ, đồng bộ mốc thời gian và xuất SRT/VTT. Phiên bản và trạng thái kiểm duyệt lưu trong SQL Server.": [
+    "Edit text, align timing, and export SRT/VTT. Versions and review status are stored in SQL Server.",
+    "编辑文字、校准时间并导出 SRT/VTT。版本和审核状态保存在 SQL Server。"
+  ],
+  "Quản lý kịch bản lời đọc, nghe thử giọng đọc trình duyệt và kiểm duyệt nội dung. Phiên bản kịch bản lưu trong SQL Server.": [
+    "Manage narration scripts, preview browser voices and review content. Script versions are stored in SQL Server.",
+    "管理配音脚本、试听浏览器语音并审核内容。脚本版本保存在 SQL Server。"
+  ],
+  "Không tải được dữ liệu SQL: ": [
+    "Could not load SQL data: ",
+    "无法加载 SQL 数据："
+  ],
+  "Không mở được nội dung: ": [
+    "Could not open content: ",
+    "无法打开内容："
+  ],
+  "Hãy chọn video và ngôn ngữ hợp lệ.": [
+    "Select a valid video and language.",
+    "请选择有效的视频和语言。"
+  ],
+  "Video đã có bản ngôn ngữ này. Hãy chọn bản ghi để chỉnh sửa.": [
+    "This video already has an entry for this language. Select it to edit.",
+    "该视频已有此语言的记录。请选择现有记录进行编辑。"
+  ],
+  "Kiểm tra các dòng: phải có nội dung; thời gian bắt đầu không âm, kết thúc lớn hơn bắt đầu và không chồng lấn.": [
+    "Check every line: content is required; start time cannot be negative; end must be after start, and intervals must not overlap.",
+    "检查每行：内容不能为空；开始时间不可为负；结束时间须晚于开始且区间不可重叠。"
+  ],
+  "VĂN BẢN TRÊN VIDEO": [
+    "VIDEO SUBTITLE TEXT",
+    "视频字幕文本"
+  ],
+  "KỊCH BẢN GIỌNG ĐỌC": [
+    "VOICE-OVER SCRIPT",
+    "配音脚本"
+  ],
+  "Quản lý": [
+    "Manage",
+    "管理"
+  ],
+  "Qua thuyết minh": [
+    "Go to narration",
+    "转到配音"
+  ],
+  "Qua phụ đề": [
+    "Go to subtitles",
+    "转到字幕"
+  ],
+  "Quy trình phụ đề": [
+    "Subtitle workflow",
+    "字幕处理流程"
+  ],
+  "Quy trình thuyết minh": [
+    "Narration workflow",
+    "配音处理流程"
+  ],
+  "Đầu ra: văn bản có thời gian (.srt / .vtt)": [
+    "Output: timed text (.srt / .vtt)",
+    "输出：带时间轴的文本（.srt / .vtt）"
+  ],
+  "Đầu ra hiện tại: kịch bản lời đọc; nghe thử bằng trình duyệt": [
+    "Current output: narration script; browser voice preview",
+    "当前输出：配音脚本；浏览器语音试听"
+  ],
+  "Chọn video và ngôn ngữ": [
+    "Choose video and language",
+    "选择视频与语言"
+  ],
+  "Sửa câu chữ, kiểm tra mốc thời gian": [
+    "Edit text and check timing",
+    "编辑文字并检查时间轴"
+  ],
+  "Duyệt và xuất tệp phụ đề": [
+    "Review and export subtitles",
+    "审核并导出字幕"
+  ],
+  "Soạn kịch bản, nghe thử giọng đọc": [
+    "Write script and preview voice",
+    "编写脚本并试听配音"
+  ],
+  "Duyệt và lưu phiên bản nội dung": [
+    "Review and save content version",
+    "审核并保存内容版本"
+  ],
+  "Danh sách phụ đề theo video": [
+    "Subtitle list by video",
+    "按视频查看字幕"
+  ],
+  "Danh sách kịch bản thuyết minh": [
+    "Narration script list",
+    "配音脚本列表"
+  ],
+  "bản ghi (tối đa 500 bản gần nhất)": [
+    "records (up to 500 most recent)",
+    "条记录（最多最近 500 条）"
+  ],
+  "Tìm video / email": [
+    "Search video / email",
+    "搜索视频／邮箱"
+  ],
+  "Tên video, email hoặc mã video": [
+    "Video title, email or video ID",
+    "视频标题、邮箱或视频 ID"
+  ],
+  "Phiên bản": [
+    "Version",
+    "版本"
+  ],
+  "Cập nhật": [
+    "Updated",
+    "更新时间"
+  ],
+  "Khách hàng →": [
+    "Customer →",
+    "客户 →"
+  ],
+  "Biên tập phụ đề": [
+    "Edit subtitles",
+    "编辑字幕"
+  ],
+  "Mở kịch bản": [
+    "Open script",
+    "打开脚本"
+  ],
+  "Chưa có kết quả phù hợp. Hãy xử lý video từ trang User hoặc tạo bản mới bên dưới.": [
+    "No matching results. Process a video on the customer site or create a new entry below.",
+    "没有匹配的结果。请从客户页面处理视频或在下方新建记录。"
+  ],
+  "Tạo phụ đề cho video đã tải lên": [
+    "Create subtitles for an uploaded video",
+    "为已上传视频创建字幕"
+  ],
+  "Tạo kịch bản thuyết minh cho video đã tải lên": [
+    "Create a narration script for an uploaded video",
+    "为已上传视频创建配音脚本"
+  ],
+  "Khởi tạo bộ câu chữ cần hiển thị trên video và thời gian xuất hiện.": [
+    "Create on-screen subtitle text with display times.",
+    "创建屏幕字幕文本及显示时间。"
+  ],
+  "Khởi tạo kịch bản sẽ được dùng để thuyết minh bằng giọng nói. Chưa tạo tệp âm thanh.": [
+    "Create a script for voice narration. No audio file will be generated.",
+    "创建用于语音配音的脚本。此步骤不生成音频文件。"
+  ],
+  "-- Chọn video --": [
+    "-- Select video --",
+    "-- 选择视频 --"
+  ],
+  "Tạo bản nháp": [
+    "Create draft",
+    "创建草稿"
+  ],
+  "Chưa có video trong SQL Server. Khách hàng cần tải video trước khi biên tập nội dung.": [
+    "No videos in SQL Server. A customer must upload a video before editing content.",
+    "SQL Server 中暂无视频。客户需先上传视频才能编辑内容。"
+  ],
+  "Biên tập nội dung": [
+    "Edit content",
+    "编辑内容"
+  ],
+  "Biên tập": [
+    "Editor",
+    "编辑器"
+  ],
+  "· Phiên bản hiện tại: v": [
+    "· Current version: v",
+    "· 当前版本：v"
+  ],
+  " · Nếu sửa bản đã xuất bản, hãy chuyển về Bản nháp.": [
+    " · To edit published content, return it to Draft.",
+    " · 要编辑已发布内容，请先改回草稿。"
+  ],
+  "Đóng": [
+    "Close",
+    "关闭"
+  ],
+  "Trạng thái kiểm duyệt": [
+    "Review status",
+    "审核状态"
+  ],
+  "Xuất bản chỉ khi bản ghi đang ở trạng thái Chờ duyệt. Mọi lần lưu đều ghi lịch sử.": [
+    "Publish only when the status is Pending review. Every save records history.",
+    "仅在“待审核”状态下可以发布。每次保存都会记录历史。"
+  ],
+  "Lưu vào SQL Server": [
+    "Save to SQL Server",
+    "保存到 SQL Server"
+  ],
+  "Lịch sử chỉnh sửa": [
+    "Edit history",
+    "编辑历史"
+  ],
+  "Người sửa": [
+    "Edited by",
+    "修改人"
+  ],
+  "Thời gian": [
+    "Time",
+    "时间"
+  ],
+  "Chưa có lịch sử chỉnh sửa bằng Admin.": [
+    "No Admin edit history yet.",
+    "暂无管理员编辑记录。"
+  ],
+  "Đã duyệt": [
+    "Approved",
+    "已批准"
+  ],
+  "Nội dung thuyết minh": [
+    "Narration content",
+    "配音内容"
+  ],
+  "Lưu thuyết minh": [
+    "Save narration",
+    "保存配音"
+  ],
+  "Chỉnh sửa thuyết minh": [
+    "Edit narration",
+    "编辑配音"
+  ],
+  "Đã lưu nội dung vào SQL Server.": [
+    "Content saved to SQL Server.",
+    "内容已保存到 SQL Server。"
+  ],
+  "Quản lý thuyết minh": [
+    "Narration management",
+    "配音管理"
+  ],
+  "Chỉnh sửa và duyệt kịch bản thuyết minh của khách hàng. Phần này lưu văn bản, chưa tạo tệp âm thanh thu sẵn.": [
+    "Edit and review customer narration scripts. This stores text only; no prerecorded audio file is generated.",
+    "编辑和审核客户配音脚本。仅存储文本，不生成预录音频文件。"
+  ],
+  "Chờ thanh toán": [
+    "Pending payment",
+    "待付款"
+  ],
+  "Đã thanh toán": [
+    "Paid",
+    "已付款"
+  ],
+  "Đã hủy": [
+    "Cancelled",
+    "已取消"
+  ],
+  "Không đọc được đơn hàng: ": [
+    "Could not load orders: ",
+    "无法加载订单："
+  ],
+  "Lỗi kết nối": [
+    "Connection error",
+    "连接错误"
+  ],
+  "Quản lý đơn hàng": [
+    "Order management",
+    "订单管理"
+  ],
+  "Tra cứu đơn theo khách hàng, số tiền và trạng thái. Đối soát giao dịch được tách thành một trang riêng để không nhầm việc quản lý đơn với xác minh thanh toán.": [
+    "Search orders by customer, amount and status. Reconciliation is on a separate page to avoid confusing order management with payment verification.",
+    "按客户、金额和状态查询订单。对账使用独立页面，避免将订单管理与付款验证混淆。"
+  ],
+  "Đối soát thanh toán": [
+    "Payment reconciliation",
+    "付款对账"
+  ],
+  "Tổng đơn trong danh sách": [
+    "Total orders in list",
+    "列表订单总数"
+  ],
+  "Tra cứu đơn hàng": [
+    "Search orders",
+    "搜索订单"
+  ],
+  "Mã đơn, tên, email, mã giao dịch…": [
+    "Order ID, name, email, transaction ID…",
+    "订单 ID、姓名、邮箱、交易 ID…"
+  ],
+  "Tất cả trạng thái": [
+    "All statuses",
+    "所有状态"
+  ],
+  "đơn trong phạm vi API trả về (tối đa 500 đơn gần nhất).": [
+    "orders returned by API (up to 500 most recent).",
+    "笔 API 返回的订单（最多最近 500 笔）。"
+  ],
+  "Đang tải đơn hàng…": [
+    "Loading orders…",
+    "正在加载订单…"
+  ],
+  "Mã đơn": [
+    "Order ID",
+    "订单 ID"
+  ],
+  "Liên kết tài khoản": [
+    "Account link",
+    "关联账户"
+  ],
+  "Thành tiền": [
+    "Total amount",
+    "订单金额"
+  ],
+  "Phương thức": [
+    "Method",
+    "方式"
+  ],
+  "Tham chiếu": [
+    "Reference",
+    "参考号"
+  ],
+  "Ngày tạo (VN)": [
+    "Created (Vietnam)",
+    "创建时间（越南）"
+  ],
+  "Chưa xác minh": [
+    "Unverified",
+    "未验证"
+  ],
+  "Chi tiết": [
+    "Details",
+    "详情"
+  ],
+  "Đơn hàng #": [
+    "Order #",
+    "订单 #"
+  ],
+  "Xem đối soát →": [
+    "View reconciliation →",
+    "查看对账 →"
+  ],
+  "Giá trị:": [
+    "Value:",
+    "金额："
+  ],
+  "· Trạng thái:": [
+    "· Status:",
+    "· 状态："
+  ],
+  "Mã người dùng:": [
+    "User ID:",
+    "用户 ID："
+  ],
+  "Chưa liên kết": [
+    "Not linked",
+    "未关联"
+  ],
+  "· Tham chiếu:": [
+    "· Reference:",
+    "· 参考号："
+  ],
+  "Chưa có": [
+    "None",
+    "无"
+  ],
+  "Không tìm thấy đơn hàng phù hợp bộ lọc.": [
+    "No orders match the filters.",
+    "没有符合筛选条件的订单。"
+  ],
+  "Chưa có đơn hàng.": [
+    "No orders yet.",
+    "暂无订单。"
+  ],
+  "Đơn đã hủy": [
+    "Cancelled order",
+    "已取消订单"
+  ],
+  "Trạng thái khác": [
+    "Other status",
+    "其他状态"
+  ],
+  "Đã thanh toán, thiếu tham chiếu": [
+    "Paid, missing reference",
+    "已付款，缺少参考号"
+  ],
+  "Đã thanh toán, chưa liên kết tài khoản": [
+    "Paid, account not linked",
+    "已付款，未关联账户"
+  ],
+  "Đã ghi giao dịch": [
+    "Transaction recorded",
+    "交易已记录"
+  ],
+  "Không tải được dữ liệu: ": [
+    "Could not load data: ",
+    "无法加载数据："
+  ],
+  "Kiểm tra tình trạng ghi nhận giao dịch và phát hiện dữ liệu cần xác minh. Không xử lý thanh toán thật trong trang này.": [
+    "Review recorded transactions and detect records needing verification. Real payments are not processed here.",
+    "检查已记录交易，找出需要核实的数据。本页面不处理真实付款。"
+  ],
+  "Thanh toán mô phỏng": [
+    "Simulated payment",
+    "模拟付款"
+  ],
+  "và mã tham chiếu": [
+    "and reference ID",
+    "及参考号"
+  ],
+  "chỉ phản ánh dữ liệu hệ thống; không có đối soát sao kê ngân hàng. Không được dùng những số liệu này làm bằng chứng đã nhận tiền thật.": [
+    "only reflect system records; bank statements are not reconciled. Do not treat these values as proof of funds received.",
+    "仅反映系统记录，不与银行账单对账。不可将这些数据作为实际收款凭证。"
+  ],
+  "Đơn trong danh sách API": [
+    "Orders returned by API",
+    "API 返回订单"
+  ],
+  "Đơn đánh dấu paid": [
+    "Orders marked paid",
+    "标记已付款的订单"
+  ],
+  "Cần rà soát dữ liệu": [
+    "Records to review",
+    "待核查数据"
+  ],
+  "Tìm mã đơn, email, mã tham chiếu": [
+    "Search order ID, email or reference",
+    "搜索订单 ID、邮箱或参考号"
+  ],
+  "Ví dụ: #4 hoặc email khách": [
+    "E.g. #4 or customer email",
+    "例如 #4 或客户邮箱"
+  ],
+  "Tình trạng kiểm tra": [
+    "Review status",
+    "核查状态"
+  ],
+  "bản ghi · API trả về tối đa 500 đơn gần nhất.": [
+    "records · API returns up to 500 recent orders.",
+    "条记录 · API 最多返回最近 500 笔订单。"
+  ],
+  "Đang tải dữ liệu…": [
+    "Loading data…",
+    "正在加载数据…"
+  ],
+  "Đơn": [
+    "Order",
+    "订单"
+  ],
+  "Giá trị": [
+    "Value",
+    "数值"
+  ],
+  "Rà soát": [
+    "Review",
+    "核查"
+  ],
+  "Không có giao dịch phù hợp bộ lọc.": [
+    "No transactions match the filters.",
+    "没有符合筛选条件的交易。"
+  ],
+  "Trạng thái đơn:": [
+    "Order status:",
+    "订单状态："
+  ],
+  "· Mã tài khoản:": [
+    "· Account ID:",
+    "· 账户 ID："
+  ],
+  "Mã tham chiếu:": [
+    "Reference ID:",
+    "参考号："
+  ],
+  "Chưa ghi nhận": [
+    "Not recorded",
+    "未记录"
+  ],
+  "· Phương thức:": [
+    "· Method:",
+    "· 方式："
+  ],
+  "Xem đơn gốc": [
+    "View original order",
+    "查看原订单"
+  ],
+  "Việt Nam (VND)": [
+    "Vietnam (VND)",
+    "越南（VND）"
+  ],
+  "Hoa Kỳ (USD)": [
+    "United States (USD)",
+    "美国（USD）"
+  ],
+  "Trung Quốc (CNY)": [
+    "China (CNY)",
+    "中国（CNY）"
+  ],
+  "Gói dịch vụ & bảng giá": [
+    "Service plans & pricing",
+    "服务套餐与价格"
+  ],
+  "Tra cứu chính sách giá mà khách hàng đang xem. Giá đặt hàng được API tính lại, không dựa vào số tiền khách gửi lên.": [
+    "Review the pricing policy customers see. Order totals are recalculated by the API, not taken from client-submitted amounts.",
+    "查看客户看到的定价政策。订单总额由 API 重新计算，不采用客户端提交的金额。"
+  ],
+  "Xem đơn hàng": [
+    "View orders",
+    "查看订单"
+  ],
+  "Chế độ xem cấu hình — chưa hỗ trợ sửa giá trong Admin.": [
+    "Configuration view — editing prices in Admin is not supported yet.",
+    "配置查看模式——尚不支持在管理后台修改价格。"
+  ],
+  "Hiện đơn giá nằm trong": [
+    "Current unit prices are in",
+    "当前单价位于"
+  ],
+  "và bảng giá định kỳ nằm trong": [
+    "and recurring plans are in",
+    "周期套餐价格位于"
+  ],
+  ". Sửa giá cần đồng bộ web, backend, mobile và kiểm thử trước khi công bố. Trang này không ghi thay đổi vào SQL Server.": [
+    ". Changing prices requires synchronizing the web app, backend and mobile app, followed by testing before release. This page does not write to SQL Server.",
+    "。修改价格需同步网站、后端和移动端，发布前必须测试。此页面不向 SQL Server 写入数据。"
+  ],
+  "Đơn giá theo video": [
+    "Per-video pricing",
+    "按视频定价"
+  ],
+  "Áp dụng cho bảng tính phí theo số lượng video và ngôn ngữ.": [
+    "Used to calculate fees by the number of videos and target languages.",
+    "用于按视频数量和目标语言计算费用。"
+  ],
+  "Tiền tệ": [
+    "Currency",
+    "币种"
+  ],
+  "Giá / video tải lên": [
+    "Price / uploaded video",
+    "每个上传视频的费用"
+  ],
+  "Giá / video dịch ra": [
+    "Price / translated video",
+    "每个译制视频的费用"
+  ],
+  "Tối đa video nhập mỗi lượt · tối đa": [
+    "Maximum source videos per order · maximum",
+    "每次订单最多上传视频数 · 最多"
+  ],
+  "bản dịch/video": [
+    "translations/video",
+    "种翻译／视频"
+  ],
+  "Gói mẫu trên trang khách hàng": [
+    "Sample plans on the customer site",
+    "客户网站的示例套餐"
+  ],
+  "Dữ liệu trực tiếp từ công thức tính phí dùng chung": [
+    "Values from the shared pricing formula",
+    "数据来自共享计费公式"
+  ],
+  "Video tải lên": [
+    "Videos uploaded",
+    "上传视频数"
+  ],
+  "Video dịch ra": [
+    "Translated videos",
+    "译制视频数"
+  ],
+  "Giá tính theo cấu hình": [
+    "Configured price",
+    "配置价格"
+  ],
+  "Đường dẫn nghiệp vụ": [
+    "Related workflow",
+    "相关业务流程"
+  ],
+  "Gói mẫu #": [
+    "Sample plan #",
+    "示例套餐 #"
+  ],
+  "Đơn hàng liên quan →": [
+    "Related orders →",
+    "相关订单 →"
+  ],
+  "Bảng giá định kỳ đang hiển thị": [
+    "Displayed recurring plan prices",
+    "当前显示的周期套餐价格"
+  ],
+  "Đây là thông tin giới thiệu gói dịch vụ; không tự động tạo thuê bao khi khách đặt đơn số lượng video.": [
+    "These plans are informational. Ordering a number of videos does not automatically create a subscription.",
+    "这些套餐仅供参考。客户按视频数量下单不会自动创建订阅。"
+  ],
+  "Theo tháng": [
+    "Monthly",
+    "按月"
+  ],
+  "Giá có giảm 20%": [
+    "Price with 20% discount",
+    "八折价格"
+  ],
+  "Giá trình bày trên trang Bảng giá": [
+    "Price shown on Pricing page",
+    "价格页面显示的价格"
+  ],
+  "Tên hiển thị phải từ 1 đến 100 ký tự.": [
+    "Display name must be 1–100 characters.",
+    "显示名称须为 1–100 个字符。"
+  ],
+  "Đã cập nhật thông tin quản trị viên trong SQL Server.": [
+    "Admin profile saved in SQL Server.",
+    "管理员资料已保存到 SQL Server。"
+  ],
+  "Không thể cập nhật hồ sơ. Hãy kiểm tra kết nối hoặc đăng nhập lại.": [
+    "Could not update profile. Check the connection or sign in again.",
+    "无法更新资料。请检查连接或重新登录。"
+  ],
+  "Mật khẩu mới cần từ 8 đến 200 ký tự và phải trùng với ô xác nhận.": [
+    "New password must be 8–200 characters and match its confirmation.",
+    "新密码须为 8–200 个字符，并与确认密码一致。"
+  ],
+  "Nhập mật khẩu hiện tại trước khi thay đổi.": [
+    "Enter your current password first.",
+    "请先输入当前密码。"
+  ],
+  "Đổi mật khẩu thành công. Hãy dùng mật khẩu mới trong lần đăng nhập sau.": [
+    "Password changed successfully. Use the new password next time you sign in.",
+    "密码修改成功。下次登录请使用新密码。"
+  ],
+  "Không thể đổi mật khẩu. Hãy kiểm tra mật khẩu hiện tại và kết nối API.": [
+    "Could not change password. Check your current password and API connection.",
+    "无法更改密码。请检查当前密码和 API 连接。"
+  ],
+  "Hồ sơ & bảo mật": [
+    "Profile & security",
+    "个人资料与安全"
+  ],
+  "Cập nhật thông tin đăng nhập quản trị. Thay đổi được lưu qua API và SQL Server.": [
+    "Update Admin sign-in details. Changes are saved through the API to SQL Server.",
+    "更新管理员登录资料。更改通过 API 保存到 SQL Server。"
+  ],
+  "Thông tin tài khoản": [
+    "Account information",
+    "账户信息"
+  ],
+  "Bạn đang đăng nhập với vai trò quản trị viên.": [
+    "You are signed in as an administrator.",
+    "您当前以管理员身份登录。"
+  ],
+  "Tên hiển thị": [
+    "Display name",
+    "显示名称"
+  ],
+  "Email đăng nhập": [
+    "Sign-in email",
+    "登录邮箱"
+  ],
+  "Email và vai trò quản trị không thể thay đổi tại đây.": [
+    "Email and administrator role cannot be changed here.",
+    "此处不能修改邮箱和管理员角色。"
+  ],
+  "Lưu thông tin": [
+    "Save profile",
+    "保存资料"
+  ],
+  "Đổi mật khẩu": [
+    "Change password",
+    "修改密码"
+  ],
+  "Chỉ thay đổi mật khẩu của tài khoản đang đăng nhập.": [
+    "Only the current account's password can be changed.",
+    "仅可修改当前登录账户的密码。"
+  ],
+  "Mật khẩu hiện tại": [
+    "Current password",
+    "当前密码"
+  ],
+  "Mật khẩu mới": [
+    "New password",
+    "新密码"
+  ],
+  "Xác nhận mật khẩu mới": [
+    "Confirm new password",
+    "确认新密码"
+  ],
+  "Cập nhật mật khẩu": [
+    "Update password",
+    "更新密码"
+  ],
+  "Phản hồi cần hỗ trợ": [
+    "Feedback requiring support",
+    "待处理反馈"
+  ],
+  "Yêu cầu mới hoặc đang xử lý": [
+    "New or in-progress requests",
+    "新请求或处理中请求"
+  ],
+  "Đơn đang chờ thanh toán": [
+    "Orders awaiting payment",
+    "待付款订单"
+  ],
+  "Kiểm tra giao dịch, không tự xác nhận đã thanh toán": [
+    "Review transactions; do not automatically mark paid",
+    "检查交易；不可自动确认付款"
+  ],
+  "Nội dung chờ duyệt": [
+    "Content awaiting review",
+    "待审核内容"
+  ],
+  "Phụ đề và thuyết minh chờ kiểm duyệt": [
+    "Subtitles and narration awaiting approval",
+    "待审核的字幕和配音"
+  ],
+  "Video cần kiểm tra": [
+    "Videos requiring attention",
+    "需要检查的视频"
+  ],
+  "Video có trạng thái xử lý thất bại": [
+    "Videos with failed processing status",
+    "处理失败的视频"
+  ],
+  "Một nơi để theo dõi việc đang chờ. Chọn từng mục để xử lý tại trang nghiệp vụ tương ứng.": [
+    "Monitor pending tasks in one place. Select an item to handle it on its workflow page.",
+    "集中查看待办任务。选择条目后前往对应业务页面处理。"
+  ],
+  "Đang tải…": [
+    "Loading…",
+    "正在加载…"
+  ],
+  "Một số dữ liệu chưa tải được:": [
+    "Some data could not be loaded:",
+    "部分数据加载失败："
+  ],
+  ". Các mục tương ứng có thể hiển thị thiếu; vui lòng thử làm mới.": [
+    ". Some items may be missing; please refresh.",
+    "。部分条目可能缺失，请尝试刷新。"
+  ],
+  "Dữ liệu lấy từ các danh sách gần nhất của API, không phải tổng số toàn hệ thống. Trang này chỉ đọc, không tự thay đổi trạng thái bản ghi.": [
+    "Data comes from the latest API lists, not full system totals. This page is read-only and does not change record statuses.",
+    "数据来自 API 最近记录列表，并非全系统总量。本页面只读，不会更改记录状态。"
+  ],
+  "Mở trang": [
+    "Open page",
+    "打开页面"
+  ],
+  "Xử lý →": [
+    "Handle →",
+    "处理 →"
+  ],
+  "Không có công việc nào trong nhóm này.": [
+    "No tasks in this category.",
+    "此类别暂无任务。"
+  ],
+  "Còn": [
+    "Another",
+    "还有"
+  ],
+  "việc khác. Vào trang nghiệp vụ để xem tất cả.": [
+    "tasks. Open the workflow page to view all.",
+    "项任务。进入业务页面查看全部。"
+  ],
+  "Nhập đủ thời gian bắt đầu và kết thúc; thời gian kết thúc phải lớn hơn bắt đầu.": [
+    "Enter both start and end times; end must be later than start.",
+    "请填写开始和结束时间，结束时间必须晚于开始时间。"
+  ],
+  "Chưa đặt thời gian": [
+    "Timing not set",
+    "未设置时间"
+  ],
+  "Nội dung phụ đề": [
+    "Subtitle content",
+    "字幕内容"
+  ],
+  "Bắt đầu (giây)": [
+    "Start (seconds)",
+    "开始（秒）"
+  ],
+  "Kết thúc (giây)": [
+    "End (seconds)",
+    "结束（秒）"
+  ],
+  "Có thể để trống cả hai mốc nếu chưa xác định thời gian.": [
+    "Both times may be left blank if the timing is not known yet.",
+    "若尚未确定时间，可将两项时间都留空。"
+  ],
+  "Lưu phụ đề": [
+    "Save subtitles",
+    "保存字幕"
+  ],
+  "Chỉnh sửa phụ đề": [
+    "Edit subtitles",
+    "编辑字幕"
+  ],
+  "Đã lưu phụ đề vào SQL Server.": [
+    "Subtitles saved to SQL Server.",
+    "字幕已保存到 SQL Server。"
+  ],
+  "Quản lý phụ đề": [
+    "Subtitle management",
+    "字幕管理"
+  ],
+  "Chỉnh nội dung theo ngôn ngữ và thời gian hiển thị. Thay đổi được lưu cho dự án của khách hàng.": [
+    "Edit text by language and display time. Changes are saved to the customer's project.",
+    "按语言和显示时间编辑内容。更改保存至客户项目。"
+  ],
+  "Không thể xóa tài khoản đang có dữ liệu liên kết. Hãy khóa tài khoản để bảo toàn video, đơn hàng và phản hồi.": [
+    "Cannot delete an account with linked data. Lock it to preserve videos, orders and feedback.",
+    "无法删除仍有关联数据的账户。请锁定账户以保留视频、订单和反馈。"
+  ],
+  "Không cập nhật được tài khoản trên máy chủ.": [
+    "Could not update account on the server.",
+    "无法在服务器上更新账户。"
+  ],
+  "Lọc trạng thái người dùng": [
+    "Filter users by status",
+    "按状态筛选用户"
+  ],
+  "Đã khóa": [
+    "Locked",
+    "已锁定"
+  ],
+  "người dùng · Chọn “Hồ sơ” để đi đến đơn hàng, video và phản hồi liên quan.": [
+    "users · Select “Profile” to view related orders, videos and feedback.",
+    "位用户 · 选择“资料”查看相关订单、视频和反馈。"
+  ],
+  "Hồ sơ": [
+    "Profile",
+    "资料"
+  ],
+  "Tra cứu dữ liệu của tài khoản": [
+    "Browse account data",
+    "查看账户数据"
+  ],
+  "Những đường dẫn này lọc theo email trong danh sách API. Không tự động thay đổi quyền, đơn hàng hoặc nội dung của khách.": [
+    "These links filter API lists by email. They do not change the customer's permissions, orders or content.",
+    "这些链接按邮箱筛选 API 列表，不会修改客户权限、订单或内容。"
+  ],
+  "Đã tải lên": [
+    "Uploaded",
+    "已上传"
+  ],
+  "Hoàn thành": [
+    "Completed",
+    "已完成"
+  ],
+  "Thất bại": [
+    "Failed",
+    "失败"
+  ],
+  "Đã ẩn": [
+    "Hidden",
+    "已隐藏"
+  ],
+  "Không đọc được SQL Server: ": [
+    "Could not read SQL Server: ",
+    "无法读取 SQL Server："
+  ],
+  "Thư viện video": [
+    "Video library",
+    "视频库"
+  ],
+  "Quản lý tệp đã tải lên, trạng thái xử lý và chuyển nhanh sang biên tập phụ đề hoặc thuyết minh.": [
+    "Manage uploaded files and processing status, and quickly open subtitle or narration editing.",
+    "管理已上传文件及处理状态，快速进入字幕或配音编辑。"
+  ],
+  "Video trong danh sách": [
+    "Videos in list",
+    "列表视频数"
+  ],
+  "Cần kiểm tra lỗi": [
+    "Errors to review",
+    "待检查错误"
+  ],
+  "Tìm video": [
+    "Search videos",
+    "搜索视频"
+  ],
+  "Mã, tiêu đề, email hoặc tệp…": [
+    "ID, title, email or filename…",
+    "ID、标题、邮箱或文件名…"
+  ],
+  "video · Đổi trạng thái rồi chọn “Lưu” để xác nhận thay đổi.": [
+    "videos · Change the status and click “Save” to confirm.",
+    "个视频 · 修改状态后点击“保存”确认。"
+  ],
+  "Đang tải video…": [
+    "Loading videos…",
+    "正在加载视频…"
+  ],
+  "Tiêu đề / Tệp": [
+    "Title / File",
+    "标题／文件"
+  ],
+  "Người tải": [
+    "Uploaded by",
+    "上传者"
+  ],
+  "Ngày tải (VN)": [
+    "Uploaded (Vietnam)",
+    "上传时间（越南）"
+  ],
+  "Xem khách hàng →": [
+    "View customer →",
+    "查看客户 →"
+  ],
+  "Liên kết": [
+    "Link",
+    "关联"
+  ],
+  "Xóa": [
+    "Delete",
+    "删除"
+  ],
+  "Biên tập thuyết minh": [
+    "Edit narration",
+    "编辑配音"
+  ],
+  "Không có video phù hợp bộ lọc.": [
+    "No videos match the filters.",
+    "没有符合筛选条件的视频。"
+  ],
+  "Chưa có video tải lên trong SQL Server.": [
+    "No uploaded videos in SQL Server.",
+    "SQL Server 中暂无上传的视频。"
+  ],
+  "Quản trị viên": [
+    "Administrator",
+    "管理员"
+  ],
+  "Tài khoản quản trị": [
+    "Admin account",
+    "管理员账户"
+  ],
+  "Xem website công khai": [
+    "View public website",
+    "查看公开网站"
+  ],
+  "Đăng xuất": [
+    "Log out",
+    "退出登录"
+  ],
+  "Đang tra cứu theo": [
+    "Filtering by",
+    "当前筛选条件"
+  ],
+  "Xem toàn bộ danh sách": [
+    "Show all",
+    "显示全部"
+  ],
+  "Liên kết nghiệp vụ": [
+    "Related workflows",
+    "相关业务"
+  ],
+  "Khách hàng:": [
+    "Customer:",
+    "客户："
+  ],
+  "中文": [
+    "中文",
+    "中文"
+  ],
+  "Chỉ tài khoản Admin hợp lệ trên SQL Server mới có quyền truy cập.": [
+    "Only a valid Admin account in SQL Server can access this page.",
+    "仅 SQL Server 中有效的管理员账户可访问本页面。"
+  ],
+  "Đóng menu quản trị": [
+    "Close Admin menu",
+    "关闭管理菜单"
+  ],
+  "Dubchef - Tổng quan quản trị": [
+    "Dubchef - Admin overview",
+    "Dubchef - 管理总览"
+  ],
+  "KHÔNG GIAN QUẢN TRỊ": [
+    "ADMIN WORKSPACE",
+    "管理工作台"
+  ],
+  "Đóng menu": [
+    "Close menu",
+    "关闭菜单"
+  ],
+  "Điều hướng quản trị": [
+    "Admin navigation",
+    "管理导航"
+  ],
+  "Dubchef · Không gian làm việc nội bộ": [
+    "Dubchef · Internal workspace",
+    "Dubchef · 内部工作台"
+  ],
+  "Mở menu quản trị": [
+    "Open Admin menu",
+    "打开管理菜单"
+  ],
+  "Quản trị": [
+    "Admin",
+    "管理后台"
+  ],
+  "Đi nhanh đến chức năng": [
+    "Quick navigation",
+    "快速导航"
+  ],
+  "Xem website dành cho khách hàng": [
+    "View customer website",
+    "查看客户网站"
+  ],
+  "Tìm chức năng quản trị": [
+    "Find an Admin feature",
+    "查找管理功能"
+  ],
+  "Ví dụ: thanh toán, phụ đề, phản hồi…": [
+    "E.g. payments, subtitles, feedback…",
+    "例如付款、字幕、反馈…"
+  ],
+  "Không tìm thấy chức năng phù hợp.": [
+    "No matching features found.",
+    "未找到匹配的功能。"
+  ],
+  "Đóng (Esc)": [
+    "Close (Esc)",
+    "关闭（Esc）"
+  ],
+  "Hãy hoàn thiện nội dung và các mốc thời gian trước khi xuất tệp phụ đề.": [
+    "Complete all text and timestamps before exporting subtitles.",
+    "导出字幕前请完善文本及时间轴。"
+  ],
+  "Biên tập dòng phụ đề": [
+    "Edit subtitle lines",
+    "编辑字幕行"
+  ],
+  "Chỉnh chính xác thời gian xuất hiện và câu chữ trên màn hình. Mỗi dòng có mốc thời gian riêng.": [
+    "Fine-tune on-screen text and timing. Each line has its own timestamps.",
+    "精确调整屏幕文字与时间。每行都有独立的时间点。"
+  ],
+  "Xuất SRT": [
+    "Export SRT",
+    "导出 SRT"
+  ],
+  "Xuất VTT": [
+    "Export VTT",
+    "导出 VTT"
+  ],
+  "Xem trước phụ đề theo thời gian": [
+    "Timed subtitle preview",
+    "按时间预览字幕"
+  ],
+  "XEM TRƯỚC PHỤ ĐỀ ·": [
+    "SUBTITLE PREVIEW ·",
+    "字幕预览 ·"
+  ],
+  "Chưa có phụ đề tại thời điểm này": [
+    "No subtitles at this time",
+    "此时暂无字幕"
+  ],
+  "Vị trí xem trước:": [
+    "Preview position:",
+    "预览位置："
+  ],
+  "Câu phụ đề": [
+    "Subtitle line",
+    "字幕行"
+  ],
+  "Tốc độ đọc": [
+    "Reading speed",
+    "阅读速度"
+  ],
+  "ký tự": [
+    "characters",
+    "字符"
+  ],
+  "ký tự/giây": [
+    "characters/second",
+    "字符／秒"
+  ],
+  "Nên rút ngắn câu hoặc tăng thời gian hiển thị.": [
+    "Shorten the text or increase its display time.",
+    "请缩短文本或延长显示时间。"
+  ],
+  "Xóa dòng": [
+    "Delete line",
+    "删除行"
+  ],
+  "+ Thêm dòng phụ đề": [
+    "+ Add subtitle line",
+    "+ 添加字幕行"
+  ],
+  "Trình duyệt này không hỗ trợ nghe thử bằng giọng đọc. Vui lòng thử Edge hoặc Chrome.": [
+    "This browser does not support voice preview. Try Edge or Chrome.",
+    "此浏览器不支持语音试听，请尝试 Edge 或 Chrome。"
+  ],
+  "Hãy nhập kịch bản trước khi nghe thử.": [
+    "Enter a script before previewing.",
+    "试听前请先输入脚本。"
+  ],
+  "Hãy nhập đủ nội dung trước khi xuất kịch bản.": [
+    "Enter all content before exporting the script.",
+    "导出脚本前请填写完整内容。"
+  ],
+  "Đã tạo tệp TXT chứa kịch bản đang mở. Đây không phải tệp âm thanh MP3.": [
+    "A TXT script was exported. It is not an MP3 audio file.",
+    "已导出 TXT 脚本文件，它不是 MP3 音频文件。"
+  ],
+  "Kịch bản giọng đọc": [
+    "Narration script",
+    "配音脚本"
+  ],
+  "Chỉnh lời thoại và nghe thử cách đọc.": [
+    "Edit spoken text and preview the voice.",
+    "编辑台词并试听配音。"
+  ],
+  "đoạn ·": [
+    "segments ·",
+    "段 ·"
+  ],
+  "từ.": [
+    "words.",
+    "个词。"
+  ],
+  "Xuất kịch bản TXT": [
+    "Export TXT script",
+    "导出 TXT 脚本"
+  ],
+  "Giọng nghe thử (trên máy này)": [
+    "Preview voice (this device)",
+    "试听语音（本设备）"
+  ],
+  "Tự động theo ngôn ngữ": [
+    "Automatic for selected language",
+    "按所选语言自动匹配"
+  ],
+  "Tốc độ nghe thử:": [
+    "Preview speed:",
+    "试听速度："
+  ],
+  "Tốc độ nghe thử": [
+    "Preview speed",
+    "试听速度"
+  ],
+  "Nghe toàn bộ": [
+    "Play all",
+    "全部播放"
+  ],
+  "Dừng nghe": [
+    "Stop playback",
+    "停止播放"
+  ],
+  "Nghe thử dùng giọng đọc có sẵn trong trình duyệt; chưa tạo hoặc lưu MP3 vào máy chủ. Giọng và tốc độ nghe thử không được ghi vào SQL.": [
+    "Preview uses the browser's available voices; no MP3 is generated or saved to the server. Voice and preview speed are not saved in SQL.",
+    "试听使用浏览器自带语音；不会生成或保存 MP3。语音及试听速度不会保存到 SQL。"
+  ],
+  "Đoạn thuyết minh": [
+    "Narration segment",
+    "配音片段"
+  ],
+  "từ ·": [
+    "words ·",
+    "词 ·"
+  ],
+  "Nghe đoạn": [
+    "Play segment",
+    "播放片段"
+  ],
+  "Xóa đoạn": [
+    "Delete segment",
+    "删除片段"
+  ],
+  "Lời thuyết minh": [
+    "Narration text",
+    "配音文本"
+  ],
+  "Nhập lời đọc cho đoạn video...": [
+    "Enter narration for this video segment…",
+    "请输入此视频片段的配音文字…"
+  ],
+  "Đồng bộ lời đọc với video (giây)": [
+    "Align narration with video (seconds)",
+    "将配音与视频对齐（秒）"
+  ],
+  "Bắt đầu": [
+    "Start",
+    "开始"
+  ],
+  "Kết thúc": [
+    "End",
+    "结束"
+  ],
+  "+ Thêm đoạn thuyết minh": [
+    "+ Add narration segment",
+    "+ 添加配音片段"
+  ],
+  "ĐIỀU HÀNH": [
+    "OPERATIONS",
+    "运营管理"
+  ],
+  "Tổng quan": [
+    "Overview",
+    "总览"
+  ],
+  "Toàn cảnh hoạt động và cảnh báo": [
+    "Operations snapshot and alerts",
+    "运营概况及提醒"
+  ],
+  "Danh sách công việc theo mức ưu tiên": [
+    "Prioritized task list",
+    "按优先级排序的任务列表"
+  ],
+  "KHÁCH HÀNG": [
+    "CUSTOMERS",
+    "客户管理"
+  ],
+  "Tài khoản, trạng thái và hoạt động liên quan": [
+    "Accounts, status and related activity",
+    "账户、状态和相关活动"
+  ],
+  "Phản hồi & hỗ trợ": [
+    "Feedback & support",
+    "反馈与支持"
+  ],
+  "Tiếp nhận, phản hồi, xử lý yêu cầu": [
+    "Receive, reply to and resolve requests",
+    "接收、回复并解决请求"
+  ],
+  "Chính sách giá và gói mẫu hiện áp dụng (chỉ xem)": [
+    "Current pricing policy and sample plans (read-only)",
+    "当前定价政策与示例套餐（只读）"
+  ],
+  "Đơn mua, khách hàng và trạng thái": [
+    "Orders, customers and statuses",
+    "订单、客户及状态"
+  ],
+  "Kiểm tra dấu hiệu thanh toán mô phỏng, không xác nhận ngân hàng": [
+    "Review simulated payments; no bank confirmation",
+    "检查模拟付款；不进行银行确认"
+  ],
+  "SẢN XUẤT NỘI DUNG": [
+    "CONTENT PRODUCTION",
+    "内容制作"
+  ],
+  "Video theo khách hàng và trạng thái": [
+    "Videos by customer and status",
+    "按客户和状态查看视频"
+  ],
+  "Chỉnh mốc thời gian, văn bản, duyệt phụ đề": [
+    "Edit subtitle timing and text, review output",
+    "编辑字幕时间与文字并审核输出"
+  ],
+  "Kịch bản lời đọc, nghe thử và kiểm duyệt": [
+    "Narration scripts, voice previews and review",
+    "配音脚本、语音试听与审核"
+  ],
+  "Danh mục ngôn ngữ và khả năng hỗ trợ": [
+    "Language catalog and processing support",
+    "语言目录及处理支持"
+  ],
+  "BÁO CÁO & HỆ THỐNG": [
+    "REPORTS & SYSTEM",
+    "报表与系统"
+  ],
+  "Khách truy cập và biểu đồ theo thời gian": [
+    "Visitors and charts over time",
+    "访客及趋势图"
+  ],
+  "Báo cáo lượt quét QR": [
+    "QR scan report",
+    "二维码扫描报表"
+  ],
+  "Số liệu quét mã QR": [
+    "QR scan statistics",
+    "二维码扫描统计"
+  ],
+  "Ai đổi trạng thái người dùng và video": [
+    "Who changed user or video status",
+    "谁更改了用户或视频状态"
+  ],
+  "Tiếng Việt": [
+    "Vietnamese",
+    "越南语"
+  ],
+  "Tìm kiếm": [
+    "Search",
+    "搜索"
+  ],
+  "Tên, email hoặc nội dung": [
+    "Name, email or content",
+    "姓名、邮箱或内容"
+  ],
+  "Làm mới danh sách": [
+    "Refresh list",
+    "刷新列表"
+  ],
+  "Chưa có dữ liệu phù hợp.": [
+    "No matching data.",
+    "无匹配数据。"
+  ],
+  "Cao": ["High", "高"],
+  "Trước": ["Previous", "上一页"],
+  "Xem website": ["View website", "查看网站"],
+  "Xem video": ["View video", "查看视频"],
+  "Xem": ["View", "查看"],
+  "Xử lý bởi": ["Handled by", "处理人"],
+  "Đã lưu": ["Saved", "已保存"],
+  "Chờ": ["Pending", "待处理"],
+  "Đã lưu và ghi lịch sử yêu cầu ": ["Saved request and history ", "已保存请求及历史记录 "],
+  "Giá trị sau": ["After", "修改后"],
+  "Gói": ["Plan", "套餐"],
+  "Trạng thái paid trong dự án hiện là thanh toán mô phỏng, không xác minh tiền thật.": ["Paid status in this project indicates a simulated payment, not verified funds.", "本项目中的已付款状态仅表示模拟付款，并未核实实际到账。"],
+  "Đã tạo tệp ": ["Created file ", "已生成文件 "],
+  "Sau": ["Next", "下一页"],
+  "Không đọc được SQL Server (HTTP ": ["Could not read SQL Server (HTTP ", "无法读取 SQL Server（HTTP "],
+  "Không lưu được thay đổi: ": ["Could not save changes: ", "无法保存更改："],
+  "Không tải được nhật ký: ": ["Could not load activity log: ", "无法加载操作日志："],
+  "Không đọc được dữ liệu: ": ["Could not read data: ", "无法读取数据："],
+  "Video": ["Video", "视频"],
+  "Video #": ["Video #", "视频 #"],
+  "Email": ["Email", "邮箱"],
+  "Gửi tin nhắn": ["Send message", "发送消息"],
+  "giây": ["seconds", "秒"],
+  "Bắt đầu dòng": ["Line start", "行开始时间"],
+  "Kết thúc dòng": ["Line end", "行结束时间"],
+  "Nội dung dòng": ["Line text", "行内容"],
+  "Chi tiết đơn hàng": ["Order details", "订单详情"],
+  "Chi tiết đối soát đơn": ["Order reconciliation details", "订单对账详情"],
+  "Hoạt động khách hàng": ["Customer activity", "客户活动"],
+  "Chọn trạng thái video": ["Select video status", "选择视频状态"],
+  "Liên kết video": ["Related video", "关联视频"],
+  "Xóa video": ["Delete video", "删除视频"],
+  "và dữ liệu phụ đề/thuyết minh liên quan? Thao tác này không thể hoàn tác.": ["and related subtitle/narration data? This action cannot be undone.", "及关联的字幕／配音数据？此操作无法撤销。"],
+  "vào SQL, có ghi lịch sử phiên bản.": ["to SQL, including version history.", "到 SQL，并记录版本历史。"],
+  "Quản lý kịch bản lời đọc, duyệt nội dung, rồi xuất MP3/MP4 thực tế bằng máy chủ. Phiên bản lưu trong SQL Server.": ["Manage spoken scripts, review content, then export actual server-generated MP3/MP4. Versions are stored in SQL Server.", "管理配音脚本、审核内容，然后在服务器生成真实的 MP3/MP4。版本保存在 SQL Server。"],
+  "Lỗi xử lý âm thanh": ["Audio processing error", "音频处理错误"],
+  "Tải MP3 giọng đọc": ["Download spoken MP3", "下载配音 MP3"],
+  "Tải MP4 đã lồng tiếng": ["Download dubbed MP4", "下载配音 MP4"],
+  "Hãy duyệt và xuất bản kịch bản đã lưu trước khi tạo MP3/MP4.": ["Review and publish the saved script before exporting MP3/MP4.", "导出 MP3/MP4 前，请先审核并发布已保存的脚本。"],
+  "Đã tạo tệp âm thanh/video có lời thuyết minh thực tế.": ["Created actual voice-over audio/video file.", "已生成真实的配音音频／视频文件。"],
+  "Không thể xuất tệp": ["Could not export file", "无法导出文件"],
+  "Kịch bản chưa được xuất bản.": ["The script has not been published.", "脚本尚未发布。"],
+  "Kịch bản chưa có mốc thời gian hợp lệ.": ["Script timing is invalid.", "脚本时间轴无效。"],
+  "Có câu đọc quá dài so với thời gian. Hãy kéo dài đoạn hoặc rút ngắn câu.": ["Speech is too long for its time slot. Extend the slot or shorten the text.", "语音内容超出时间段，请延长时间段或缩短文本。"],
+  "Mốc thời gian vượt quá độ dài video gốc.": ["Timeline exceeds the original video duration.", "时间轴超过原视频长度。"],
+  "Máy chủ đang xuất tệp khác. Vui lòng thử lại.": ["The server is exporting another file. Please retry.", "服务器正在导出其他文件，请重试。"],
+  "Máy chủ chưa cài FFmpeg hoặc công cụ giọng đọc.": ["FFmpeg or the speech engine is not installed on the server.", "服务器尚未安装 FFmpeg 或语音引擎。"],
+  "Không tìm thấy tệp video gốc để ghép tiếng.": ["Original video file not found for dubbing.", "找不到要配音的原视频。"],
+  "Giọng nghe thử lấy từ trình duyệt. Để tải MP3 hoặc MP4 thật, hãy lưu, chuyển sang Chờ duyệt, rồi Xuất bản và mở lại bản ghi. Máy chủ dùng giọng tổng hợp cục bộ (chất lượng demo) để tạo tệp; các chỉnh sửa chưa lưu không được đưa vào bản xuất.": ["Browser voices are for preview. To download real MP3 or MP4, save, move to Review, publish, and reopen. The server uses local synthetic demo-quality voices; unsaved edits are excluded.", "浏览器语音仅供试听。要下载真实 MP3 或 MP4，请保存、提交审核、发布并重新打开。服务器使用本地合成的演示级声音，未保存的修改不会导出。"],
+  "Đầu ra: MP3 giọng đọc và MP4 đã ghép lời đọc khi xuất bản": ["Output: spoken MP3 and dubbed MP4 once published", "发布后可输出配音 MP3 和 MP4"],
+  "Duyệt, xuất bản và tải MP3/MP4": ["Review, publish and download MP3/MP4", "审核、发布并下载 MP3/MP4"],
+  "Khởi tạo kịch bản; sau khi duyệt và xuất bản có thể tạo MP3/MP4 trên máy chủ.": ["Create a script; after review and publishing, generate MP3/MP4 on the server.", "创建脚本，审核并发布后可在服务器生成 MP3/MP4。"],
+
+  "Nguồn xác nhận thanh toán": ["Payment verification source", "支付验证来源"],
+  "Nguồn xác nhận": ["Verification source", "验证来源"],
+  "Mô phỏng hoặc chưa rõ nguồn": ["Demo or unverified legacy payment", "模拟或历史未核实支付"],
+  "payOS đã xác minh": ["Verified by payOS", "已由 payOS 验证"],
+  "Các đơn paid có thể gồm dữ liệu mô phỏng và payOS. Chỉ giao dịch có NguonXacNhan=payos mới được xác minh qua webhook.": ["Paid orders can include demo and payOS data. Only NguonXacNhan=payos identifies a verified webhook.", "已付款订单可能包含演示及 payOS 数据。只有 NguonXacNhan=payos 表示已通过 webhook 验证。"],
+  "phải kiểm tra NguonXacNhan: payos (webhook đã xác minh), demo (mô phỏng) hoặc legacy_unknown (dữ liệu cũ). Không coi demo/dữ liệu cũ là tiền ngân hàng đã nhận.": ["must be checked against NguonXacNhan: payos (verified webhook), demo (simulation) or legacy_unknown (historical). Never treat demo/legacy records as confirmed bank funds.", "必须检查 NguonXacNhan：payos（已验证 webhook）、demo（模拟）或 legacy_unknown（历史记录）。不得将模拟或历史记录视为实际到账。"],
+
+};

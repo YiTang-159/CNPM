@@ -25,7 +25,14 @@ services:
       - db
     environment:
       PORT: "3000"
-      PAYMENT_DEMO: ${PAYMENT_DEMO:-true}
+      # Mặc định KHÔNG mô phỏng thu tiền. Chỉ dùng demo khi chủ động bật.
+      PAYMENT_MODE: ${PAYMENT_MODE:-disabled}
+      PAYMENT_DEMO: ${PAYMENT_DEMO:-false}
+      PAYOS_CLIENT_ID: ${PAYOS_CLIENT_ID:-}
+      PAYOS_API_KEY: ${PAYOS_API_KEY:-}
+      PAYOS_CHECKSUM_KEY: ${PAYOS_CHECKSUM_KEY:-}
+      PAYOS_RETURN_URL: ${PAYOS_RETURN_URL:-}
+      PAYOS_CANCEL_URL: ${PAYOS_CANCEL_URL:-}
       DB_HOST: db
       DB_PORT: "1433"
       DB_USER: sa

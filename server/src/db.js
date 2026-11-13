@@ -58,6 +58,7 @@ const mapOrder = (r) => ({
   status: r.TrangThai,
   createdAt: new Date(r.NgayTao).toISOString(),
   ref: r.MaThamChieu || null,
+  paymentSource: r.NguonXacNhan || null,
 });
 
 const mapUser = (r) => ({
@@ -122,6 +123,7 @@ export async function openRepo() {
   await runScript(pool, '04-workflows.sql');
   await runScript(pool, '07-quan-tri-nghiep-vu.sql');
   await runScript(pool, '10-an-toan-don-hang-va-nhat-ky.sql');
+  await runScript(pool, '11-nguon-xac-nhan-thanh-toan.sql');
   console.log('SQL Server sẵn sàng.');
 
   const repo = {
@@ -150,8 +152,25 @@ export async function openRepo() {
       return r.recordset[0] ? mapOrder(r.recordset[0]) : null;
     },
 
+    // Tra cứu trạng thái đã lưu của một đơn. userId=null chỉ dành cho webhook đã xác minh chữ ký.
+    async getOrderForPayment(id, userId = null) {
+      const req = pool.request().input('id', sql.Int, id);
+      let q = `SELECT TOP (1) o.*, p.MaThamChieu, p.NguonXacNhan
+               FROM dbo.DonHang o OUTER APPLY
+                 (SELECT TOP (1) MaThamChieu, NguonXacNhan FROM dbo.GiaoDich
+                  WHERE MaDonHang=o.MaDonHang AND TrangThai='success' ORDER BY MaGiaoDich DESC) p
+               WHERE o.MaDonHang=@id`;
+      if (userId !== null) {
+        req.input('uid', sql.Int, userId);
+        q += ' AND o.MaNguoiDung=@uid';
+      }
+      const r = await req.query(q);
+      return r.recordset.length ? mapOrder(r.recordset[0]) : null;
+    },
+
     /** Đánh dấu đơn đã trả và ghi giao dịch trong cùng một transaction. Trả null nếu đơn không tồn tại hoặc đã trả. */
-    async payOrder(id, { method, ref }) {
+    async payOrder(id, { method, ref, source = 'demo' }) {
+      if (!['demo','payos'].includes(source)) throw new Error('invalid_payment_source');
       const tx = new sql.Transaction(pool);
       await tx.begin();
       try {
@@ -169,8 +188,9 @@ export async function openRepo() {
           .input('amt', sql.BigInt, order.SoTien)
           .input('cur', sql.Char(3), order.LoaiTien)
           .input('ref', sql.VarChar(40), ref)
-          .query(`INSERT INTO dbo.GiaoDich (MaDonHang, PhuongThuc, SoTien, LoaiTien, TrangThai, MaThamChieu)
-                  VALUES (@id, @method, @amt, @cur, 'success', @ref)`);
+          .input('source', sql.VarChar(20), source)
+          .query(`INSERT INTO dbo.GiaoDich (MaDonHang, PhuongThuc, SoTien, LoaiTien, TrangThai, MaThamChieu, NguonXacNhan)
+                  VALUES (@id, @method, @amt, @cur, 'success', @ref, @source)`);
         await tx.commit();
         return { order: mapOrder({ ...order, MaThamChieu: ref }), payment: { method, ref } };
       } catch (e) {
@@ -193,7 +213,7 @@ export async function openRepo() {
         .input('email', sql.NVarChar(254), email)
         .input('uid', sql.Int, userId)
         .input('n', sql.Int, limit)
-        .query(`SELECT TOP (@n) o.*, p.MaThamChieu
+        .query(`SELECT TOP (@n) o.*, p.MaThamChieu, p.NguonXacNhan
                 FROM dbo.DonHang o
                 OUTER APPLY (SELECT TOP (1) MaThamChieu FROM dbo.GiaoDich p
                   WHERE p.MaDonHang=o.MaDonHang AND p.TrangThai='success'
@@ -310,7 +330,7 @@ export async function openRepo() {
           feedback:feedback.recordset,orders:orders.recordset},
         paidOrdersByCurrency:currencies.recordset,
         generatedAt:new Date().toISOString(),
-        paymentNote:'Trạng thái paid trong dự án hiện là thanh toán mô phỏng, không xác minh tiền thật.'
+        paymentNote:'Các đơn paid có thể gồm dữ liệu mô phỏng và payOS. Chỉ giao dịch có NguonXacNhan=payos mới được xác minh qua webhook.'
       };
     },
 

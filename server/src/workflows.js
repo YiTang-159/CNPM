@@ -17,7 +17,7 @@ export function attachWorkflows(pool, repo) {
     async adminOrders() {
       const r = await pool.request().query(`SELECT TOP (500) o.MaDonHang AS id,o.TenKhachHang AS name,
         o.EmailKhachHang AS email,o.MaNguoiDung AS userId,o.SoTien AS amount,o.LoaiTien AS currency,
-        o.TrangThai AS status,o.NgayTao AS createdAt,p.PhuongThuc AS method,p.MaThamChieu AS paymentRef
+        o.TrangThai AS status,o.NgayTao AS createdAt,p.PhuongThuc AS method,p.MaThamChieu AS paymentRef,p.NguonXacNhan AS paymentSource
         FROM dbo.DonHang o LEFT JOIN dbo.GiaoDich p ON p.MaDonHang=o.MaDonHang AND p.TrangThai='success'
         ORDER BY o.MaDonHang DESC`);
       return r.recordset;

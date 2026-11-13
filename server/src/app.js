@@ -12,6 +12,7 @@ import { hashPassword, isLegacyHash, makeToken, readToken, verifyPassword } from
 import { buildStats } from './stats.js';
 import { validMediaLines, validateFeedback, MEDIA_STATES } from './adminPolicy.js';
 import { produceVoiceover } from './audioExport.js';
+import { createPayosGateway } from './payos.js';
 
 const MAX_VIDEO = 150 * 1024 * 1024;
 const DEFAULT_UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
@@ -27,7 +28,15 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 const publicUser = (u, secret) => ({ id: u.id, name: u.name, email: u.email, role: u.role, token: makeToken(u, secret) });
 
 export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 7, uploadDir = DEFAULT_UPLOAD_DIR, maxUploadBytes = MAX_VIDEO,
-  paymentDemo = process.env.PAYMENT_DEMO === 'true' } = {}) {
+  paymentDemo = process.env.PAYMENT_DEMO === 'true',
+  paymentMode = process.env.PAYMENT_MODE || (paymentDemo ? 'demo' : 'disabled'),
+  payosGateway = null } = {}) {
+  if (!['demo', 'payos', 'disabled'].includes(paymentMode)) throw new Error('PAYMENT_MODE không hợp lệ');
+  // Dùng SDK nội bộ có chữ ký. Tránh gọi nhà cung cấp nếu chưa cấu hình.
+  let gateway = payosGateway;
+  if (paymentMode === 'payos' && !gateway) {
+    try { gateway = createPayosGateway(); } catch (e) { console.warn('payOS chưa cấu hình:', e.message); }
+  }
   const UPLOAD_DIR = resolve(uploadDir);
   const app = express();
   app.use(cors({ origin: corsOrigin === '*' ? true : corsOrigin.split(',').map((s) => s.trim()) }));
@@ -82,6 +91,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const v = validateOrder(req.body);
     if (v.error) return res.status(400).json({ code: v.error });
     if (v.value.email !== req.currentUser.email) return res.status(403).json({ code: 'forbidden' });
+    if (paymentMode === 'payos' && v.value.L !== 0) return res.status(422).json({code:'currency_unsupported'});
     // Chủ sở hữu lấy từ token đã đối chiếu SQL, tuyệt đối không lấy MaNguoiDung từ form.
     const order = await repo.createOrder({ ...v.value, userId: req.currentUser.id,
       name: req.currentUser.name, ...priceOrder(v.value) });
@@ -89,6 +99,64 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.status(201).json({ order });
   }));
 
+  // Công khai chế độ (không bao gồm bí mật của nhà cung cấp).
+  app.get('/api/payments/config', (req, res) => {
+    const mode = paymentMode === 'payos' && !gateway ? 'unavailable' : paymentMode;
+    res.json({ mode, methods: mode === 'payos' ? ['qr', 'bank'] : mode === 'demo' ? METHODS : [],
+      supportedCurrencies: mode === 'payos' ? ['VND'] : mode === 'demo' ? ['VND','USD','CNY'] : [] });
+  });
+
+  // Trạng thái thanh toán lấy từ SQL, chỉ chủ đơn được xem. Không chấp nhận trạng thái từ URL trở về.
+  app.get('/api/orders/:id/status', customerOnly, wrap(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({code:'invalid'});
+    const order = await repo.getOrderForPayment(id, req.currentUser.id);
+    if (!order) return res.status(404).json({code:'not_found'});
+    res.json({ order });
+  }));
+
+  // Link payOS được tạo bởi máy chủ từ số tiền đã lưu trong SQL. Không được tự gắn 'paid'.
+  app.post('/api/orders/:id/checkout', customerOnly, wrap(async (req, res) => {
+    if (paymentMode !== 'payos' || !gateway) return res.status(503).json({code:'payment_unavailable'});
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({code:'invalid'});
+    const order = await repo.getOrderForPayment(id, req.currentUser.id);
+    if (!order) return res.status(404).json({code:'not_found'});
+    if (order.status !== 'pending') return res.status(409).json({code:'not_payable'});
+    if (order.currency !== 'VND' || !Number.isSafeInteger(order.amountMinor) || order.amountMinor <= 0)
+      return res.status(422).json({code:'currency_unsupported'});
+    try {
+      const link = await gateway.createCheckout(order);
+      res.json({ order, ...link });
+    } catch (err) {
+      console.error('payOS checkout:', err.message);
+      res.status(502).json({code:'payment_gateway_unavailable'});
+    }
+  }));
+
+  // Webhook payOS phải có chữ ký HMAC hợp lệ. Browser returnUrl KHÔNG xác nhận thanh toán.
+  app.post('/api/payments/payos/webhook', wrap(async (req, res) => {
+    if (paymentMode !== 'payos' || !gateway) return res.status(503).json({code:'payment_unavailable'});
+    let event;
+    try { event = gateway.verifyWebhook(req.body); }
+    catch { return res.status(400).json({code:'invalid_signature'}); }
+    if (!event.success) return res.json({ok:true,ignored:true});
+    const id = event.orderCode;
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({code:'invalid'});
+    const order = await repo.getOrderForPayment(id); // callback độc lập tài khoản khách
+    if (!order) return res.json({ok:true,ignored:true}); // webhook kiểm tra cấu hình của payOS
+    if (order.currency !== 'VND' || event.currency !== 'VND' || event.amount !== order.amountMinor)
+      return res.status(409).json({code:'payment_mismatch'});
+    if (!/^[A-Za-z0-9_-]{4,40}$/.test(event.reference))
+      return res.status(400).json({code:'invalid_reference'});
+    if (order.status === 'paid') return res.json({ok:true,alreadyProcessed:true});
+    if (order.status !== 'pending') return res.status(409).json({code:'not_payable'});
+    const result = await repo.payOrder(id, {method:'qr',ref:event.reference,source:'payos'});
+    if (!result) return res.json({ok:true,alreadyProcessed:true}); // cuộc đua callback trùng
+    res.json({ok:true,paid:true});
+  }));
+
+  // Thanh toán mô phỏng: CHỈ hoạt động khi chủ dự án chủ động bật PAYMENT_MODE=demo.
   // Thanh toán giả lập: không nhận số thẻ, chỉ ghi phương thức và mã giao dịch
   app.post('/api/orders/:id/pay', customerOnly, wrap(async (req, res) => {
     const id = Number(req.params.id);
@@ -96,7 +164,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ code: 'invalid' });
     if (!METHODS.includes(method)) return res.status(400).json({ code: 'method' });
     if (!await repo.orderOwner(id, req.currentUser.id)) return res.status(404).json({ code: 'not_found' });
-    if (!paymentDemo) return res.status(503).json({ code: 'payment_unavailable' });
+    if (paymentMode !== 'demo') return res.status(503).json({ code: 'payment_unavailable' });
     const result = await repo.payOrder(id, { method, ref: newTransactionRef(method) });
     if (!result) return res.status(409).json({ code: 'not_payable' });
     res.json(result);

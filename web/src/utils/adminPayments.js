@@ -4,5 +4,6 @@ export function paymentFlag(row) {
   if (row.status === 'paid' && row.userId == null) return 'unlinked';
   if (row.status === 'pending') return 'pending';
   if (row.status === 'cancelled') return 'cancelled';
+  if (row.status === 'paid' && row.paymentSource !== 'payos') return 'unverified_source';
   return row.status === 'paid' ? 'recorded' : 'other';
 }

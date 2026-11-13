@@ -10,6 +10,7 @@ import { session } from './client.js';
 const BASE = (import.meta.env && import.meta.env.VITE_PAYMENT_API_URL) || '';
 export const HAS_PAYMENT_API = Boolean(BASE);
 const K_ORDERS = 'dubchef-orders';
+const LOCAL_DEMO = import.meta.env.MODE === 'test' || import.meta.env.VITE_ENABLE_PAYMENT_DEMO === 'true';
 
 /** Thứ tự khớp với L của giao diện: 0 Việt, 1 Anh, 2 Trung. */
 export const CURRENCIES = ['VND', 'USD', 'CNY'];
@@ -50,9 +51,25 @@ async function remote(method, path, body) {
 const ref = (method) => method.toUpperCase() + '-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(16).slice(2, 10).toUpperCase();
 
 export const orders = {
+  // Server mô tả chế độ thanh toán; mọi bí mật payOS chỉ nằm phía API.
+  async config() {
+    if (BASE) return remote('GET', '/api/payments/config');
+    return { mode: LOCAL_DEMO ? 'demo' : 'unavailable', methods: LOCAL_DEMO ? METHODS : [],
+      supportedCurrencies: LOCAL_DEMO ? CURRENCIES : [] };
+  },
+  async checkout(id) {
+    if (!BASE) throw new Error('payment_unavailable');
+    return remote('POST', '/api/orders/' + id + '/checkout', {});
+  },
+  async status(id) {
+    if (BASE) return (await remote('GET', '/api/orders/' + id + '/status')).order;
+    if (!LOCAL_DEMO) throw new Error('payment_unavailable');
+    return read().find(o => o.id === id) || null;
+  },
   /** Tạo đơn chờ thanh toán. Giá do máy chủ tính; ở chế độ lưu tạm thì tính bằng cùng công thức. */
   async create({ name, email, uploads, outs, L }) {
     if (BASE) return (await remote('POST', '/api/orders', { name, email, uploads, outs, L })).order;
+    if (!LOCAL_DEMO) throw new Error('payment_unavailable');
     const total = calcPrice(L, uploads, outs).total;
     const list = read();
     const order = {
@@ -71,6 +88,7 @@ export const orders = {
   /** Thanh toán giả lập một đơn. Trả { order, payment }. */
   async pay(id, method) {
     if (BASE) return remote('POST', '/api/orders/' + id + '/pay', { method });
+    if (!LOCAL_DEMO) throw new Error('payment_unavailable');
     const list = read();
     const found = list.find((o) => o.id === id);
     if (!found || found.status !== 'pending' || !METHODS.includes(method)) throw new Error('not_payable');
@@ -82,6 +100,7 @@ export const orders = {
   /** Đơn gần đây của một email, mới nhất trước. */
   async list(email) {
     if (BASE) return (await remote('GET', '/api/orders?email=' + encodeURIComponent(email))).orders;
+    if (!LOCAL_DEMO) return [];
     return read()
       .filter((o) => o.email === email.trim().toLowerCase())
       .sort((a, b) => b.id - a.id)

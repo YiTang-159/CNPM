@@ -631,28 +631,6 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   app.get('/api/admin/orders', adminOnly, wrap(async (req, res) => {
     res.json({ orders: await repo.adminOrders() });
   }));
-  // Historical ownership reconciliation is admin-only and never grants paid credits.
-  app.get('/api/admin/orders/:id/owner-candidates', adminOnly, wrap(async (req, res) => {
-    const id=Number(req.params.id);
-    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({code:'invalid'});
-    const result=await repo.legacyOwnerCandidates(id);
-    if (!result) return res.status(404).json({code:'not_found'});
-    res.json(result);
-  }));
-  app.post('/api/admin/orders/:id/link-owner', adminOnly, wrap(async (req, res) => {
-    const id=Number(req.params.id);
-    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({code:'invalid'});
-    try {
-      const result=await repo.linkLegacyOwner(id, req.body, req.currentUser.email);
-      res.json({ok:true,...result});
-    } catch(e) {
-      if (e?.code==='invalid') return res.status(400).json({code:e.code});
-      if (e?.code==='not_found') return res.status(404).json({code:e.code});
-      if (['already_linked','email_mismatch','ambiguous_owner'].includes(e?.code))
-        return res.status(409).json({code:e.code});
-      throw e;
-    }
-  }));
   app.get('/api/admin/audit', adminOnly, wrap(async (req, res) => {
     const count = Math.min(200, Math.max(1, Number.parseInt(req.query.limit, 10) || 50));
     res.json({ activities: await repo.adminAudit(count) });

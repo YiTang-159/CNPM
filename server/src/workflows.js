@@ -1,6 +1,7 @@
 // Các truy vấn quản lý hồ sơ, video, thuyết minh, phụ đề, phản hồi, ngôn ngữ.
 // Tất cả giá trị người dùng đều là SQL parameters, tuyệt đối không ghép vào câu SQL.
 import sql from 'mssql';
+import { lockAccount, charge, refundUnfinishedUpload } from './entitlements.js';
 
 const videoColumns = `v.MaVideo AS id, v.MaNguoiDung AS userId, v.TieuDe AS title,
   v.TenTep AS fileName, v.DungLuong AS size, v.DinhDang AS mimeType,
@@ -40,17 +41,55 @@ export function attachWorkflows(pool, repo) {
       return r.rowsAffected[0] > 0;
     },
     async createVideo(email, data) {
-      const r = await pool.request().input('email', sql.NVarChar(254), email)
-        .input('title', sql.NVarChar(200), data.title)
-        .input('fileName', sql.NVarChar(255), data.fileName)
-        .input('size', sql.BigInt, data.size)
-        .input('mime', sql.VarChar(80), data.mimeType)
-        .input('lang', sql.VarChar(8), data.originalLanguage)
-        .query(`INSERT INTO dbo.Video (MaNguoiDung,TieuDe,TenTep,DungLuong,DinhDang,NgonNguGoc)
-          OUTPUT inserted.MaVideo AS id
-          SELECT MaNguoiDung,@title,@fileName,@size,@mime,@lang FROM dbo.NguoiDung
-          WHERE Email=@email AND TrangThai='active'`);
-      return r.recordset[0] || null;
+      const tx = new sql.Transaction(pool);
+      await tx.begin();
+      try {
+        const u = await new sql.Request(tx).input('email',sql.NVarChar(254),email)
+          .query("SELECT MaNguoiDung AS id FROM dbo.NguoiDung WHERE Email=@email AND TrangThai='active' AND VaiTro='user'");
+        const uid = u.recordset[0]?.id;
+        if (!uid || !await lockAccount(tx,uid)) { await tx.rollback(); return null; }
+        if (data.requestId) {
+          const prev = await new sql.Request(tx).input('uid',sql.Int,uid)
+            .input('requestId',sql.VarChar(36),data.requestId)
+            .query(`SELECT TOP(1) MaVideo AS id,TieuDe AS title,TenTep AS fileName,
+              DungLuong AS size,DinhDang AS mimeType,NgonNguGoc AS originalLanguage
+              FROM dbo.Video WHERE MaNguoiDung=@uid AND MaYeuCauTaiLen=@requestId`);
+          if (prev.recordset.length) {
+            const old=prev.recordset[0];
+            if (old.title!==data.title || old.fileName!==data.fileName || Number(old.size)!==data.size ||
+              old.mimeType!==data.mimeType || old.originalLanguage!==data.originalLanguage) {
+              throw Object.assign(new Error('idempotency_conflict'),{code:'idempotency_conflict'});
+            }
+            await tx.commit();return {id:old.id,reused:true};
+          }
+        }
+        const r = await new sql.Request(tx).input('uid',sql.Int,uid)
+          .input('requestId',sql.VarChar(36),data.requestId || null)
+          .input('title',sql.NVarChar(200),data.title)
+          .input('fileName',sql.NVarChar(255),data.fileName)
+          .input('size',sql.BigInt,data.size)
+          .input('mime',sql.VarChar(80),data.mimeType)
+          .input('lang',sql.VarChar(8),data.originalLanguage)
+          .query(`INSERT INTO dbo.Video (MaNguoiDung,TieuDe,TenTep,DungLuong,DinhDang,NgonNguGoc,MaYeuCauTaiLen)
+            OUTPUT inserted.MaVideo AS id VALUES (@uid,@title,@fileName,@size,@mime,@lang,@requestId)`);
+        const video = r.recordset[0];
+        await charge(tx,uid,video.id,'upload');
+        await tx.commit();
+        return video;
+      } catch(error) { await tx.rollback().catch(()=>{}); throw error; }
+    },
+    async cancelUnfinishedVideo(id, userId) {
+      const tx = new sql.Transaction(pool);
+      await tx.begin();
+      try {
+        if (!await lockAccount(tx,userId)) { await tx.rollback(); return false; }
+        const r = await new sql.Request(tx).input('id',sql.Int,id).input('uid',sql.Int,userId)
+          .query(`DELETE dbo.Video OUTPUT deleted.MaVideo AS id
+            WHERE MaVideo=@id AND MaNguoiDung=@uid AND DuongDan IS NULL AND TrangThai='uploaded'`);
+        if (!r.recordset.length) { await tx.rollback(); return false; }
+        await refundUnfinishedUpload(tx,id);
+        await tx.commit(); return true;
+      } catch(e) { await tx.rollback().catch(()=>{}); throw e; }
     },
     async getVideo(id) {
       const r = await pool.request().input('id', sql.Int, id)
@@ -89,14 +128,44 @@ export function attachWorkflows(pool, repo) {
       } catch(e) { await tx.rollback().catch(()=>{}); throw e; }
     },
     async deleteVideo(id) {
-      const r = await pool.request().input('id', sql.Int, id)
-        .query('DELETE FROM dbo.Video OUTPUT deleted.DuongDan AS filePath WHERE MaVideo=@id');
-      return r.recordset[0] || null;
+      const tx = new sql.Transaction(pool);
+      await tx.begin();
+      try {
+        const info = await new sql.Request(tx).input('id',sql.Int,id)
+          .query('SELECT MaNguoiDung AS uid,DuongDan AS filePath,TrangThai AS status FROM dbo.Video WITH(UPDLOCK,HOLDLOCK) WHERE MaVideo=@id');
+        if (!info.recordset.length) { await tx.rollback(); return null; }
+        const v=info.recordset[0];
+        const d=await new sql.Request(tx).input('id',sql.Int,id)
+          .query('DELETE dbo.Video OUTPUT deleted.DuongDan AS filePath WHERE MaVideo=@id');
+        // A fully uploaded video consumes its credit even if Admin deletes it later.
+        if (!v.filePath && v.status==='uploaded') await refundUnfinishedUpload(tx,id);
+        await tx.commit();return d.recordset[0] || null;
+      } catch(e) { await tx.rollback().catch(()=>{}); throw e; }
     },
     async saveVideoResult(id, status, results, actor = 'system', originalLanguage = null) {
       const tx = new sql.Transaction(pool);
       await tx.begin();
       try {
+        const owner = await new sql.Request(tx).input('id',sql.Int,id)
+          .query('SELECT MaNguoiDung AS userId FROM dbo.Video WHERE MaVideo=@id');
+        const uid = owner.recordset[0]?.userId;
+        if (!uid || !await lockAccount(tx,uid)) throw new Error('not_found');
+        const video = await new sql.Request(tx).input('id',sql.Int,id)
+          .query('SELECT MaNguoiDung AS userId,NgonNguGoc AS originalLanguage FROM dbo.Video WITH (UPDLOCK,HOLDLOCK) WHERE MaVideo=@id');
+        const v = video.recordset[0];
+        if (!v || v.userId!==uid) throw new Error('not_found');
+        // Charge once per NEW target language, not once per segment/redo/subtitle+narration.
+        // Always trust the source language recorded in SQL, never client input.
+        for (const language of new Set(Object.keys(results.subtitles || {}))) {
+          if (language === v.originalLanguage) continue;
+          // A translation already stored before migration 12 is grandfathered:
+          // re-editing old content cannot spend a newly purchased credit.
+          const existing = await new sql.Request(tx).input('id',sql.Int,id)
+            .input('language',sql.VarChar(8),language)
+            .query(`SELECT TOP(1) MaPhuDe FROM dbo.PhuDe WITH(UPDLOCK,HOLDLOCK)
+              WHERE MaVideo=@id AND NgonNgu=@language`);
+          if (!existing.recordset.length) await charge(tx,v.userId,id,'translation',language);
+        }
         for (const kind of ['narrations','subtitles']) {
           const table = kind === 'narrations' ? 'dbo.ThuyetMinh' : 'dbo.PhuDe';
           for (const [lang, text] of Object.entries(results[kind] || {})) {
@@ -126,7 +195,7 @@ export function attachWorkflows(pool, repo) {
           }
         }
         await new sql.Request(tx).input('id', sql.Int, id).input('status', sql.VarChar(20), status)
-          .input('language',sql.VarChar(8),originalLanguage)
+          .input('language',sql.VarChar(8),v.originalLanguage)
           .query('UPDATE dbo.Video SET TrangThai=@status,NgonNguGoc=COALESCE(@language,NgonNguGoc) WHERE MaVideo=@id');
         await tx.commit();
       } catch (err) {

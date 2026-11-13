@@ -7,6 +7,7 @@ import { usePageTitle } from '../utils/usePageTitle.js';
 import { adminApi } from '../api/admin.js';
 import { useSearchParams } from 'react-router-dom';
 import AdminCustomerContext from '../components/AdminCustomerContext.jsx';
+import { manageApi } from '../api/workflows.js';
 import AdminActiveFilter from '../components/AdminActiveFilter.jsx';
 
 const PAGE = 8;
@@ -184,6 +185,7 @@ export default function AdminUsers() {
                 <div className="adm-work-head"><div><h3>{u.name}</h3><p>{u.email} <AdminT vi={"· Trạng thái:"} /> {u.status==='active'?'Đang hoạt động':'Đã khóa'}</p></div>
                   <button className="btn btn-sm" type="button" onClick={()=>setSelected(null)}><AdminT vi={"Đóng"} /></button></div>
                 <AdminCustomerContext email={u.email} title={tr("Tra cứu dữ liệu của tài khoản")}/>
+                <CustomerEntitlements email={u.email}/>
                 <p className="fine"><AdminT vi={"Những đường dẫn này lọc theo email trong danh sách API. Không tự động thay đổi quyền, đơn hàng hoặc nội dung của khách."} /></p>
               </div>)}
             </div>}
@@ -208,4 +210,20 @@ function Stat({ label, value, id }) {
       <p className="kpi-num" data-testid={id}>{value}</p>
     </div>
   );
+}
+
+function CustomerEntitlements({email}) {
+  const [data,setData]=useState(null);
+  const [error,setError]=useState('');
+  useEffect(()=>{let active=true;setData(null);setError('');
+    manageApi.entitlements(email).then(x=>{if(active)setData(x);}).catch(()=>{if(active)setError('Không đọc được hạn mức từ SQL Server');});
+    return ()=>{active=false;};
+  },[email]);
+  return <section className="panel" aria-label="Hạn mức dịch vụ khách hàng">
+    <h4>Quyền lợi theo đơn hàng</h4>
+    {data ? <><p><strong>Còn {data.uploadsRemaining} lượt tải</strong> · <strong>Còn {data.translationsRemaining} lượt dịch</strong></p>
+      {data.grants.map(g=><p className="fine" key={g.id}>Đơn #{g.orderId} · {g.uploads-g.usedUploads}/{g.uploads} video · {g.translations-g.usedTranslations}/{g.translations} bản dịch · {g.source==='payos'?'payOS đã xác minh':'Chế độ mô phỏng'}</p>)}
+      {!data.grants.length && <p className="fine">Chưa có quyền lợi được cấp từ đơn thanh toán hợp lệ.</p>}</>
+      : <p className="fine">{error||'Đang tải hạn mức...'}</p>}
+  </section>;
 }

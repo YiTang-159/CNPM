@@ -13,6 +13,8 @@ export default function Account() {
   const [passwords, setPasswords] = useState({ old: '', next: '', confirm: '' });
   const [videos, setVideos] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
+  const [entitlements, setEntitlements] = useState(null);
+  const [quotaError, setQuotaError] = useState('');
   const [feedback, setFeedback] = useState([]);
   const [msg, setMsg] = useState('');
   const [form, setForm] = useState({ message: '', videoId: '' });
@@ -26,6 +28,8 @@ export default function Account() {
       const [v, f, o] = await Promise.all([workApi.videos(), workApi.feedback(), orders.list(user.email)]);
       setVideos(v.videos || []); setFeedback(f.feedback || []); setMyOrders(o || []);
     } catch (e) { setMsg('Không tải được dữ liệu từ SQL Server: ' + e.message); }
+    try { setEntitlements(await workApi.entitlements()); setQuotaError(''); }
+    catch(err) { setQuotaError('Không tải được quyền lợi: '+err.message); }
   }, [user?.token, user?.email]);
   useEffect(() => { refresh(); }, [refresh]);
   async function updateProfile(e) {
@@ -56,6 +60,11 @@ export default function Account() {
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     } catch (err) { setMsg('Không tải được video: ' + err.message); }
   }
+  async function cancelUnfinished(id) {
+    if (!window.confirm('Hủy video chưa tải xong và hoàn lại lượt tải lên?')) return;
+    try { await workApi.cancelUnfinishedVideo(id); await refresh(); setMsg('Đã hủy video chưa tải xong và hoàn lại lượt.'); }
+    catch(err) { setMsg('Không thể hủy video: '+err.message); }
+  }
   async function showExports(id) {
     try {
       const data = await workApi.exportOptions(id);
@@ -80,6 +89,16 @@ export default function Account() {
   return <div className="wrap"><div className="page-head"><h1>Tài khoản của tôi</h1><p>Dữ liệu được quản lý từ SQL Server – DubchefDB.</p></div>
     {msg ? <p role="status" className="adm-note">{msg}</p> : null}
     {viewing ? <SavedVideo video={viewing} onClose={() => setViewing(null)} /> : null}
+    <section className="panel" aria-label="Quyền sử dụng gói dịch vụ" style={{marginBottom:18}}>
+      <h2>Quyền sử dụng gói đã mua</h2>
+      {entitlements ? <>
+        <p><strong>Còn {entitlements.uploadsRemaining} lượt tải video</strong> · <strong>{entitlements.translationsRemaining} lượt dịch ra ngôn ngữ khác</strong></p>
+        <p className="fine">Mỗi video mới: 1 lượt tải. Mỗi ngôn ngữ dịch mới của một video: 1 lượt dịch. Sửa hoặc xử lý lại cùng ngôn ngữ không trừ thêm.</p>
+        {entitlements.grants?.map(g=><p key={g.id} className="fine">Đơn #{g.orderId}: {g.uploads-g.usedUploads}/{g.uploads} lượt tải; {g.translations-g.usedTranslations}/{g.translations} lượt dịch · {g.source==='payos'?'payOS đã xác minh':'Mô phỏng (không phải tiền thật)'}</p>)}
+        {!entitlements.grants?.length && <p>Chưa có gói được cấp quyền sử dụng. Các đơn cũ chưa xác minh không tự tạo quyền lợi.</p>}
+      </> : <p>{quotaError || 'Đang tải hạn mức từ SQL Server…'}</p>}
+      <p><Link to="/pricing" className="btn btn-sm">Mua thêm lượt</Link> <button type="button" className="btn btn-sm" onClick={refresh}>Làm mới số lượt</button></p>
+    </section>
     <div className="account-grid">
       <section className="panel"><h2>Thông tin hồ sơ</h2><form onSubmit={updateProfile}>
         <label>Họ và tên<input value={name} maxLength={100} required onChange={e => setName(e.target.value)} /></label>
@@ -94,6 +113,7 @@ export default function Account() {
         <button className="btn btn-sm" onClick={refresh}>Làm mới</button>
         <ul className="list">{videos.map(v => <li key={v.id}><strong>#{v.id} {v.title}</strong>
           <p>Trạng thái: {v.status} · {v.originalLanguage} · {new Date(v.createdAt).toLocaleString('vi-VN')}</p>
+          {!v.videoUrl && v.status==='uploaded' && <button type="button" className="btn btn-sm" onClick={()=>cancelUnfinished(v.id)}>Hủy bản tải lên dở (hoàn lượt)</button>}
           {v.videoUrl ? <><button className="btn btn-sm" onClick={() => setViewing(v)}>Xem kết quả</button><button className="btn btn-sm" onClick={() => download(v.id, v.fileName)}>Tải video gốc</button></> : <small>Chưa lưu xong tệp video</small>}
           <button type="button" className="btn btn-sm" onClick={() => showExports(v.id)}>Tệp lồng tiếng đã duyệt</button>
           {exportChoices[v.id] && <div className="adm-actions ops-gap">{exportChoices[v.id].languages?.map(language => <span key={language}>

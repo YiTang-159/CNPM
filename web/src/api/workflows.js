@@ -2,13 +2,13 @@ import { session, ApiError, HAS_API } from './client.js';
 
 const BASE = (import.meta.env && import.meta.env.VITE_API_URL) || '';
 /** API thật được sử dụng khi có backend; không báo lưu thành công nếu chưa có SQL Server. */
-export async function request(path, { method = 'GET', body, token, binary = false } = {}) {
+export async function request(path, { method = 'GET', body, token, binary = false, headers = {} } = {}) {
   if (!HAS_API) throw new ApiError('net');
   const auth = token || session.load()?.token;
   const response = await fetch(BASE + path, {
     method,
     headers: { ...(auth ? { Authorization: 'Bearer ' + auth } : {}),
-      'Content-Type': binary ? 'application/octet-stream' : 'application/json' },
+      'Content-Type': binary ? 'application/octet-stream' : 'application/json', ...headers },
     body: body == null ? undefined : binary ? body : JSON.stringify(body),
   });
   if (!response.ok) {
@@ -20,16 +20,27 @@ export async function request(path, { method = 'GET', body, token, binary = fals
 
 export const workApi = {
   me: () => request('/api/me'),
+  entitlements: () => request('/api/me/entitlements'),
+  cancelUnfinishedVideo: id => request(`/api/videos/${id}/cancel`, {method:'POST'}),
   updateProfile: name => request('/api/me', { method: 'PATCH', body: { name } }),
   changePassword: (currentPassword, newPassword) => request('/api/me/password', { method: 'PATCH', body: { currentPassword, newPassword } }),
   videos: () => request('/api/videos'),
   async upload(file, language) {
     if (!file || !file.type.startsWith('video/')) throw new ApiError('invalid');
-    const { video } = await request('/api/videos', { method: 'POST', body: {
+    // Stable key for one upload attempt. A network retry with the same key
+    // must reuse the metadata record instead of spending another upload credit.
+    const requestId = crypto.randomUUID();
+    const { video } = await request('/api/videos', { method: 'POST', headers: {'X-Idempotency-Key':requestId}, body: {
       title: file.name.replace(/\.[^.]+$/, ''), fileName: file.name,
       size: file.size, mimeType: file.type, originalLanguage: language,
     }});
-    await request(`/api/videos/${video.id}/file`, { method: 'PUT', body: file, binary: true });
+    try {
+      await request(`/api/videos/${video.id}/file`, { method: 'PUT', body: file, binary: true });
+    } catch (error) {
+      // The upload credit is reserved on metadata creation. Retry this video or
+      // cancel the unfinished record under Account to get the credit back.
+      throw new ApiError(`upload_incomplete_${video.id}_${error.message}`);
+    }
     return video.id;
   },
   saveResults: (videoId, segments, originalLanguage) => request(`/api/videos/${videoId}/results`, { method: 'POST', body: { segments, originalLanguage } }),
@@ -73,5 +84,6 @@ export const manageApi = {
   saveMedia: (kind,id,language,data) => request(`/api/admin/media/${kind}/${id}/${language}`, {method:'PUT',body:data}),
   feedbackHistory: id => request(`/api/admin/feedback/${id}/history`),
   orders: () => request('/api/admin/orders'),
+  entitlements: email => request(`/api/admin/entitlements?email=${encodeURIComponent(email)}`),
   audit: () => request('/api/admin/audit?limit=200'),
 };

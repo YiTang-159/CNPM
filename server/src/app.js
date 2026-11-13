@@ -13,6 +13,7 @@ import { buildStats } from './stats.js';
 import { validMediaLines, validateFeedback, MEDIA_STATES } from './adminPolicy.js';
 import { produceVoiceover } from './audioExport.js';
 import { createPayosGateway } from './payos.js';
+import { QuotaError } from './entitlements.js';
 
 const MAX_VIDEO = 150 * 1024 * 1024;
 const DEFAULT_UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
@@ -224,6 +225,10 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
 
   // ---- Hồ sơ người dùng ----
   app.get('/api/me', auth, (req, res) => res.json({ user: publicUser(req.currentUser, secret) }));
+  app.get('/api/me/entitlements', customerOnly, wrap(async (req,res) => {
+    res.set('Cache-Control','no-store');
+    res.json(await repo.entitlements(req.currentUser.id));
+  }));
   app.patch('/api/me', auth, wrap(async (req, res) => {
     const name = String(req.body?.name || '').trim();
     if (!name || name.length > 100) return res.status(400).json({ code: 'invalid' });
@@ -244,22 +249,32 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   app.get('/api/videos', auth, wrap(async (req, res) => {
     res.json({ videos: await repo.userVideos(req.currentUser.email) });
   }));
-  app.post('/api/videos', auth, wrap(async (req, res) => {
+  app.post('/api/videos', customerOnly, wrap(async (req, res) => {
     const b = req.body || {};
     const title = String(b.title || '').trim();
     const fileName = String(b.fileName || '').trim();
     const size = Number(b.size);
     const mimeType = String(b.mimeType || '').trim().toLowerCase();
     const originalLanguage = String(b.originalLanguage || '').trim();
+    const requestId = req.get('X-Idempotency-Key') || null;
+    if (requestId && !/^[0-9a-f-]{36}$/i.test(requestId)) return res.status(400).json({code:'invalid_idempotency_key'});
     if (!title || title.length > 200 || !fileName || fileName.length > 255 ||
         !Number.isSafeInteger(size) || size <= 0 || size > maxUploadBytes ||
         !['video/mp4','video/webm','video/quicktime'].includes(mimeType) || !VALID_LANG.test(originalLanguage))
       return res.status(400).json({ code: 'invalid' });
-    const record = await repo.createVideo(req.currentUser.email, { title, fileName, size, mimeType, originalLanguage });
+    const record = await repo.createVideo(req.currentUser.email, { title, fileName, size, mimeType, originalLanguage, requestId });
     if (!record) return res.status(404).json({ code: 'not_found' });
-    res.status(201).json({ video: record });
+    res.status(record.reused ? 200 : 201).json({ video: record });
   }));
-  app.put('/api/videos/:id/file', auth, wrap(async (req, res) => {
+  // Cancel only metadata without uploaded bytes; return the reserved upload credit.
+  app.post('/api/videos/:id/cancel', customerOnly, wrap(async(req,res)=>{
+    const id=Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id<=0) return res.status(400).json({code:'invalid'});
+    if (!await repo.cancelUnfinishedVideo(id,req.currentUser.id))
+      return res.status(409).json({code:'not_cancellable'});
+    res.json({ok:true});
+  }));
+  app.put('/api/videos/:id/file', customerOnly, wrap(async (req, res) => {
     const video = await videoFor(req, res);
     if (!video) return;
     if (video.videoUrl) return res.status(409).json({ code: 'exists' });
@@ -299,11 +314,11 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     if (!size) return res.status(404).json({ code: 'not_found' });
     res.type(video.mimeType).sendFile(video.videoUrl);
   }));
-  app.post('/api/videos/:id/results', auth, wrap(async (req, res) => {
+  app.post('/api/videos/:id/results', customerOnly, wrap(async (req, res) => {
     const video = await videoFor(req, res);
     if (!video) return;
     const originalLanguage = req.body?.originalLanguage;
-    if (originalLanguage != null && !PROCESSING_LANGUAGES.has(originalLanguage)) return res.status(400).json({code:'invalid'});
+    if (originalLanguage != null && originalLanguage !== video.originalLanguage) return res.status(400).json({code:'invalid_source_language'});
     const segments = req.body?.segments;
     if (!Array.isArray(segments) || !segments.length || segments.length > 2000 ||
         segments.some(s => !s || typeof s !== 'object' || !Object.keys(s).some(k => VALID_LANG.test(k)) ||
@@ -580,6 +595,14 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
       return res.status(404).json({ code: 'not_found' });
     res.json({ ok: true });
   }));
+  app.get('/api/admin/entitlements', adminOnly, wrap(async(req,res)=>{
+    const email=String(req.query.email || '').trim().toLowerCase();
+    if (!EMAIL.test(email)) return res.status(400).json({code:'invalid'});
+    const data=await repo.entitlementsForEmail(email);
+    if (!data) return res.status(404).json({code:'not_found'});
+    res.set('Cache-Control','no-store');
+    res.json(data);
+  }));
   app.get('/api/admin/orders', adminOnly, wrap(async (req, res) => {
     res.json({ orders: await repo.adminOrders() });
   }));
@@ -609,6 +632,8 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
+    if (err instanceof QuotaError) return res.status(409).json({code:err.code});
+    if (err?.code==='idempotency_conflict') return res.status(409).json({code:err.code});
     if (err && err.type === 'entity.parse.failed') return res.status(400).json({ code: 'invalid_json' });
     if (err && err.type === 'entity.too.large') return res.status(413).json({ code: 'too_large' });
     console.error(err);

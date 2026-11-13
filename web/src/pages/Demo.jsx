@@ -172,7 +172,7 @@ export default function Demo() {
       setSaveStatus('Đang tải video lên SQL Server và kho lưu tệp Docker...');
       uploadRef.current = workApi.upload(f, sourceLang)
         .then(id => { setSaveStatus(`Video #${id} đã lưu. Đang chờ nội dung xử lý.`); return id; })
-        .catch(err => { setSaveStatus('Không lưu được video lên máy chủ: ' + err.message); return null; });
+        .catch(err => { setSaveStatus(err.message==='quota_upload_exceeded' ? 'Bạn đã hết lượt tải video của gói. Vào Tài khoản của tôi để xem hạn mức và mua thêm lượt.' : err.message.startsWith('upload_incomplete_') ? 'Tải tệp thất bại. Vào Tài khoản của tôi để hủy bản tải lên dở và hoàn lại lượt trước khi thử lại.' : 'Không lưu được video lên máy chủ: ' + err.message); return null; });
     } else if (!user?.token) {
       setSaveStatus('Đang xử lý trong trình duyệt. Cần đăng nhập để lưu video, thuyết minh và phụ đề vào SQL Server.');
     } else {
@@ -297,7 +297,7 @@ export default function Demo() {
             await workApi.saveResults(id, withTime, sourceLang);
             setSaveStatus(`Đã lưu video #${id}, nội dung thuyết minh và phụ đề vào SQL Server thành công.`);
           } catch (saveError) {
-            setSaveStatus('Xử lý xong trên trình duyệt nhưng lưu kết quả vào SQL Server bị lỗi: ' + saveError.message);
+            setSaveStatus(saveError.message==='quota_translation_exceeded' ? 'Đã hết lượt dịch của gói. Kết quả trên trình duyệt chưa được lưu vào SQL Server. Vào Tài khoản → Quyền sử dụng để mua thêm lượt.' : 'Xử lý xong trên trình duyệt nhưng lưu kết quả vào SQL Server bị lỗi: ' + saveError.message);
           }
         }
       }

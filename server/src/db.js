@@ -7,6 +7,7 @@ import { ACTIVE_MINUTES, dayKey } from './stats.js';
 import { hashPassword } from './auth.js';
 import { attachWorkflows } from './workflows.js';
 import { attachAdminOperations } from './adminOperations.js';
+import { lockAccount, charge, grantPaidOrder, refundUnfinishedUpload, balance } from './entitlements.js';
 
 const DB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db');
 
@@ -124,10 +125,17 @@ export async function openRepo() {
   await runScript(pool, '07-quan-tri-nghiep-vu.sql');
   await runScript(pool, '10-an-toan-don-hang-va-nhat-ky.sql');
   await runScript(pool, '11-nguon-xac-nhan-thanh-toan.sql');
+  await runScript(pool, '12-quyen-su-dung-goi.sql');
   console.log('SQL Server sẵn sàng.');
 
   const repo = {
     close: () => pool.close(),
+    entitlements: async (userId) => balance(pool, userId),
+    async entitlementsForEmail(email) {
+      const r = await pool.request().input('email', sql.NVarChar(254), email)
+        .query("SELECT MaNguoiDung AS id FROM dbo.NguoiDung WHERE Email=@email AND VaiTro='user'");
+      return r.recordset[0] ? balance(pool, r.recordset[0].id) : null;
+    },
     async ping() {
       await pool.request().query('SELECT 1 AS ok');
     },
@@ -191,8 +199,10 @@ export async function openRepo() {
           .input('source', sql.VarChar(20), source)
           .query(`INSERT INTO dbo.GiaoDich (MaDonHang, PhuongThuc, SoTien, LoaiTien, TrangThai, MaThamChieu, NguonXacNhan)
                   VALUES (@id, @method, @amt, @cur, 'success', @ref, @source)`);
+        // Atomic with payment: no paid order can be committed without its credits.
+        await grantPaidOrder(tx, order, source);
         await tx.commit();
-        return { order: mapOrder({ ...order, MaThamChieu: ref }), payment: { method, ref } };
+        return { order: mapOrder({ ...order, MaThamChieu: ref, NguonXacNhan: source }), payment: { method, ref, source } };
       } catch (e) {
         await tx.rollback().catch(() => {});
         throw e;

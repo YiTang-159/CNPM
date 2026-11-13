@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
-import { errorKey, SHARED } from '../api/client.js';
+import { errorKey, SHARED, isAdmin } from '../api/client.js';
 import Field from '../components/Field.jsx';
 import PasswordInput from '../components/PasswordInput.jsx';
 import { returnTarget } from '../utils/returnTo.js';
@@ -38,8 +38,10 @@ export default function Login() {
     }
     setBusy(true);
     try {
-      await login({ email: v.email, password: v.pass });
-      if (back) navigate(back.to, { replace: true, state: back.state });
+      const signedInUser = await login({ email: v.email, password: v.pass });
+      // Điều hướng theo vai trò: Admin về khu vực quản trị, khách hàng giữ luồng mua hàng.
+      if (isAdmin(signedInUser)) navigate('/admin/dashboard', { replace: true });
+      else if (back) navigate(back.to, { replace: true, state: back.state });
       else navigate('/');
     } catch (x) {
       setSrvErr(errorKey(x));

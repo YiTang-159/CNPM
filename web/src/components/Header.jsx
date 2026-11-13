@@ -19,13 +19,14 @@ export default function Header() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const admin = isAdmin(user);
 
   useEffect(() => setOpen(false), [pathname]);
 
   return (
     <header className="site-header">
       <div className="wrap bar">
-        <Link className="brand" to="/" aria-label="Dubchef">
+        <Link className="brand" to={admin ? "/admin/dashboard" : "/"} aria-label="Dubchef">
           <span className="mark" aria-hidden="true"><i /><i /><i /></span>
           Dubchef
         </Link>
@@ -40,10 +41,11 @@ export default function Header() {
           <span />
         </button>
         <nav id="nav" className={'nav' + (open ? ' open' : '')} aria-label={t('navlabel')}>
-          {LINKS.map(([to, key]) => (
+          {admin ? (
+            <NavLink to="/admin/dashboard">{t('nav_admin')}</NavLink>
+          ) : LINKS.map(([to, key]) => (
             <NavLink key={to} to={to}>{t(key)}</NavLink>
           ))}
-          {isAdmin(user) ? <NavLink to="/admin">{t('nav_admin')}</NavLink> : null}
           <div className="nav-end">
             <div className="lang" role="group" aria-label={t('langlabel')}>
               {LANGS.map((code, n) => (
@@ -60,7 +62,11 @@ export default function Header() {
             </div>
             {user ? (
               <>
-                <Link className="user" to="/account">{t('hello')}, {user.name} · Hồ sơ</Link>
+                {admin ? (
+                  <span className="user">{t('hello')}, {user.name || 'Admin'}</span>
+                ) : (
+                  <Link className="user" to="/account">{t('hello')}, {user.name} · Hồ sơ</Link>
+                )}
                 <button type="button" className="btn btn-sm" onClick={logout}>{t('logout')}</button>
               </>
             ) : (

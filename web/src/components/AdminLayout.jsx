@@ -20,6 +20,7 @@ export default function AdminLayout() {
   const [jumpQuery, setJumpQuery] = useState('');
   const searchRef = useRef(null);
   const current = currentAdminLink(pathname);
+  const signOut = () => { logout(); navigate('/', { replace: true }); };
   const filteredLinks = ADMIN_LINKS.filter(link => `${link.name} ${link.hint}`.toLocaleLowerCase('vi').includes(jumpQuery.trim().toLocaleLowerCase('vi')));
 
   useEffect(() => { setMenuOpen(false); setJumpOpen(false); }, [pathname]);
@@ -65,7 +66,7 @@ export default function AdminLayout() {
         <div className="adm-mobile-language lang" role="group" aria-label={t('langlabel')}>
           {LANGS.map((code,n)=><button key={code} type="button" lang={code==='zh'?'zh-CN':code} aria-pressed={n===L} onClick={()=>setL(n)}>{LANG_LABEL[code]}</button>)}
         </div>
-        <Link className="adm-back" to="/">← Về trang khách hàng</Link><small>Dubchef · Quản trị nội bộ</small></div>
+        <Link className="adm-back" to="/">← Xem website công khai</Link><small>Dubchef · Quản trị nội bộ</small></div>
     </aside>
     <div className="adm-main">
       <header className="adm-top">
@@ -81,7 +82,7 @@ export default function AdminLayout() {
             {LANGS.map((code,n)=><button key={code} type="button" lang={code === 'zh' ? 'zh-CN' : code} aria-pressed={n===L} onClick={() => setL(n)}>{LANG_LABEL[code]}</button>)}
           </div>
           <span className="adm-user" title={user.email || ''}>{user.name || 'Admin'}</span>
-          <button type="button" className="btn btn-sm" onClick={logout}>{t('logout')}</button>
+          <button type="button" className="btn btn-sm" onClick={signOut}>{t('logout')}</button>
         </div>
         {jumpOpen && <div className="adm-jump-panel" id="adm-jump" role="dialog" aria-label="Đi nhanh đến chức năng">
           <label htmlFor="adm-jump-input">Tìm chức năng quản trị</label>

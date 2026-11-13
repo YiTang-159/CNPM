@@ -1,0 +1,31 @@
+DUBCHEF V3 - CHỈNH MENU THEO VAI TRÒ (13/11/2026)
+
+NGUYÊN NHÂN
+- Header.jsx luôn hiển thị menu công khai dù tài khoản là Admin.
+- Login.jsx đăng nhập xong luôn chuyển về trang chủ, không xét vai trò.
+
+ĐÃ CHỈNH
+1. web/src/components/Header.jsx: khi Admin vào trang công khai sẽ chỉ thấy liên kết Quản trị, đổi ngôn ngữ, tên tài khoản và Đăng xuất. Logo dẫn về Dashboard Admin.
+2. web/src/pages/Login.jsx: Admin đăng nhập chuyển thẳng /admin/dashboard; người dùng thường giữ nguyên luồng cũ, bao gồm quay về giỏ hàng/checkout.
+3. web/src/components/AdminLayout.jsx: Đăng xuất từ Admin chuyển về trang chủ, không đứng lại ở màn hình từ chối quyền. Đổi nhãn liên kết thành "Xem website công khai" để làm rõ mục đích.
+4. web/src/test/adminRoleNavigation.test.jsx: bổ sung kiểm thử hồi quy.
+
+KHÔNG XÓA FILE NÀO
+- Features.jsx, Demo.jsx, Pricing.jsx, About.jsx và Contact.jsx cần thiết cho website khách hàng.
+- Không xóa bất kỳ route nào trong App.jsx; không sửa API, SQL Server, Docker, .env.
+
+CÀI ĐẶT
+- Sao lưu thư mục CNPM trước khi cập nhật.
+- Giải nén ZIP, mở thư mục CNPM trong ZIP và chép thư mục web vào CNPM hiện có, chọn Replace khi hỏi.
+- Từ Terminal tại CNPM: cd web ; npm run dev
+- Nếu dev server đang chạy, Ctrl+C rồi chạy lại.
+- Dùng Ctrl+Shift+R để tải lại trình duyệt.
+
+KIỂM TRA
+- Đăng nhập Admin: phải vào http://localhost:5173/#/admin/dashboard
+- Admin trên các trang công khai: không còn menu khách hàng ở thanh đầu trang.
+- Đăng xuất Admin: về trang công khai.
+- Đăng nhập tài khoản thường: giữ nguyên Tính năng / Trải nghiệm / Bảng giá / Giới thiệu / Liên hệ.
+- Muốn chạy kiểm thử từ thư mục web: npm run test -- src/test/adminRoleNavigation.test.jsx
+
+Lưu ý: ẩn menu chỉ thay đổi trải nghiệm giao diện, không thay thế kiểm tra phân quyền trên backend.

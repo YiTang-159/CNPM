@@ -7,9 +7,9 @@ import { adminHref } from '../utils/adminLinks.js';
 const dt = value => value ? new Date(value).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}) : '—';
 const types = [
   { key:'feedback', title:'Phản hồi cần hỗ trợ', href:'/admin/feedback?status=new', description:'Yêu cầu mới hoặc đang xử lý' },
-  { key:'orders', title:'Đơn đang chờ thanh toán', href:adminHref('/admin/orders',{orderId:item.id}), description:'Kiểm tra giao dịch, không tự xác nhận đã thanh toán' },
+  { key:'orders', title:'Đơn đang chờ thanh toán', href:'/admin/orders?status=pending', description:'Kiểm tra giao dịch, không tự xác nhận đã thanh toán' },
   { key:'media', title:'Nội dung chờ duyệt', href:'/admin/queue#media', description:'Phụ đề và thuyết minh chờ kiểm duyệt' },
-  { key:'videos', title:'Video cần kiểm tra', href:adminHref('/admin/videos',{videoId:item.id}), description:'Video có trạng thái xử lý thất bại' },
+  { key:'videos', title:'Video cần kiểm tra', href:'/admin/videos?status=failed', description:'Video có trạng thái xử lý thất bại' },
 ];
 
 /** Bảng công việc chỉ đọc, dựa trên API hiện hữu; không tự cập nhật trạng thái hoặc thanh toán. */

@@ -120,3 +120,33 @@
 .adm-add-language {border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 15px;}
 .adm-add-language summary {padding:12px 2px;cursor:pointer;font-size:.88rem;font-weight:750;}
 .adm-add-language form {border-top:1px solid var(--line);padding:13px 0 17px;}
+/* Admin v3: liên kết công việc theo khách hàng; thiết kế thống nhất cho các trang nghiệp vụ. */
+.adm-unified .adm-policy-note{border:1px solid var(--line);border-left:4px solid #bb8b36;background:var(--panel);padding:14px 17px;border-radius:11px;margin:0 0 18px;font-size:.86rem;line-height:1.6;}
+.adm-unified .adm-policy-note strong{display:block;margin-bottom:4px;}
+.adm-unified .adm-policy-note p{margin:0;color:var(--muted);}
+.adm-unified .adm-policy-note code{font-size:.8rem;overflow-wrap:anywhere;}
+.adm-unified .adm-context{background:var(--bg);border:1px solid var(--line);border-radius:11px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;margin:12px 0;}
+.adm-unified .adm-context strong,.adm-unified .adm-context small{display:block;}
+.adm-unified .adm-context strong{font-size:.82rem;}.adm-unified .adm-context small{font-size:.75rem;color:var(--muted);overflow-wrap:anywhere;margin-top:2px;}
+.adm-unified .adm-context-links{display:flex;gap:7px;flex-wrap:wrap;}
+.adm-unified .adm-context-links a{display:inline-block;font-weight:650;text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:.77rem;white-space:nowrap;}
+.adm-unified .adm-context-links a:hover{border-color:var(--accent);}
+.adm-unified .adm-context-compact{margin:5px 0;padding:7px 0;border:0;background:transparent;justify-content:flex-start;}
+.adm-unified .adm-inline-link{display:block;color:var(--accent);font-size:.77rem;text-decoration:underline;text-underline-offset:3px;margin-top:4px;white-space:nowrap;}
+.adm-unified .adm-record-detail{margin:14px 0;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:17px;}
+.adm-unified .adm-record-detail h3{font-size:1.02rem;line-height:1.4;margin:0 0 6px;}
+.adm-unified .adm-record-detail p{font-size:.83rem;line-height:1.6;overflow-wrap:anywhere;}
+.adm-unified .adm-journey{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}
+.adm-unified .adm-journey a{display:grid;gap:6px;align-content:start;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg);text-decoration:none;color:var(--ink);}
+.adm-unified .adm-journey strong{font-size:.81rem;}.adm-unified .adm-journey small{color:var(--muted);font-size:.73rem;line-height:1.35;}
+.adm-unified .adm-price-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.adm-unified .adm-price-card{border:1px solid var(--line);background:var(--bg);border-radius:11px;padding:17px;}
+.adm-unified .adm-price-card h3{font-size:1rem;margin:0 0 12px;}.adm-unified .adm-price-card strong{display:block;font-size:1.3rem;}.adm-unified .adm-price-card p{color:var(--muted);font-size:.76rem;}
+.adm-unified .adm-toolbar>input[type="search"]{flex:2 1 260px;min-width:200px;max-width:460px;min-height:42px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 11px;border-radius:9px;font:inherit;font-size:.86rem;}
+.adm-unified .adm-toolbar>label:not(.adm-field){display:grid;gap:5px;font-size:.8rem;}
+.adm-unified .adm-toolbar>label:not(.adm-field) select{min-height:42px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:6px;}
+.adm-unified .filters{align-items:center;}
+@media(max-width:1200px){.adm-unified .adm-journey{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:700px){.adm-unified .adm-journey,.adm-unified .adm-price-grid{grid-template-columns:1fr;}.adm-unified .adm-record-detail{padding:12px;}}
+.adm-unified .adm-active-filter{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;margin:0 0 16px;font-size:.83rem;overflow-wrap:anywhere;}
+.adm-unified .adm-active-filter a{font-size:.8rem;font-weight:750;white-space:nowrap;color:var(--accent);}

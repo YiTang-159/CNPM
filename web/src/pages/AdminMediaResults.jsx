@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { manageApi } from '../api/workflows.js';
 import { SubtitleEditor, NarrationEditor } from '../components/AdminMediaEditors.jsx';
+import { adminHref } from '../utils/adminLinks.js';
+import AdminActiveFilter from '../components/AdminActiveFilter.jsx';
 
 const LABELS = { draft:'Bản nháp', reviewing:'Chờ duyệt', published:'Đã xuất bản' };
 const BLANK = () => ({ start:0, end:3, text:'' });
@@ -111,7 +113,8 @@ export default function AdminMediaResults({kind}) {
       <span className="media-page-kicker">{isSubtitle ? 'VĂN BẢN TRÊN VIDEO' : 'KỊCH BẢN GIỌNG ĐỌC'}</span>
       <h1>Quản lý {label.toLowerCase()}</h1>
       <p>{summary}</p>
-    </div><div className="adm-tools"><Link className="btn btn-sm" to={isSubtitle ? '/admin/narrations' : '/admin/subtitles'}>{isSubtitle ? 'Qua thuyết minh' : 'Qua phụ đề'}</Link><button className="btn btn-sm" type="button" onClick={load} disabled={loading}>Làm mới</button></div></div>
+    </div><div className="adm-tools"><Link className="btn btn-sm" to={isSubtitle ? adminHref('/admin/narrations',{videoId:params.get('videoId')}) : adminHref('/admin/subtitles',{videoId:params.get('videoId')})}>{isSubtitle ? 'Qua thuyết minh' : 'Qua phụ đề'}</Link><button className="btn btn-sm" type="button" onClick={load} disabled={loading}>Làm mới</button></div></div>
+    <AdminActiveFilter params={params} base={isSubtitle ? "/admin/subtitles" : "/admin/narrations"}/>
     <div className={`media-flow-guide ${isSubtitle ? 'media-flow-subtitles' : 'media-flow-narrations'}`}>
       <div><strong>{isSubtitle ? 'Quy trình phụ đề' : 'Quy trình thuyết minh'}</strong>
         <span>{isSubtitle ? 'Đầu ra: văn bản có thời gian (.srt / .vtt)' : 'Đầu ra hiện tại: kịch bản lời đọc; nghe thử bằng trình duyệt'}</span></div>
@@ -131,7 +134,7 @@ export default function AdminMediaResults({kind}) {
           <option value="all">Tất cả</option>{languages.map(l=><option key={l}>{l}</option>)}</select></label>
       </div>
       <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Video</th><th>Khách hàng</th><th>Ngôn ngữ</th><th>Trạng thái</th><th>Phiên bản</th><th>Cập nhật</th><th>Thao tác</th></tr></thead>
-        <tbody>{visible.map(row=><tr key={row.id}><td><b>#{row.videoId}</b> {row.title}</td><td>{row.userEmail}</td><td>{row.language}</td>
+        <tbody>{visible.map(row=><tr key={row.id}><td><Link className="adm-inline-link" to={adminHref('/admin/videos',{videoId:row.videoId})}>#{row.videoId}</Link> {row.title}</td><td>{row.userEmail}<Link className="adm-inline-link" to={adminHref('/admin/users',{email:row.userEmail})}>Khách hàng →</Link></td><td>{row.language}</td>
           <td><span className={`ops-state ops-state-${row.status}`}>{LABELS[row.status]||row.status}</span></td><td>v{row.version}</td>
           <td>{row.updatedAt?new Date(row.updatedAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'}):'—'}</td><td><button className="btn btn-sm" onClick={()=>selectItem(row)}>{isSubtitle ? 'Biên tập phụ đề' : 'Mở kịch bản'}</button></td></tr>)}</tbody>
       </table>{!loading && !visible.length?<p className="fine">Chưa có kết quả phù hợp. Hãy xử lý video từ trang User hoặc tạo bản mới bên dưới.</p>:null}</div>

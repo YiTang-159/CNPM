@@ -2,13 +2,17 @@ import { useSearchParams } from 'react-router-dom';
 import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { manageApi } from '../api/workflows.js';
+import { Link } from 'react-router-dom';
+import { adminHref } from '../utils/adminLinks.js';
+import AdminCustomerContext from '../components/AdminCustomerContext.jsx';
+import AdminActiveFilter from '../components/AdminActiveFilter.jsx';
 const states = {new:'Mới', reviewing:'Đang xử lý', resolved:'Đã giải quyết'};
 const priorities = {low:'Thấp',normal:'Bình thường',high:'Cao'};
 export default function AdminFeedback() {
   const [params]=useSearchParams();
   const [items,setItems] = useState([]);
   const [edits,setEdits] = useState({});
-  const [filter,setFilter] = useState({q:'',status:params.get('status')||'all',priority:'all'});
+  const [filter,setFilter] = useState({q:params.get('email')||'',status:params.get('status')||'all',priority:'all'});
   const [message,setMessage] = useState('');
   const [histories,setHistories] = useState({});
   const [busy,setBusy] = useState('');
@@ -21,7 +25,7 @@ export default function AdminFeedback() {
     } catch(e) { setMessage('Không lấy được phản hồi từ SQL Server: '+e.message); }
   },[]);
   useEffect(()=>{load();},[load]);
-  useEffect(()=>{setFilter(old=>({...old,status:params.get('status')||'all'}));},[params]);
+  useEffect(()=>{setFilter(old=>({...old,status:params.get('status')||'all',q:params.get('email')||''}));},[params]);
   const filtered=useMemo(()=>items.filter(r=>{
     const q=filter.q.trim().toLowerCase();
     return (filter.status==='all'||r.status===filter.status) &&
@@ -66,6 +70,7 @@ async function toggleHistory(id) {
     <div className="adm-head"><div><h1>Trung tâm phản hồi & chăm sóc khách hàng</h1>
       <p>Quản lý cả phản hồi tài khoản và liên hệ khách. Phân loại ưu tiên, theo dõi trạng thái, trả lời và ghi lịch sử xử lý vào SQL Server.</p>
     </div><button className="btn btn-sm" onClick={load}>Làm mới</button></div>
+    <AdminActiveFilter params={params} base="/admin/feedback"/>
     <div className="ops-kpis">{Object.entries(states).map(([s,label])=><div className="ops-kpi" key={s}>
       <strong>{counts[s]||0}</strong><span>{label}</span></div>)}</div>
     <section className="panel ops-panel">
@@ -79,7 +84,8 @@ async function toggleHistory(id) {
       <div className="ops-feedback-grid">{filtered.map(item=><article className="ops-feedback-card" key={item.id}>
         <div className="ops-head"><div><strong>{item.name} <span className="fine">({item.id})</span></strong>
           <p className="fine">{item.email} · {item.source==='contact'?'Trang liên hệ':'Tài khoản'}
-            {item.videoId?` · Video #${item.videoId}`:''}</p></div>
+            {item.videoId?` · Video #${item.videoId}`:''}</p>
+            {item.videoId&&<Link className="adm-inline-link" to={adminHref('/admin/videos',{videoId:item.videoId})}>Mở video liên quan →</Link>}</div>
           <span className={`ops-state ops-state-${item.status}`}>{states[item.status]||item.status}</span></div>
         <p className="ops-message">{item.message}</p>
         <p className="fine">Gửi: {new Date(item.createdAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'})}{item.assignedTo?` · Xử lý bởi ${item.assignedTo}`:''}</p>
@@ -89,6 +95,7 @@ async function toggleHistory(id) {
           onChange={e=>change(item.id,'priority',e.target.value)}>{Object.entries(priorities).map(([s,n])=><option key={s} value={s}>{n}</option>)}</select></label></div>
         <label className="ops-reply">Trả lời của Admin<textarea rows={3} maxLength={2000} value={edits[item.id]?.reply||''}
           onChange={e=>change(item.id,'reply',e.target.value)} placeholder="Nhập phản hồi để gửi lại trong tài khoản khách hàng…"/></label>
+        <AdminCustomerContext email={item.email} compact/>
         <div className="adm-actions ops-gap"><button className="btn btn-primary" disabled={busy===item.id} onClick={()=>save(item)}>
           {busy===item.id?'Đang lưu…':'Lưu xử lý'}</button>
           <button className="btn" onClick={()=>toggleHistory(item.id)}>Lịch sử {histories[item.id]?'▲':'▼'}</button></div>

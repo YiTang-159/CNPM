@@ -76,12 +76,20 @@ export default function AdminDashboard() {
             <Kpi label={title} value={number(st[key])}>{description}</Kpi>
           </Link>)}
       </div>
+      <section className="panel adm-journey-panel"><div className="panel-head"><h2>Điều hành theo quy trình</h2><span className="fine">Đi nhanh từ khách hàng đến giao dịch và nội dung</span></div>
+        <nav className="adm-journey" aria-label="Các quy trình quản trị">
+          <Link to="/admin/users"><strong>1. Khách hàng</strong><small>Trạng thái và lịch sử liên quan</small></Link>
+          <Link to="/admin/pricing"><strong>2. Gói & chính sách giá</strong><small>Kiểm tra đơn giá đang áp dụng</small></Link>
+          <Link to="/admin/orders"><strong>3. Đơn hàng</strong><small>Tra cứu và liên kết tài khoản</small></Link>
+          <Link to="/admin/payments"><strong>4. Đối soát</strong><small>Kiểm tra giao dịch mô phỏng</small></Link>
+          <Link to="/admin/videos"><strong>5. Video & nội dung</strong><small>Biên tập, kiểm duyệt kết quả</small></Link>
+        </nav></section>
       <section className="panel">
         <div className="panel-head"><h2>Những việc cần chú ý</h2><Link to="/admin/queue">Xem hàng đợi công việc →</Link></div>
         <div className="dashboard-alerts">
           <Link to="/admin/feedback"><b>{number(st.openFeedback)}</b><span>Phản hồi chưa giải quyết</span></Link>
           <Link to="/admin/videos"><b>{number(st.processingVideos)}</b><span>Video đang xử lý</span></Link>
-          <Link to="/admin/orders"><b>{number(st.pendingOrders)}</b><span>Đơn hàng đang chờ</span></Link>
+          <Link to="/admin/orders?status=pending"><b>{number(st.pendingOrders)}</b><span>Đơn hàng đang chờ</span></Link>
           <Link to="/admin/queue"><b>{number(st.pendingMediaReview)}</b><span>Thuyết minh / phụ đề chờ duyệt</span></Link>
           <Link to="/admin/feedback"><b>{number(st.urgentFeedback)}</b><span>Phản hồi ưu tiên cao cần xử lý</span></Link>
         </div>

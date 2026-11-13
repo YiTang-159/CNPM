@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { manageApi } from '../api/workflows.js';
 import { useAutoRefresh } from '../utils/useAutoRefresh.js';
+import { adminHref } from '../utils/adminLinks.js';
 
 const dt = value => value ? new Date(value).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}) : '—';
 const types = [
   { key:'feedback', title:'Phản hồi cần hỗ trợ', href:'/admin/feedback?status=new', description:'Yêu cầu mới hoặc đang xử lý' },
-  { key:'orders', title:'Đơn đang chờ thanh toán', href:'/admin/orders?status=pending', description:'Kiểm tra giao dịch, không tự xác nhận đã thanh toán' },
+  { key:'orders', title:'Đơn đang chờ thanh toán', href:adminHref('/admin/orders',{orderId:item.id}), description:'Kiểm tra giao dịch, không tự xác nhận đã thanh toán' },
   { key:'media', title:'Nội dung chờ duyệt', href:'/admin/queue#media', description:'Phụ đề và thuyết minh chờ kiểm duyệt' },
-  { key:'videos', title:'Video cần kiểm tra', href:'/admin/videos?status=failed', description:'Video có trạng thái xử lý thất bại' },
+  { key:'videos', title:'Video cần kiểm tra', href:adminHref('/admin/videos',{videoId:item.id}), description:'Video có trạng thái xử lý thất bại' },
 ];
 
 /** Bảng công việc chỉ đọc, dựa trên API hiện hữu; không tự cập nhật trạng thái hoặc thanh toán. */
@@ -45,10 +46,10 @@ export default function AdminQueue() {
     videos:[...data.videos].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')),
   }),[data]);
   function taskDetails(key,item) {
-    if (key==='feedback') return {name:`${item.name || item.email} · #${item.id}`, sub:item.message, href:`/admin/feedback?status=${item.status}`};
-    if (key==='orders') return {name:`Đơn #${item.id} · ${item.name || item.email}`,sub:`${item.email || ''} · ${dt(item.createdAt)}`,href:'/admin/orders?status=pending'};
+    if (key==='feedback') return {name:`${item.name || item.email} · #${item.id}`, sub:item.message, href:adminHref('/admin/feedback',{email:item.email,status:item.status})};
+    if (key==='orders') return {name:`Đơn #${item.id} · ${item.name || item.email}`,sub:`${item.email || ''} · ${dt(item.createdAt)}`,href:adminHref('/admin/orders',{orderId:item.id})};
     if (key==='media') return {name:`${item.kindLabel} · Video #${item.videoId} (${item.language})`, sub:item.title, href:`/admin/${item.kind}?status=reviewing&videoId=${encodeURIComponent(item.videoId)}`};
-    return {name:`Video #${item.id} · ${item.title}`, sub:`${item.userEmail||''} · ${dt(item.createdAt)}`, href:'/admin/videos?status=failed'};
+    return {name:`Video #${item.id} · ${item.title}`, sub:`${item.userEmail||''} · ${dt(item.createdAt)}`, href:adminHref('/admin/videos',{videoId:item.id})};
   }
   return <>
     <div className="adm-head"><div><h1>Việc cần xử lý</h1><p>Một nơi để theo dõi việc đang chờ. Chọn từng mục để xử lý tại trang nghiệp vụ tương ứng.</p></div>

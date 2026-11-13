@@ -4,6 +4,9 @@ import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import { adminApi } from '../api/admin.js';
+import { useSearchParams } from 'react-router-dom';
+import AdminCustomerContext from '../components/AdminCustomerContext.jsx';
+import AdminActiveFilter from '../components/AdminActiveFilter.jsx';
 
 const PAGE = 8;
 const LOCALES = ['vi-VN', 'en-US', 'zh-CN'];
@@ -30,11 +33,14 @@ function initials(name) {
 export default function AdminUsers() {
   const { t, L } = useI18n();
   const { user } = useAuth();
+  const [params] = useSearchParams();
   usePageTitle('ad_users_title');
   const [users, setUsers] = useState(null);
   const [failed, setFailed] = useState(false);
   const [actionError, setActionError] = useState('');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(params.get('email') || '');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selected, setSelected] = useState(null);
   const [sort, setSort] = useState('new');
   const [page, setPage] = useState(0);
   const [asking, setAsking] = useState(null); // email đang chờ xác nhận xóa
@@ -44,9 +50,10 @@ export default function AdminUsers() {
     return adminApi.users(user).then(setUsers).catch(() => setFailed(true));
   }, [user]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setQuery(params.get('email') || ''); setPage(0); }, [params]);
   useAutoRefresh(load);
 
-  const rows = useMemo(() => filterUsers(users || [], query, sort), [users, query, sort]);
+  const rows = useMemo(() => filterUsers(users || [], query, sort).filter(u => statusFilter === 'all' || u.status === statusFilter), [users, query, sort, statusFilter]);
   const pages = Math.max(1, Math.ceil(rows.length / PAGE));
   const cur = Math.min(page, pages - 1);
   const shown = rows.slice(cur * PAGE, cur * PAGE + PAGE);
@@ -82,6 +89,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
+    <AdminActiveFilter params={params} base="/admin/users"/>
       {actionError ? <p role="alert">{actionError}</p> : null}
       {failed ? <p role="alert">{t('ad_fail')}</p> : null}
       {!users && !failed ? <p role="status">{t('ad_loading')}</p> : null}
@@ -95,7 +103,7 @@ export default function AdminUsers() {
           </div>
 
           <section className="panel" aria-label={t('ad_users_title')}>
-            <div className="filters">
+            <div className="adm-toolbar">
               <input
                 type="search"
                 aria-label={t('ad_search')}
@@ -110,7 +118,13 @@ export default function AdminUsers() {
                   <option value="name">{t('ad_sort_name')}</option>
                 </select>
               </label>
+              <label className="adm-field">Trạng thái
+                <select aria-label="Lọc trạng thái người dùng" value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(0);}}>
+                  <option value="all">Tất cả</option><option value="active">Đang hoạt động</option><option value="locked">Đã khóa</option>
+                </select>
+              </label>
             </div>
+            <p className="adm-table-meta">{rows.length}/{total} người dùng · Chọn “Hồ sơ” để đi đến đơn hàng, video và phản hồi liên quan.</p>
 
             {shown.length ? (
               <div className="tbl-wrap">
@@ -132,6 +146,9 @@ export default function AdminUsers() {
                         <td>{fmtDate(L, u.at)}</td>
                         <td><span className={'chip ' + u.status}>{t(u.status === 'locked' ? 'ad_locked' : 'ad_active')}</span></td>
                         <td>
+                          <button type="button" className="btn btn-sm" aria-expanded={selected===u.email} onClick={()=>setSelected(selected===u.email?null:u.email)}>
+                            Hồ sơ<span className="sr-only"> – {u.email}</span>
+                          </button>{' '}
                           {asking === u.email ? (
                             <span className="ask" role="group" aria-label={t('ad_confirm_del')}>
                               {t('ad_confirm_del')}
@@ -160,6 +177,14 @@ export default function AdminUsers() {
               <p className="fine" style={{ margin: 16 }}>{t('ad_no_match')}</p>
             )}
 
+            {selected && users.some(u=>u.email===selected) && <div className="adm-record-detail" role="region" aria-label={`Hoạt động khách hàng ${selected}`}>
+              {users.filter(u=>u.email===selected).map(u=><div key={u.email}>
+                <div className="adm-work-head"><div><h3>{u.name}</h3><p>{u.email} · Trạng thái: {u.status==='active'?'Đang hoạt động':'Đã khóa'}</p></div>
+                  <button className="btn btn-sm" type="button" onClick={()=>setSelected(null)}>Đóng</button></div>
+                <AdminCustomerContext email={u.email} title="Tra cứu dữ liệu của tài khoản"/>
+                <p className="fine">Những đường dẫn này lọc theo email trong danh sách API. Không tự động thay đổi quyền, đơn hàng hoặc nội dung của khách.</p>
+              </div>)}
+            </div>}
             {rows.length > PAGE ? (
               <div className="pager">
                 <span aria-live="polite">{cur * PAGE + 1}–{Math.min(rows.length, cur * PAGE + PAGE)} / {rows.length}</span>

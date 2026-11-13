@@ -34,7 +34,7 @@ export default function AdminMediaResults({kind}) {
   const label = isSubtitle ? 'Phụ đề' : 'Thuyết minh';
   const summary = isSubtitle
     ? 'Biên tập câu chữ, đồng bộ mốc thời gian và xuất SRT/VTT. Phiên bản và trạng thái kiểm duyệt lưu trong SQL Server.'
-    : 'Quản lý kịch bản lời đọc, nghe thử giọng đọc trình duyệt và kiểm duyệt nội dung. Phiên bản kịch bản lưu trong SQL Server.';
+    : 'Quản lý kịch bản lời đọc, duyệt nội dung, rồi xuất MP3/MP4 thực tế bằng máy chủ. Phiên bản lưu trong SQL Server.';
   const [videos,setVideos] = useState([]);
   const [items,setItems] = useState([]);
   const [languages,setLanguages] = useState(['vi','en','zh']);
@@ -119,10 +119,10 @@ export default function AdminMediaResults({kind}) {
     <AdminActiveFilter params={params} base={isSubtitle ? "/admin/subtitles" : "/admin/narrations"}/>
     <div className={`media-flow-guide ${isSubtitle ? 'media-flow-subtitles' : 'media-flow-narrations'}`}>
       <div><strong>{tr(isSubtitle ? 'Quy trình phụ đề' : 'Quy trình thuyết minh')}</strong>
-        <span>{tr(isSubtitle ? 'Đầu ra: văn bản có thời gian (.srt / .vtt)' : 'Đầu ra hiện tại: kịch bản lời đọc; nghe thử bằng trình duyệt')}</span></div>
+        <span>{tr(isSubtitle ? 'Đầu ra: văn bản có thời gian (.srt / .vtt)' : 'Đầu ra: MP3 giọng đọc và MP4 đã ghép lời đọc khi xuất bản')}</span></div>
       <ol>{(isSubtitle
         ? ['Chọn video và ngôn ngữ', 'Sửa câu chữ, kiểm tra mốc thời gian', 'Duyệt và xuất tệp phụ đề']
-        : ['Chọn video và ngôn ngữ', 'Soạn kịch bản, nghe thử giọng đọc', 'Duyệt và lưu phiên bản nội dung']).map(step => <li key={step}>{tr(step)}</li>)}</ol>
+        : ['Chọn video và ngôn ngữ', 'Soạn kịch bản, nghe thử giọng đọc', 'Duyệt, xuất bản và tải MP3/MP4']).map(step => <li key={step}>{tr(step)}</li>)}</ol>
     </div>
     <div className="ops-kpis">{Object.entries(LABELS).map(([state,name])=><div className="ops-kpi" key={state}>
       <strong>{counts[state]||0}</strong><span>{tr(name)}</span></div>)}</div>
@@ -142,7 +142,7 @@ export default function AdminMediaResults({kind}) {
       </table>{!loading && !visible.length?<p className="fine"><AdminT vi={"Chưa có kết quả phù hợp. Hãy xử lý video từ trang User hoặc tạo bản mới bên dưới."} /></p>:null}</div>
     </section>
     <section className="panel ops-panel"><h2>{tr(isSubtitle ? 'Tạo phụ đề cho video đã tải lên' : 'Tạo kịch bản thuyết minh cho video đã tải lên')}</h2>
-      <p className="fine">{tr(isSubtitle ? 'Khởi tạo bộ câu chữ cần hiển thị trên video và thời gian xuất hiện.' : 'Khởi tạo kịch bản sẽ được dùng để thuyết minh bằng giọng nói. Chưa tạo tệp âm thanh.')}</p>
+      <p className="fine">{tr(isSubtitle ? 'Khởi tạo bộ câu chữ cần hiển thị trên video và thời gian xuất hiện.' : 'Khởi tạo kịch bản; sau khi duyệt và xuất bản có thể tạo MP3/MP4 trên máy chủ.')}</p>
       <div className="ops-toolbar"><label>Video<select value={newData.videoId} onChange={e=>setNewData(v=>({...v,videoId:e.target.value}))}>
         <option value="">{tr("-- Chọn video --")}</option>{videos.map(v=><option key={v.id} value={v.id}>#{v.id} – {v.title} ({v.userEmail})</option>)}</select></label>
         <label><AdminT vi={"Ngôn ngữ"} /><select value={newData.language} onChange={e=>setNewData(v=>({...v,language:e.target.value}))}>

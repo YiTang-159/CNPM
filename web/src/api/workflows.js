@@ -40,6 +40,19 @@ export const workApi = {
     if (!response.ok) throw new ApiError('net');
     return response.blob();
   },
+  exportOptions: id => request(`/api/videos/${id}/exports`),
+  async exportVoiceover(id, language, format) {
+    if (!['vi', 'en', 'zh'].includes(language) || !['mp3', 'mp4'].includes(format)) throw new ApiError('invalid');
+    const token = session.load()?.token;
+    const response = await fetch(BASE + `/api/videos/${id}/export/${language}/${format}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new ApiError(error.code || `HTTP_${response.status}`);
+    }
+    return response.blob();
+  },
   languages: () => request('/api/languages'),
   feedback: () => request('/api/feedback'),
   sendFeedback: (message, videoId = null) => request('/api/feedback', { method: 'POST', body: { message, videoId } }),

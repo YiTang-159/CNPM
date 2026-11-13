@@ -17,6 +17,8 @@ export default function Account() {
   const [msg, setMsg] = useState('');
   const [form, setForm] = useState({ message: '', videoId: '' });
   const [viewing,setViewing] = useState(null);
+  const [exportChoices, setExportChoices] = useState({});
+  const [exporting, setExporting] = useState('');
   const [busy, setBusy] = useState(false);
   const refresh = useCallback(async () => {
     if (!user?.token) return;
@@ -54,6 +56,26 @@ export default function Account() {
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     } catch (err) { setMsg('Không tải được video: ' + err.message); }
   }
+  async function showExports(id) {
+    try {
+      const data = await workApi.exportOptions(id);
+      setExportChoices(old => ({...old, [id]: data}));
+      if (!data.languages?.length) setMsg('Video này chưa có kịch bản thuyết minh đã xuất bản.');
+    } catch (error) { setMsg('Không tra cứu được tệp đã xuất bản: ' + error.message); }
+  }
+  async function saveVoiceover(id, language, format) {
+    setExporting(`${id}-${language}-${format}`);
+    try {
+      const blob = await workApi.exportVoiceover(id, language, format);
+      const url = URL.createObjectURL(blob);
+      const el = document.createElement('a'); el.href = url;
+      el.download = `dubchef-video-${id}-${language}.${format}`;
+      document.body.appendChild(el); el.click(); el.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      setMsg(`Đã tạo tệp ${format.toUpperCase()} giọng ${language.toUpperCase()}.`);
+    } catch (err) { setMsg('Không xuất được tệp: ' + err.message + ' (kiểm tra kịch bản đã xuất bản và thời gian từng câu).'); }
+    finally { setExporting(''); }
+  }
   if (!user) return <div className="wrap page-head"><h1>Tài khoản</h1><p><Link to="/login" state={{ from: '/account' }}>Đăng nhập để xem dữ liệu của bạn.</Link></p></div>;
   return <div className="wrap"><div className="page-head"><h1>Tài khoản của tôi</h1><p>Dữ liệu được quản lý từ SQL Server – DubchefDB.</p></div>
     {msg ? <p role="status" className="adm-note">{msg}</p> : null}
@@ -72,7 +94,12 @@ export default function Account() {
         <button className="btn btn-sm" onClick={refresh}>Làm mới</button>
         <ul className="list">{videos.map(v => <li key={v.id}><strong>#{v.id} {v.title}</strong>
           <p>Trạng thái: {v.status} · {v.originalLanguage} · {new Date(v.createdAt).toLocaleString('vi-VN')}</p>
-          {v.videoUrl ? <><button className="btn btn-sm" onClick={() => setViewing(v)}>Xem kết quả</button><button className="btn btn-sm" onClick={() => download(v.id, v.fileName)}>Tải video</button></> : <small>Chưa lưu xong tệp video</small>}
+          {v.videoUrl ? <><button className="btn btn-sm" onClick={() => setViewing(v)}>Xem kết quả</button><button className="btn btn-sm" onClick={() => download(v.id, v.fileName)}>Tải video gốc</button></> : <small>Chưa lưu xong tệp video</small>}
+          <button type="button" className="btn btn-sm" onClick={() => showExports(v.id)}>Tệp lồng tiếng đã duyệt</button>
+          {exportChoices[v.id] && <div className="adm-actions ops-gap">{exportChoices[v.id].languages?.map(language => <span key={language}>
+            <button type="button" className="btn btn-sm" disabled={Boolean(exporting)} onClick={() => saveVoiceover(v.id,language,'mp3')}>MP3 {language.toUpperCase()}</button>
+            {exportChoices[v.id].hasVideo && <button type="button" className="btn btn-sm" disabled={Boolean(exporting)} onClick={() => saveVoiceover(v.id,language,'mp4')}>MP4 {language.toUpperCase()}</button>}
+          </span>)}</div>}
         </li>)}</ul>{!videos.length ? <p>Chưa có video.</p> : null}</section>
       <section className="panel"><h2>Đơn hàng của tôi</h2><p><Link to="/pricing" className="btn btn-sm">Bảng giá</Link></p>
         <ul className="list">{myOrders.map(o => <li key={o.id}>

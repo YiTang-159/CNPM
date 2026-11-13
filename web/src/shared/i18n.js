@@ -427,10 +427,6 @@ export const ADMIN_TRANSLATIONS = {
     "Video status",
     "视频状态"
   ],
-  "Không tải được nhật ký: ": [
-    "Could not load audit log: ",
-    "无法加载审计日志："
-  ],
   "Lỗi API": [
     "API error",
     "API 错误"
@@ -494,10 +490,6 @@ export const ADMIN_TRANSLATIONS = {
   "Người thực hiện": [
     "Performed by",
     "操作人"
-  ],
-  "Trước": [
-    "Before",
-    "修改前"
   ],
   "Không tìm thấy thao tác phù hợp.": [
     "No matching actions found.",
@@ -886,10 +878,6 @@ export const ADMIN_TRANSLATIONS = {
   "Không có phản hồi phù hợp. Phản hồi mới của khách sẽ xuất hiện tại đây.": [
     "No matching feedback. New customer feedback appears here.",
     "没有匹配的反馈。新的客户反馈会显示在这里。"
-  ],
-  "Không đọc được dữ liệu: ": [
-    "Could not load data: ",
-    "无法加载数据："
   ],
   "Không thêm được ngôn ngữ: ": [
     "Could not add language: ",
@@ -1563,10 +1551,6 @@ export const ADMIN_TRANSLATIONS = {
     "Values from the shared pricing formula",
     "数据来自共享计费公式"
   ],
-  "Gói": [
-    "Plan",
-    "套餐"
-  ],
   "Video tải lên": [
     "Videos uploaded",
     "上传视频数"
@@ -1862,10 +1846,6 @@ export const ADMIN_TRANSLATIONS = {
   "Không đọc được SQL Server: ": [
     "Could not read SQL Server: ",
     "无法读取 SQL Server："
-  ],
-  "Không lưu được thay đổi: ": [
-    "Could not save changes: ",
-    "无法保存更改："
   ],
   "Thư viện video": [
     "Video library",
@@ -2337,4 +2317,23 @@ export const ADMIN_TRANSLATIONS = {
   "Xóa video": ["Delete video", "删除视频"],
   "và dữ liệu phụ đề/thuyết minh liên quan? Thao tác này không thể hoàn tác.": ["and related subtitle/narration data? This action cannot be undone.", "及关联的字幕／配音数据？此操作无法撤销。"],
   "vào SQL, có ghi lịch sử phiên bản.": ["to SQL, including version history.", "到 SQL，并记录版本历史。"],
+  "Quản lý kịch bản lời đọc, duyệt nội dung, rồi xuất MP3/MP4 thực tế bằng máy chủ. Phiên bản lưu trong SQL Server.": ["Manage spoken scripts, review content, then export actual server-generated MP3/MP4. Versions are stored in SQL Server.", "管理配音脚本、审核内容，然后在服务器生成真实的 MP3/MP4。版本保存在 SQL Server。"],
+  "Lỗi xử lý âm thanh": ["Audio processing error", "音频处理错误"],
+  "Tải MP3 giọng đọc": ["Download spoken MP3", "下载配音 MP3"],
+  "Tải MP4 đã lồng tiếng": ["Download dubbed MP4", "下载配音 MP4"],
+  "Hãy duyệt và xuất bản kịch bản đã lưu trước khi tạo MP3/MP4.": ["Review and publish the saved script before exporting MP3/MP4.", "导出 MP3/MP4 前，请先审核并发布已保存的脚本。"],
+  "Đã tạo tệp âm thanh/video có lời thuyết minh thực tế.": ["Created actual voice-over audio/video file.", "已生成真实的配音音频／视频文件。"],
+  "Không thể xuất tệp": ["Could not export file", "无法导出文件"],
+  "Kịch bản chưa được xuất bản.": ["The script has not been published.", "脚本尚未发布。"],
+  "Kịch bản chưa có mốc thời gian hợp lệ.": ["Script timing is invalid.", "脚本时间轴无效。"],
+  "Có câu đọc quá dài so với thời gian. Hãy kéo dài đoạn hoặc rút ngắn câu.": ["Speech is too long for its time slot. Extend the slot or shorten the text.", "语音内容超出时间段，请延长时间段或缩短文本。"],
+  "Mốc thời gian vượt quá độ dài video gốc.": ["Timeline exceeds the original video duration.", "时间轴超过原视频长度。"],
+  "Máy chủ đang xuất tệp khác. Vui lòng thử lại.": ["The server is exporting another file. Please retry.", "服务器正在导出其他文件，请重试。"],
+  "Máy chủ chưa cài FFmpeg hoặc công cụ giọng đọc.": ["FFmpeg or the speech engine is not installed on the server.", "服务器尚未安装 FFmpeg 或语音引擎。"],
+  "Không tìm thấy tệp video gốc để ghép tiếng.": ["Original video file not found for dubbing.", "找不到要配音的原视频。"],
+  "Giọng nghe thử lấy từ trình duyệt. Để tải MP3 hoặc MP4 thật, hãy lưu, chuyển sang Chờ duyệt, rồi Xuất bản và mở lại bản ghi. Máy chủ dùng giọng tổng hợp cục bộ (chất lượng demo) để tạo tệp; các chỉnh sửa chưa lưu không được đưa vào bản xuất.": ["Browser voices are for preview. To download real MP3 or MP4, save, move to Review, publish, and reopen. The server uses local synthetic demo-quality voices; unsaved edits are excluded.", "浏览器语音仅供试听。要下载真实 MP3 或 MP4，请保存、提交审核、发布并重新打开。服务器使用本地合成的演示级声音，未保存的修改不会导出。"],
+  "Đầu ra: MP3 giọng đọc và MP4 đã ghép lời đọc khi xuất bản": ["Output: spoken MP3 and dubbed MP4 once published", "发布后可输出配音 MP3 和 MP4"],
+  "Duyệt, xuất bản và tải MP3/MP4": ["Review, publish and download MP3/MP4", "审核、发布并下载 MP3/MP4"],
+  "Khởi tạo kịch bản; sau khi duyệt và xuất bản có thể tạo MP3/MP4 trên máy chủ.": ["Create a script; after review and publishing, generate MP3/MP4 on the server.", "创建脚本，审核并发布后可在服务器生成 MP3/MP4。"],
+
 };

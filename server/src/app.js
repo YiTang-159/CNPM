@@ -1,6 +1,6 @@
 // Các đường dẫn API. `repo` là lớp truy cập CSDL (db.js), tách ra để dễ thay khi kiểm thử.
 import express from 'express';
-import { mkdir, rename, unlink, stat } from 'node:fs/promises';
+import { mkdir, rename, unlink, stat, rm } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -11,6 +11,7 @@ import { METHODS, newTransactionRef, priceOrder, validateOrder } from './orders.
 import { hashPassword, isLegacyHash, makeToken, readToken, verifyPassword } from './auth.js';
 import { buildStats } from './stats.js';
 import { validMediaLines, validateFeedback, MEDIA_STATES } from './adminPolicy.js';
+import { produceVoiceover } from './audioExport.js';
 
 const MAX_VIDEO = 150 * 1024 * 1024;
 const DEFAULT_UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
@@ -260,6 +261,50 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.json(await repo.videoResults(video.id));
   }));
   app.get('/api/languages', wrap(async (req, res) => res.json({ languages: (await repo.languages()).filter(x => x.status === 'active' && PROCESSING_LANGUAGES.has(x.code)) })));
+
+  // Xuất MP3/MP4 thật từ KỊCH BẢN ĐÃ XUẤT BẢN, không dùng speechSynthesis trên trình duyệt.
+  // Có giới hạn 1 công việc tại một thời điểm để tránh tăng tải CPU/RAM của máy demo.
+  const activeVoiceExports = new Set();
+  async function downloadVoiceover(req, res) {
+    const video = await videoFor(req, res);
+    if (!video) return;
+    const language = String(req.params.language || '');
+    const format = String(req.params.format || '');
+    if (!PROCESSING_LANGUAGES.has(language) || !['mp3','mp4'].includes(format))
+      return res.status(400).json({code:'invalid'});
+    if (activeVoiceExports.size) return res.status(429).json({code:'export_busy'});
+    const media = await repo.mediaDetail('narrations', video.id, language);
+    if (!media) return res.status(404).json({code:'narration_not_found'});
+    if (media.status !== 'published') return res.status(409).json({code:'narration_not_published'});
+    const videoPath = typeof video.videoUrl === 'string' && video.videoUrl.startsWith(UPLOAD_DIR + sep)
+      && await stat(video.videoUrl).catch(() => null) ? video.videoUrl : null;
+    if (format === 'mp4' && !videoPath) return res.status(409).json({code:'video_file_missing'});
+    const key = `${video.id}-${language}`;
+    activeVoiceExports.add(key);
+    let generated;
+    try {
+      generated = await produceVoiceover({content:media.content, language, format, sourceVideo:videoPath});
+      const fileName = `dubchef-video-${video.id}-${language}-v${media.version}.${format}`;
+      res.set('Cache-Control', 'no-store');
+      return res.download(generated.output, fileName, async (err) => {
+        await rm(generated.directory, {recursive:true, force:true}).catch(() => {});
+        if (err && !res.headersSent) res.status(500).json({code:'download_failed'});
+      });
+    } catch (error) {
+      if (generated) await rm(generated.directory, {recursive:true, force:true}).catch(() => {});
+      if (error.status) return res.status(error.status).json({code:error.code, ...(error.segment ? {segment:error.segment} : {})});
+      throw error;
+    } finally { activeVoiceExports.delete(key); }
+  }
+  app.get('/api/videos/:id/exports', auth, wrap(async (req, res) => {
+    const video = await videoFor(req, res);
+    if (!video) return;
+    const details = await Promise.all([...PROCESSING_LANGUAGES].map(language => repo.mediaDetail('narrations', video.id, language)));
+    const available = [...PROCESSING_LANGUAGES].filter((language, index) => details[index]?.status === 'published');
+    res.json({languages: available, hasVideo: Boolean(video.videoUrl)});
+  }));
+  app.get('/api/videos/:id/export/:language/:format', auth, wrap(downloadVoiceover));
+  // Admin được xuất bản đã duyệt của mọi video; videoFor cũng xác thực tài khoản SQL.
 
   // ---- Phản hồi có tài khoản ----
   app.get('/api/feedback', auth, wrap(async (req, res) => {

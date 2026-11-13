@@ -1,6 +1,7 @@
 import AdminT, { useAdminT } from './AdminTranslation.jsx';
 import { useEffect, useMemo, useState } from 'react';
 import { mediaClock, saveMediaExport, subtitleFileText, wordsIn } from '../utils/adminMediaFormats.js';
+import { workApi } from '../api/workflows.js';
 
 const LANGUAGE_TAGS = { vi: 'vi-VN', en: 'en-US', zh: 'zh-CN' };
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -70,6 +71,7 @@ export function NarrationEditor({ editor, patchRow, addRow, removeRow, onNotice 
   const [voiceId, setVoiceId] = useState('');
   const [voices, setVoices] = useState([]);
   const [speaking, setSpeaking] = useState(false);
+  const [exporting, setExporting] = useState('');
   const totalWords = editor.lines.reduce((sum, line) => sum + wordsIn(line.text), 0);
   useEffect(() => {
     if (!('speechSynthesis' in window)) return undefined;
@@ -100,6 +102,36 @@ export function NarrationEditor({ editor, patchRow, addRow, removeRow, onNotice 
     setSpeaking(true);
     synthesis.speak(utterance);
   }
+  async function downloadAudio(format) {
+    if (editor.originalStatus !== 'published') {
+      onNotice(tr('Hãy duyệt và xuất bản kịch bản đã lưu trước khi tạo MP3/MP4.'));
+      return;
+    }
+    setExporting(format);
+    try {
+      const blob = await workApi.exportVoiceover(editor.videoId, editor.language, format);
+      const url = URL.createObjectURL(blob);
+      const element = document.createElement('a');
+      element.href = url;
+      element.download = `dubchef-video-${editor.videoId}-${editor.language}.${format}`;
+      document.body.appendChild(element);
+      element.click();
+      element.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      onNotice(tr('Đã tạo tệp âm thanh/video có lời thuyết minh thực tế.'));
+    } catch (err) {
+      const errors = {
+        narration_not_published: 'Kịch bản chưa được xuất bản.',
+        invalid_timeline: 'Kịch bản chưa có mốc thời gian hợp lệ.',
+        speech_too_long: 'Có câu đọc quá dài so với thời gian. Hãy kéo dài đoạn hoặc rút ngắn câu.',
+        timeline_overflow: 'Mốc thời gian vượt quá độ dài video gốc.',
+        export_busy: 'Máy chủ đang xuất tệp khác. Vui lòng thử lại.',
+        export_unavailable: 'Máy chủ chưa cài FFmpeg hoặc công cụ giọng đọc.',
+        video_file_missing: 'Không tìm thấy tệp video gốc để ghép tiếng.',
+      };
+      onNotice(`${tr('Không thể xuất tệp')}: ${tr(errors[err?.code] || err?.message || 'Lỗi xử lý âm thanh')}`);
+    } finally { setExporting(''); }
+  }
   function downloadScript() {
     const content = editor.lines.map((line, i) => `[Đoạn ${i+1} · ${displayTime(line.start)}–${displayTime(line.end)}]\n${line.text.trim()}`).join('\n\n');
     if (!editor.lines.every(x => x.text.trim())) { onNotice('Hãy nhập đủ nội dung trước khi xuất kịch bản.'); return; }
@@ -109,7 +141,11 @@ export function NarrationEditor({ editor, patchRow, addRow, removeRow, onNotice 
   return <div className="media-workspace media-workspace-narrations">
     <div className="media-workspace-head"><div><h3><AdminT vi={"Kịch bản giọng đọc"} /></h3>
       <p className="fine"><AdminT vi={"Chỉnh lời thoại và nghe thử cách đọc."} /> {editor.lines.length} <AdminT vi={"đoạn ·"} /> {totalWords} <AdminT vi={"từ."} /></p></div>
-      <button type="button" className="btn btn-sm" onClick={downloadScript}><AdminT vi={"Xuất kịch bản TXT"} /></button>
+      <div className="adm-actions">
+        <button type="button" className="btn btn-sm" onClick={downloadScript}><AdminT vi={"Xuất kịch bản TXT"} /></button>
+        <button type="button" className="btn btn-primary btn-sm" disabled={Boolean(exporting) || editor.originalStatus !== 'published'} onClick={() => downloadAudio('mp3')}><AdminT vi={"Tải MP3 giọng đọc"} /></button>
+        <button type="button" className="btn btn-primary btn-sm" disabled={Boolean(exporting) || editor.originalStatus !== 'published'} onClick={() => downloadAudio('mp4')}><AdminT vi={"Tải MP4 đã lồng tiếng"} /></button>
+      </div>
     </div>
     <div className="media-voice-toolbar">
       <label><AdminT vi={"Giọng nghe thử (trên máy này)"} />
@@ -126,7 +162,7 @@ export function NarrationEditor({ editor, patchRow, addRow, removeRow, onNotice 
         onClick={() => preview(editor.lines.map(x => x.text).join('. '))}><AdminT vi={"Nghe toàn bộ"} /></button>
         <button type="button" className="btn btn-sm" onClick={stop} disabled={!speaking}><AdminT vi={"Dừng nghe"} /></button></div>
     </div>
-    <p className="media-note"><AdminT vi={"Nghe thử dùng giọng đọc có sẵn trong trình duyệt; chưa tạo hoặc lưu MP3 vào máy chủ. Giọng và tốc độ nghe thử không được ghi vào SQL."} /></p>
+    <p className="media-note"><AdminT vi={"Giọng nghe thử lấy từ trình duyệt. Để tải MP3 hoặc MP4 thật, hãy lưu, chuyển sang Chờ duyệt, rồi Xuất bản và mở lại bản ghi. Máy chủ dùng giọng tổng hợp cục bộ (chất lượng demo) để tạo tệp; các chỉnh sửa chưa lưu không được đưa vào bản xuất."} /></p>
     <div className="media-script-list">{editor.lines.map((line, i) => <article className="media-script-card" key={i}>
       <div className="media-script-card-head"><div><b><AdminT vi={"Đoạn thuyết minh"} /> {i+1}</b><span className="fine">{wordsIn(line.text)} <AdminT vi={"từ ·"} /> {displayTime(line.start)} – {displayTime(line.end)}</span></div>
         <div className="adm-actions"><button type="button" className="btn btn-sm" onClick={() => preview(line.text)}><AdminT vi={"Nghe đoạn"} /></button>

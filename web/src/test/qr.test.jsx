@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderApp } from './utils.jsx';
 import { I } from '../shared/i18n.js';
+import { ADMIN_LINKS } from '../components/AdminNavigation.js';
 import { ADMIN_EMAIL } from '../api/client.js';
 import { orders, paymentPayload } from '../api/orders.js';
 import { GUEST_PATH, guestUrl, isLocalAddress, qrStats, trackScan } from '../api/qr.js';
@@ -114,7 +115,10 @@ describe('trang /admin/qr', () => {
     expect(await screen.findByTestId('aq-total')).toHaveTextContent('1');
     expect(screen.getByTestId('aq-today')).toHaveTextContent('1');
     expect(screen.getByTestId('aq-qrcode').getAttribute('data-value')).toBe(screen.getByTestId('aq-url').textContent);
-    expect(screen.getByRole('link', { name: I.ad_nav_qr[0] })).toBeInTheDocument();
+    // Lấy nhãn từ menu quản trị thực tế, tránh phụ thuộc tên cũ trước khi đổi giao diện V4.
+    const qrMenu = ADMIN_LINKS.find((link) => link.to === '/admin/qr');
+    expect(qrMenu).toBeDefined();
+    expect(screen.getByRole('link', { name: qrMenu.name })).toHaveAttribute('href', qrMenu.to);
     await user.click(screen.getByRole('button', { name: I.ad_seed[0] }));
     await waitFor(() => expect(Number(screen.getByTestId('aq-total').textContent.replace(/\D/g, ''))).toBeGreaterThan(50));
     expect(screen.getByTestId('aq-period-trend').textContent).toMatch(/%/);

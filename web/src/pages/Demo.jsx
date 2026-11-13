@@ -13,7 +13,7 @@ import { transcribeVideoAudio } from '../utils/whisper.js';
 
 const STAGES_INIT = ['dp0', 'dp1', 'dp3', 'dp4'];
 const LANG_TAG = { vi: 'VI', en: 'EN', zh: '中文' };
-const ERR_KEY = { net: 'e_net', server: 'd_translate_err', empty: 'd_translate_err', limit: 'd_translate_limit' };
+const ERR_KEY = { net: 'e_net', server: 'd_translate_err', empty: 'd_translate_err', limit: 'd_translate_limit', auth: 'd_translate_auth', forbidden: 'd_translate_auth', model_missing: 'd_translate_model', unavailable: 'd_translate_offline', timeout: 'd_translate_timeout', invalid: 'd_translate_err' };
 
 export default function Demo() {
   const { t, lang } = useI18n();
@@ -266,7 +266,11 @@ export default function Demo() {
       let translated;
       if (translate) {
         setStages((s) => runStage(s, tIdx, 'run'));
-        translated = await translateLines(lines, sourceLang, fetch, HAS_API ? (await workApi.languages()).languages.map(x => x.code) : ['vi','en','zh']);
+        translated = await translateLines(
+          lines, sourceLang, fetch,
+          HAS_API ? (await workApi.languages()).languages.map((x) => x.code) : ['vi', 'en', 'zh'],
+          { baseUrl: import.meta.env.VITE_API_URL, token: user?.token }
+        );
         setStages((s) => runStage(s, tIdx, 'done'));
       } else {
         // Không dịch: mỗi đoạn chỉ có đúng ngôn ngữ gốc

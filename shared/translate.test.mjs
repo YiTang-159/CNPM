@@ -1,65 +1,80 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { TranslateError, translateLines, translateText, translateToAll } from './translate.js';
 
-// fetch giả lập, không gọi mạng thật khi chạy test
-function fakeFetch(map) {
-  return async (url) => ({
-    ok: true,
-    json: async () => {
-      const hit = Object.entries(map).find(([k]) => url.includes(k));
-      return { responseStatus: 200, responseData: { translatedText: hit ? hit[1] : 'bản dịch' } };
-    },
-  });
+const cfg = { baseUrl: 'http://localhost:3000', token: 'signed-test-token' };
+function fakeFetch(translations = {}) {
+  const calls = [];
+  const impl = async (url, request) => {
+    calls.push({ url, request });
+    const { text, from, to } = JSON.parse(request.body);
+    assert.equal(url, 'http://localhost:3000/api/translate');
+    assert.equal(request.method, 'POST');
+    assert.equal(request.headers.Authorization, `Bearer ${cfg.token}`);
+    return { ok: true, status: 200, json: async () => ({ translatedText: translations[`${text}|${from}|${to}`] || 'Đã dịch' }) };
+  };
+  return { impl, calls };
 }
 
-test('dịch một câu sang một ngôn ngữ', async () => {
-  const fx = fakeFetch({ 'vi|en': 'Hello' });
-  const out = await translateText('Xin chào', 'vi', 'en', fx);
-  assert.equal(out, 'Hello');
+test('dịch Việt sang Anh qua API nội bộ, dùng POST và token', async () => {
+  const fx = fakeFetch({ 'Xin chào|vi|en': 'Hello' });
+  assert.equal(await translateText('Xin chào', 'vi', 'en', fx.impl, cfg), 'Hello');
+  assert.equal(fx.calls.length, 1);
 });
 
-test('cùng ngôn ngữ nguồn và đích thì trả nguyên văn, không gọi mạng', async () => {
-  const out = await translateText('Xin chào', 'vi', 'vi', async () => { throw new Error('không được gọi'); });
-  assert.equal(out, 'Xin chào');
+test('cùng ngôn ngữ trả nguyên văn, không gọi API', async () => {
+  assert.equal(await translateText(' Xin chào ', 'vi', 'vi', () => { throw Error('Called unexpectedly'); }), 'Xin chào');
 });
 
-test('dịch sang cả 3 ngôn ngữ, giữ nguyên bản gốc', async () => {
-  const fx = fakeFetch({ 'vi|en': 'Hello', 'vi|zh-CN': '你好' });
-  const out = await translateToAll('Xin chào', 'vi', fx);
-  assert.deepEqual(out, { vi: 'Xin chào', en: 'Hello', zh: '你好' });
+test('dịch tới cả ba ngôn ngữ, giữ nguyên tiếng nguồn', async () => {
+  const fx = fakeFetch({ 'Xin chào|vi|en': 'Hello', 'Xin chào|vi|zh': '你好' });
+  const actual = await translateToAll('Xin chào', 'vi', fx.impl, ['vi','en','zh'], cfg);
+  assert.deepEqual(actual, { vi: 'Xin chào', en: 'Hello', zh: '你好' });
 });
 
-test('dịch nhiều dòng, bỏ dòng trống', async () => {
-  const fx = fakeFetch({ 'vi|en': 'Hi', 'vi|zh-CN': '嗨' });
-  const out = await translateLines(['Chào', '', '  ', 'Tạm biệt'], 'vi', fx);
-  assert.equal(out.length, 2);
-  assert.equal(out[0].vi, 'Chào');
-  assert.equal(out[1].vi, 'Tạm biệt');
+test('dịch từng dòng theo thứ tự, bỏ dòng trống', async () => {
+  const fx = fakeFetch();
+  const rows = await translateLines(['Chào', ' ', 'Tạm biệt'], 'vi', fx.impl, ['en'], cfg);
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map((r) => r.vi), ['Chào','Tạm biệt']);
+  assert.equal(fx.calls.length, 2);
 });
 
-test('mất mạng thì báo lỗi net', async () => {
-  await assert.rejects(
-    translateText('Xin chào', 'vi', 'en', async () => { throw new Error('offline'); }),
-    (e) => e instanceof TranslateError && e.code === 'net'
-  );
+test('không có token không được gọi dịch vụ', async () => {
+  const fx = fakeFetch();
+  await assert.rejects(translateText('Hi','en','vi',fx.impl,{baseUrl:cfg.baseUrl}), (e) => e instanceof TranslateError && e.code === 'auth');
+  assert.equal(fx.calls.length, 0);
 });
 
-test('máy chủ báo lỗi (không phải 200) thì ném lỗi server', async () => {
-  const fx = async () => ({ ok: false, json: async () => ({}) });
-  await assert.rejects(translateText('a', 'vi', 'en', fx), (e) => e instanceof TranslateError && e.code === 'server');
+test('không có API URL không tự động gọi một dịch vụ miễn phí', async () => {
+  const fx = fakeFetch();
+  await assert.rejects(translateText('Hi','en','vi',fx.impl,{token:cfg.token}), (e) => e.code === 'net');
+  assert.equal(fx.calls.length, 0);
 });
 
-test('hết hạn mức miễn phí (responseStatus khác 200) thì báo lỗi limit', async () => {
-  const fx = async () => ({ ok: true, json: async () => ({ responseStatus: 403, responseData: { translatedText: 'MYMEMORY WARNING' } }) });
-  await assert.rejects(translateText('a', 'vi', 'en', fx), (e) => e instanceof TranslateError && e.code === 'limit');
+test('lỗi mạng và HTTP 500 phản ánh đúng tình trạng', async () => {
+  await assert.rejects(translateText('Hi','en','vi', async () => { throw Error('offline'); },cfg), (e) => e.code === 'net');
+  await assert.rejects(translateText('Hi','en','vi', async () => ({ok:false,status:500,json: async()=>({code:'server'})}),cfg), (e) => e.code === 'server');
 });
 
-test('disabled target languages are not requested; original transcript remains available', async () => {
-  const calls=[];
-  const fake=async url=>{calls.push(url);return {ok:true,json:async()=>({responseStatus:200,responseData:{translatedText:'Hello'}})};};
-  const result=await translateLines(['Xin chào'],'vi',fake,['en']);
-  assert.deepEqual(result,[{vi:'Xin chào',en:'Hello'}]);
-  assert.equal(calls.length,1);
-  assert.ok(calls[0].includes('vi|en'));
+test('HTTP 429 và model_missing được nhận diện', async () => {
+  await assert.rejects(translateText('Hi','en','vi', async () => ({ok:false,status:429,json: async()=>({code:'busy'})}),cfg), (e) => e.code === 'limit');
+  await assert.rejects(translateText('Hi','en','vi', async () => ({ok:false,status:503,json: async()=>({code:'model_missing'})}),cfg), (e) => e.code === 'model_missing');
+});
+
+test('chỉ dịch ngôn ngữ đang bật và không dịch trùng', async () => {
+  const fx = fakeFetch();
+  const rows = await translateLines(['Xin chào'], 'vi', fx.impl, ['vi', 'en', 'en', 'unknown'], cfg);
+  assert.deepEqual(Object.keys(rows[0]), ['vi','en']);
+  assert.equal(fx.calls.length, 1);
+});
+
+test('bản Web và Mobile luôn đồng bộ với shared, không có URL dịch miễn phí', () => {
+  const canonical = readFileSync(new URL('./translate.js', import.meta.url), 'utf8');
+  const web = readFileSync(new URL('../web/src/shared/translate.js', import.meta.url), 'utf8');
+  const mobile = readFileSync(new URL('../mobile/src/shared/translate.js', import.meta.url), 'utf8');
+  assert.equal(web, canonical);
+  assert.equal(mobile, canonical);
+  for (const value of [canonical, web, mobile]) assert.doesNotMatch(value, /api\.mymemory\.translated\.net/i);
 });

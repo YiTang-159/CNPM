@@ -1,66 +1,77 @@
-// Dịch văn bản bằng dịch vụ MyMemory (miễn phí, không cần khóa API).
-// Giới hạn của dịch vụ: khoảng 500 ký tự mỗi câu, có hạn mức miễn phí theo IP mỗi ngày.
-// Đây là dịch THẬT qua Internet — cần máy đang chạy có kết nối mạng.
-const ENDPOINT = 'https://api.mymemory.translated.net/get';
-const LANGPAIR = { vi: 'vi', en: 'en', zh: 'zh-CN' };
+// Điểm gọi dịch thống nhất cho Web và Mobile.
+// Chỉ gửi tới API Dubchef (/api/translate), KHÔNG gọi dịch vụ công cộng.
+// baseUrl và token được ứng dụng Web/Mobile truyền vào để không phụ thuộc Vite hay Expo.
+const LANGUAGES = new Set(['vi', 'en', 'zh']);
 
 export class TranslateError extends Error {
   constructor(code) {
     super(code);
     this.name = 'TranslateError';
-    this.code = code; // 'net' | 'server' | 'limit' | 'empty'
+    this.code = code;
   }
 }
 
-/** Dịch một câu từ ngôn ngữ nguồn (vi|en|zh) sang ngôn ngữ đích. fetchImpl cho phép thay fetch khi test. */
-export async function translateText(text, from, to, fetchImpl = fetch) {
-  const trimmed = String(text).trim();
-  if (!trimmed) return '';
-  if (from === to) return trimmed;
+/** Dịch một đoạn văn bản qua backend Dubchef. */
+export async function translateText(text, from, to, fetchImpl = fetch, options = {}) {
+  const input = String(text ?? '').trim();
+  if (!input) return '';
+  if (!LANGUAGES.has(from) || !LANGUAGES.has(to)) throw new TranslateError('invalid');
+  if (from === to) return input;
 
-  const url = `${ENDPOINT}?q=${encodeURIComponent(trimmed)}&langpair=${LANGPAIR[from]}|${LANGPAIR[to]}`;
-  let res;
+  const baseUrl = String(options?.baseUrl || '').trim().replace(/\/+$/, '');
+  if (!baseUrl) throw new TranslateError('net');
+  const token = String(options?.token || '').trim();
+  if (!token) throw new TranslateError('auth');
+
+  let response;
   try {
-    res = await fetchImpl(url);
-  } catch (e) {
+    response = await fetchImpl(`${baseUrl}/api/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ text: input, from, to }),
+    });
+  } catch {
     throw new TranslateError('net');
   }
-  if (!res.ok) throw new TranslateError(res.status === 429 ? 'limit' : 'server');
 
   let data;
   try {
-    data = await res.json();
-  } catch (e) {
+    data = await response.json();
+  } catch {
+    throw new TranslateError('server');
+  }
+  if (!response.ok) {
+    const code = String(data?.code || '');
+    if (response.status === 401 || code === 'auth') throw new TranslateError('auth');
+    if (response.status === 403 || code === 'forbidden') throw new TranslateError('forbidden');
+    if (response.status === 429 || code === 'busy') throw new TranslateError('limit');
+    if (['model_missing', 'unavailable', 'timeout'].includes(code)) throw new TranslateError(code);
     throw new TranslateError('server');
   }
 
-  if (data.responseStatus && Number(data.responseStatus) !== 200) throw new TranslateError('limit');
-  const out = data && data.responseData && data.responseData.translatedText;
-  if (!out) throw new TranslateError('empty');
-  return out;
+  const output = data?.translatedText;
+  if (typeof output !== 'string' || !output.trim()) throw new TranslateError('empty');
+  return output.trim();
 }
 
-/** Dịch một câu sang cả 3 ngôn ngữ Việt, Anh, Trung, giữ nguyên bản ở ngôn ngữ nguồn. Trả về { vi, en, zh }. */
-export async function translateToAll(text, from, fetchImpl = fetch, enabled = ['vi','en','zh']) {
-  const trimmed = String(text).trim();
-  const targets = enabled.filter((l) => l !== from && LANGPAIR[l]);
-  const pairs = await Promise.all(targets.map(async (to) => [to, await translateText(trimmed, from, to, fetchImpl)]));
-  const result = { [from]: trimmed };
-  for (const [lang, val] of pairs) result[lang] = val;
+/** Dịch một câu sang các ngôn ngữ đang bật. */
+export async function translateToAll(text, from, fetchImpl = fetch, enabled = ['vi', 'en', 'zh'], options = {}) {
+  const input = String(text ?? '').trim();
+  if (!LANGUAGES.has(from)) throw new TranslateError('invalid');
+  const result = { [from]: input };
+  if (!input) return result;
+  for (const to of [...new Set(enabled)].filter((lang) => lang !== from && LANGUAGES.has(lang))) {
+    result[to] = await translateText(input, from, to, fetchImpl, options);
+  }
   return result;
 }
 
-/** Dịch nhiều dòng (mỗi dòng một câu) sang cả 3 ngôn ngữ. Trả về mảng [{ vi, en, zh }, ...].
- *  Dịch TUẦN TỰ từng dòng (không bắn hết cùng lúc): dịch vụ MyMemory miễn phí sẽ chặn nếu nhận
- *  quá nhiều request dồn dập cùng lúc — dễ gặp khi video dài, Whisper tách ra rất nhiều câu ngắn. */
-export async function translateLines(lines, from, fetchImpl = fetch, enabled = ['vi','en','zh']) {
-  const clean = lines.map((l) => l.trim()).filter(Boolean);
-  const out = [];
-  for (let n = 0; n < clean.length; n += 1) {
-    out.push(await translateToAll(clean[n], from, fetchImpl, enabled));
-    if (n < clean.length - 1) {
-      await new Promise((r) => setTimeout(r, 250));
-    }
+/** Giữ thứ tự câu và mốc thời gian để bộ xử lý video đồng bộ lời đọc. */
+export async function translateLines(lines, from, fetchImpl = fetch, enabled = ['vi', 'en', 'zh'], options = {}) {
+  const clean = lines.map((line) => String(line ?? '').trim()).filter(Boolean);
+  const translated = [];
+  for (const line of clean) {
+    translated.push(await translateToAll(line, from, fetchImpl, enabled, options));
   }
-  return out;
+  return translated;
 }

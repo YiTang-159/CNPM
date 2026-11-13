@@ -6,21 +6,21 @@ import { isAdmin } from '../api/client.js';
 import { LANGS } from '../shared/i18n.js';
 import { ADMIN_GROUPS, ADMIN_LINKS, currentAdminLink } from './AdminNavigation.js';
 import AdminIcon from './AdminIcon.jsx';
+import AdminAccountMenu from './AdminAccountMenu.jsx';
 import './AdminUnified.css';
 
 const LANG_LABEL = { vi: 'VI', en: 'EN', zh: '中文' };
 
 export default function AdminLayout() {
   const { t, L, setL } = useI18n();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [jumpOpen, setJumpOpen] = useState(false);
   const [jumpQuery, setJumpQuery] = useState('');
   const searchRef = useRef(null);
-  const current = currentAdminLink(pathname);
-  const signOut = () => { logout(); navigate('/', { replace: true }); };
+  const current = pathname === '/admin/profile' ? { name: 'Hồ sơ & bảo mật' } : currentAdminLink(pathname);
   const filteredLinks = ADMIN_LINKS.filter(link => `${link.name} ${link.hint}`.toLocaleLowerCase('vi').includes(jumpQuery.trim().toLocaleLowerCase('vi')));
 
   useEffect(() => { setMenuOpen(false); setJumpOpen(false); }, [pathname]);
@@ -66,7 +66,7 @@ export default function AdminLayout() {
         <div className="adm-mobile-language lang" role="group" aria-label={t('langlabel')}>
           {LANGS.map((code,n)=><button key={code} type="button" lang={code==='zh'?'zh-CN':code} aria-pressed={n===L} onClick={()=>setL(n)}>{LANG_LABEL[code]}</button>)}
         </div>
-        <Link className="adm-back" to="/">← Xem website công khai</Link><small>Dubchef · Quản trị nội bộ</small></div>
+        <small>Dubchef · Không gian làm việc nội bộ</small></div>
     </aside>
     <div className="adm-main">
       <header className="adm-top">
@@ -81,8 +81,8 @@ export default function AdminLayout() {
           <div className="lang" role="group" aria-label={t('langlabel')}>
             {LANGS.map((code,n)=><button key={code} type="button" lang={code === 'zh' ? 'zh-CN' : code} aria-pressed={n===L} onClick={() => setL(n)}>{LANG_LABEL[code]}</button>)}
           </div>
-          <span className="adm-user" title={user.email || ''}>{user.name || 'Admin'}</span>
-          <button type="button" className="btn btn-sm" onClick={signOut}>{t('logout')}</button>
+          <Link className="adm-public-link" to="/" title="Xem website dành cho khách hàng"><AdminIcon name="external" size={16} /><span>Xem website</span></Link>
+          <AdminAccountMenu />
         </div>
         {jumpOpen && <div className="adm-jump-panel" id="adm-jump" role="dialog" aria-label="Đi nhanh đến chức năng">
           <label htmlFor="adm-jump-input">Tìm chức năng quản trị</label>

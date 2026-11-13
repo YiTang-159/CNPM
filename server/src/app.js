@@ -53,6 +53,9 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   });
   const adminOnly = [auth, (req, res, next) => req.currentUser.role === 'admin'
     ? next() : res.status(403).json({ code: 'forbidden' })];
+  // Admin chỉ quản lý/đối soát; không thể tạo đơn hoặc tự xác nhận mua gói như khách hàng.
+  const customerOnly = [auth, (req, res, next) => req.currentUser.role === 'user'
+    ? next() : res.status(403).json({ code: 'forbidden' })];
   const videoFor = async (req, res, admin = false) => {
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id < 1) { res.status(400).json({ code: 'invalid' }); return null; }
@@ -74,7 +77,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }));
 
   // Tạo đơn: giá do máy chủ tính, trạng thái "pending"
-  app.post('/api/orders', auth, wrap(async (req, res) => {
+  app.post('/api/orders', customerOnly, wrap(async (req, res) => {
     const v = validateOrder(req.body);
     if (v.error) return res.status(400).json({ code: v.error });
     if (v.value.email !== req.currentUser.email) return res.status(403).json({ code: 'forbidden' });
@@ -86,7 +89,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }));
 
   // Thanh toán giả lập: không nhận số thẻ, chỉ ghi phương thức và mã giao dịch
-  app.post('/api/orders/:id/pay', auth, wrap(async (req, res) => {
+  app.post('/api/orders/:id/pay', customerOnly, wrap(async (req, res) => {
     const id = Number(req.params.id);
     const method = req.body && req.body.method;
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ code: 'invalid' });
@@ -99,7 +102,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }));
 
   // Đơn hàng chỉ được xem bởi chính tài khoản đã tạo.
-  app.get('/api/orders', auth, wrap(async (req, res) => {
+  app.get('/api/orders', customerOnly, wrap(async (req, res) => {
     res.json({ orders: await repo.listOrders(req.currentUser.email, 20, req.currentUser.id) });
   }));
 

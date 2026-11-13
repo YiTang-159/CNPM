@@ -116,6 +116,20 @@ test('orders reject forged owner, isolate history, payment explicitly enabled an
     assert.equal((await demo.call('POST','/api/orders/1/pay',{method:'qr'})).status,409);
   }finally{await demo.close();}
 });
+test('Admin cannot create a customer order, pay, or access customer checkout history',async()=>{
+  const f=await fixture({paymentDemo:true});
+  try {
+    const body={name:'Admin',email:'admin@example.com',uploads:1,outs:1,L:0};
+    assert.equal((await f.call('POST','/api/orders',body,2)).status,403);
+    assert.equal((await f.call('POST','/api/orders',{...body,email:'one@example.com'},2)).status,403);
+    assert.equal((await f.call('GET','/api/orders',undefined,2)).status,403);
+    const created=await f.call('POST','/api/orders',{name:'One',email:'one@example.com',uploads:1,outs:1,L:0});
+    assert.equal(created.status,201);
+    assert.equal((await f.call('POST',`/api/orders/${created.data.order.id}/pay`,{method:'qr'},2)).status,403);
+    assert.equal(f.orders[0].status,'pending');
+  } finally {await f.close();}
+});
+
 test('audit API is restricted to admins',async()=>{
   const f=await fixture();try{
     assert.equal((await f.call('GET','/api/admin/audit',undefined,null)).status,401);

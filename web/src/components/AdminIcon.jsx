@@ -17,6 +17,10 @@ const PATHS = {
   close: ['M6 6l12 12','M18 6 6 18'],
   chevron: ['m9 18 6-6-6-6'],
   history: ['M3 12a9 9 0 1 0 3-6.7','M3 4v5h5','M12 7v5l3 2'],
+  user: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2','M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8'],
+  logout: ['M10 17l5-5-5-5','M15 12H3','M12 3h6a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-6'],
+  external: ['M12 5h7v7','M19 5 9 15','M19 13v6H5V5h6'],
+  'chevron-down': ['m6 9 6 6 6-6'],
   refresh: ['M20 11a8 8 0 0 0-14-5L3 9','M3 3v6h6','M4 13a8 8 0 0 0 14 5l3-3','M15 15h6v6'],
 };
 export default function AdminIcon({ name, size = 18 }) {

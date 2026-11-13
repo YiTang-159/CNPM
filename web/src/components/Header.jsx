@@ -4,6 +4,7 @@ import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { isAdmin } from '../api/client.js';
 import { LANGS } from '../shared/i18n.js';
+import AdminAccountMenu from './AdminAccountMenu.jsx';
 
 const LINKS = [
   ['/features', 'nav_features'],
@@ -23,10 +24,23 @@ export default function Header() {
 
   useEffect(() => setOpen(false), [pathname]);
 
+  if (admin) return <header className="site-header site-admin-preview">
+    <div className="wrap bar admin-preview-bar">
+      <Link className="brand" to="/" aria-label="Dubchef - website công khai">
+        <span className="mark" aria-hidden="true"><i /><i /><i /></span>Dubchef
+      </Link>
+      <span className="admin-preview-label">Chế độ xem website công khai</span>
+      <div className="admin-preview-actions">
+        <Link to="/admin/dashboard" className="btn btn-sm btn-primary admin-preview-cta">Về trang quản trị</Link>
+        <AdminAccountMenu compact />
+      </div>
+    </div>
+  </header>;
+
   return (
     <header className="site-header">
       <div className="wrap bar">
-        <Link className="brand" to={admin ? "/admin/dashboard" : "/"} aria-label="Dubchef">
+        <Link className="brand" to="/" aria-label="Dubchef">
           <span className="mark" aria-hidden="true"><i /><i /><i /></span>
           Dubchef
         </Link>
@@ -41,9 +55,7 @@ export default function Header() {
           <span />
         </button>
         <nav id="nav" className={'nav' + (open ? ' open' : '')} aria-label={t('navlabel')}>
-          {admin ? (
-            <NavLink to="/admin/dashboard">{t('nav_admin')}</NavLink>
-          ) : LINKS.map(([to, key]) => (
+          {LINKS.map(([to, key]) => (
             <NavLink key={to} to={to}>{t(key)}</NavLink>
           ))}
           <div className="nav-end">
@@ -62,11 +74,7 @@ export default function Header() {
             </div>
             {user ? (
               <>
-                {admin ? (
-                  <span className="user">{t('hello')}, {user.name || 'Admin'}</span>
-                ) : (
-                  <Link className="user" to="/account">{t('hello')}, {user.name} · Hồ sơ</Link>
-                )}
+                <Link className="user" to="/account">{t('hello')}, {user.name} · Hồ sơ</Link>
                 <button type="button" className="btn btn-sm" onClick={logout}>{t('logout')}</button>
               </>
             ) : (

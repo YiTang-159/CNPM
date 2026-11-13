@@ -499,3 +499,15 @@ footer{border-top:1px solid var(--line);background:var(--panel);padding:56px 0 3
 .media-flow-subtitles{border-left:4px solid #386bb1}
 .media-flow-narrations{border-left:4px solid #2b866b}
 @media(max-width:900px){.media-flow-guide{align-items:start;flex-direction:column}}
+
+/* Chế độ xem website công khai dành cho tài khoản Admin (không phải Dashboard). */
+.site-admin-preview .admin-preview-bar {gap:16px;}
+.admin-preview-label {font-size:.82rem;font-weight:650;color:var(--muted);margin-right:auto;}
+.admin-preview-actions {display:flex;align-items:center;gap:10px;}
+.admin-preview-cta {white-space:nowrap;}
+.admin-preview-banner {background:var(--panel);border-bottom:1px solid var(--line);}
+.admin-preview-banner-inner {display:flex;justify-content:space-between;align-items:center;gap:12px;padding-block:10px;color:var(--muted);font-size:.79rem;}
+.admin-preview-banner a {font-weight:750;color:var(--ink);white-space:nowrap;}
+.admin-purchase-gate {margin:22px 0;padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:var(--panel);max-width:640px;}
+.admin-purchase-gate p {font-size:.86rem;color:var(--muted);margin:9px 0 15px;}
+@media(max-width:760px){.admin-preview-label{display:none;}.admin-preview-banner-inner{align-items:flex-start;flex-direction:column;}.admin-preview-cta{font-size:.76rem;padding:0 9px;}}

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { formatMoney } from '../shared/format.js';
 import { CURRENCIES, HAS_PAYMENT_API, METHODS, orderAmount, orders, paymentPayload } from '../api/orders.js';
 import QrCode from './QrCode.jsx';
+import { isAdmin } from '../api/client.js';
 
 /** Nút Thanh toán và khung thanh toán cho số video đang chọn ở phần tính giá. */
 export default function Checkout({ uploads, outs, total, autoOpen = false }) {
@@ -21,7 +22,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   const [step, setStep] = useState('form'); // 'form' hoặc 'qr'
 
   const refresh = useCallback(() => {
-    if (user) orders.list(user.email).then(setRecent).catch(() => setRecent([]));
+    if (user && !isAdmin(user)) orders.list(user.email).then(setRecent).catch(() => setRecent([]));
   }, [user]);
   useEffect(() => {
     if (open) refresh();
@@ -75,6 +76,12 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
     setPending(null);
     setStep('form');
   }
+
+  if (isAdmin(user)) return <div className="admin-purchase-gate" role="note">
+    <strong>Bảng giá dành cho khách hàng</strong>
+    <p>Tài khoản quản trị chỉ xem trước nội dung công khai. Hãy vào khu vực Admin để kiểm tra chính sách giá, đơn hàng và giao dịch.</p>
+    <Link className="btn btn-sm btn-primary" to="/admin/pricing">Quản lý chính sách giá</Link>
+  </div>;
 
   if (!open) {
     return (

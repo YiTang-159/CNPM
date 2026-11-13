@@ -87,10 +87,13 @@ describe('quản trị dịch vụ dùng API SQL', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ code: 'forbidden' }) }).mockImplementation(() => ok({ videos: [] }));
     vi.stubGlobal('fetch', fetchMock);
     renderAdminComponent(<AdminVideos />);
-    expect(await screen.findByRole('status')).toHaveTextContent('forbidden');
+    // A pending request uses role=status; an API error uses role=alert.
+    // Wait for the actual 403 error rather than matching the loading indicator.
+    expect(await screen.findByRole('alert')).toHaveTextContent('forbidden');
     await userEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
-    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
-    expect(await screen.findByText('Chưa có video. Hãy đăng nhập tài khoản khách để tải video lên.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(await screen.findByText('Chưa có video tải lên trong SQL Server.')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(localStorage.getItem('dubchef-users')).toBeNull();
   });
 });

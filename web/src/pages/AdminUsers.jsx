@@ -1,3 +1,4 @@
+import AdminT, { useAdminT } from '../components/AdminTranslation.jsx';
 import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
@@ -31,6 +32,7 @@ function initials(name) {
 }
 
 export default function AdminUsers() {
+  const tr = useAdminT();
   const { t, L } = useI18n();
   const { user } = useAuth();
   const [params] = useSearchParams();
@@ -90,7 +92,7 @@ export default function AdminUsers() {
       </div>
 
     <AdminActiveFilter params={params} base="/admin/users"/>
-      {actionError ? <p role="alert">{actionError}</p> : null}
+      {actionError ? <p role="alert">{tr(actionError)}</p> : null}
       {failed ? <p role="alert">{t('ad_fail')}</p> : null}
       {!users && !failed ? <p role="status">{t('ad_loading')}</p> : null}
 
@@ -118,13 +120,13 @@ export default function AdminUsers() {
                   <option value="name">{t('ad_sort_name')}</option>
                 </select>
               </label>
-              <label className="adm-field">Trạng thái
-                <select aria-label="Lọc trạng thái người dùng" value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(0);}}>
-                  <option value="all">Tất cả</option><option value="active">Đang hoạt động</option><option value="locked">Đã khóa</option>
+              <label className="adm-field"><AdminT vi={"Trạng thái"} />
+                <select aria-label={tr("Lọc trạng thái người dùng")} value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(0);}}>
+                  <option value="all">{tr("Tất cả")}</option><option value="active">{tr("Đang hoạt động")}</option><option value="locked">{tr("Đã khóa")}</option>
                 </select>
               </label>
             </div>
-            <p className="adm-table-meta">{rows.length}/{total} người dùng · Chọn “Hồ sơ” để đi đến đơn hàng, video và phản hồi liên quan.</p>
+            <p className="adm-table-meta">{rows.length}/{total} <AdminT vi={"người dùng · Chọn “Hồ sơ” để đi đến đơn hàng, video và phản hồi liên quan."} /></p>
 
             {shown.length ? (
               <div className="tbl-wrap">
@@ -147,7 +149,7 @@ export default function AdminUsers() {
                         <td><span className={'chip ' + u.status}>{t(u.status === 'locked' ? 'ad_locked' : 'ad_active')}</span></td>
                         <td>
                           <button type="button" className="btn btn-sm" aria-expanded={selected===u.email} onClick={()=>setSelected(selected===u.email?null:u.email)}>
-                            Hồ sơ<span className="sr-only"> – {u.email}</span>
+                            <AdminT vi={"Hồ sơ"} /><span className="sr-only"> – {u.email}</span>
                           </button>{' '}
                           {asking === u.email ? (
                             <span className="ask" role="group" aria-label={t('ad_confirm_del')}>
@@ -177,12 +179,12 @@ export default function AdminUsers() {
               <p className="fine" style={{ margin: 16 }}>{t('ad_no_match')}</p>
             )}
 
-            {selected && users.some(u=>u.email===selected) && <div className="adm-record-detail" role="region" aria-label={`Hoạt động khách hàng ${selected}`}>
+            {selected && users.some(u=>u.email===selected) && <div className="adm-record-detail" role="region" aria-label={`${tr("Hoạt động khách hàng")} ${selected}`}>
               {users.filter(u=>u.email===selected).map(u=><div key={u.email}>
-                <div className="adm-work-head"><div><h3>{u.name}</h3><p>{u.email} · Trạng thái: {u.status==='active'?'Đang hoạt động':'Đã khóa'}</p></div>
-                  <button className="btn btn-sm" type="button" onClick={()=>setSelected(null)}>Đóng</button></div>
-                <AdminCustomerContext email={u.email} title="Tra cứu dữ liệu của tài khoản"/>
-                <p className="fine">Những đường dẫn này lọc theo email trong danh sách API. Không tự động thay đổi quyền, đơn hàng hoặc nội dung của khách.</p>
+                <div className="adm-work-head"><div><h3>{u.name}</h3><p>{u.email} <AdminT vi={"· Trạng thái:"} /> {u.status==='active'?'Đang hoạt động':'Đã khóa'}</p></div>
+                  <button className="btn btn-sm" type="button" onClick={()=>setSelected(null)}><AdminT vi={"Đóng"} /></button></div>
+                <AdminCustomerContext email={u.email} title={tr("Tra cứu dữ liệu của tài khoản")}/>
+                <p className="fine"><AdminT vi={"Những đường dẫn này lọc theo email trong danh sách API. Không tự động thay đổi quyền, đơn hàng hoặc nội dung của khách."} /></p>
               </div>)}
             </div>}
             {rows.length > PAGE ? (

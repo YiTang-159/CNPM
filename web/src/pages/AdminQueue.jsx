@@ -1,3 +1,4 @@
+import AdminT, { useAdminT } from '../components/AdminTranslation.jsx';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { manageApi } from '../api/workflows.js';
@@ -14,6 +15,7 @@ const types = [
 
 /** Bảng công việc chỉ đọc, dựa trên API hiện hữu; không tự cập nhật trạng thái hoặc thanh toán. */
 export default function AdminQueue() {
+  const tr = useAdminT();
   const [data,setData] = useState({feedback:[],orders:[],media:[],videos:[]});
   const [errors,setErrors] = useState([]);
   const [loading,setLoading] = useState(true);
@@ -47,24 +49,24 @@ export default function AdminQueue() {
   }),[data]);
   function taskDetails(key,item) {
     if (key==='feedback') return {name:`${item.name || item.email} · #${item.id}`, sub:item.message, href:adminHref('/admin/feedback',{email:item.email,status:item.status})};
-    if (key==='orders') return {name:`Đơn #${item.id} · ${item.name || item.email}`,sub:`${item.email || ''} · ${dt(item.createdAt)}`,href:adminHref('/admin/orders',{orderId:item.id})};
+    if (key==='orders') return {name:`${tr('Đơn')} #${item.id} · ${item.name || item.email}`,sub:`${item.email || ''} · ${dt(item.createdAt)}`,href:adminHref('/admin/orders',{orderId:item.id})};
     if (key==='media') return {name:`${item.kindLabel} · Video #${item.videoId} (${item.language})`, sub:item.title, href:`/admin/${item.kind}?status=reviewing&videoId=${encodeURIComponent(item.videoId)}`};
     return {name:`Video #${item.id} · ${item.title}`, sub:`${item.userEmail||''} · ${dt(item.createdAt)}`, href:adminHref('/admin/videos',{videoId:item.id})};
   }
   return <>
-    <div className="adm-head"><div><h1>Việc cần xử lý</h1><p>Một nơi để theo dõi việc đang chờ. Chọn từng mục để xử lý tại trang nghiệp vụ tương ứng.</p></div>
-      <button type="button" className="btn btn-sm" onClick={load} disabled={loading}>{loading?'Đang tải…':'Làm mới'}</button></div>
-    {errors.length>0 && <p className="ops-notice" role="alert">Một số dữ liệu chưa tải được: {errors.join(', ')}. Các mục tương ứng có thể hiển thị thiếu; vui lòng thử làm mới.</p>}
-    <p className="adm-table-meta">Dữ liệu lấy từ các danh sách gần nhất của API, không phải tổng số toàn hệ thống. Trang này chỉ đọc, không tự thay đổi trạng thái bản ghi.</p>
+    <div className="adm-head"><div><h1><AdminT vi={"Việc cần xử lý"} /></h1><p><AdminT vi={"Một nơi để theo dõi việc đang chờ. Chọn từng mục để xử lý tại trang nghiệp vụ tương ứng."} /></p></div>
+      <button type="button" className="btn btn-sm" onClick={load} disabled={loading}>{tr(loading?'Đang tải…':'Làm mới')}</button></div>
+    {errors.length>0 && <p className="ops-notice" role="alert"><AdminT vi={"Một số dữ liệu chưa tải được:"} /> {errors.map(tr).join(', ')}<AdminT vi={". Các mục tương ứng có thể hiển thị thiếu; vui lòng thử làm mới."} /></p>}
+    <p className="adm-table-meta"><AdminT vi={"Dữ liệu lấy từ các danh sách gần nhất của API, không phải tổng số toàn hệ thống. Trang này chỉ đọc, không tự thay đổi trạng thái bản ghi."} /></p>
     <div className="adm-work-summary">
-      {types.map(type=><Link key={type.key} to={type.href}><strong>{loading?'—':data[type.key].length}</strong><span>{type.title}</span><small>{type.description}</small></Link>)}
+      {types.map(type=><Link key={type.key} to={type.href}><strong>{loading?'—':data[type.key].length}</strong><span>{tr(type.title)}</span><small>{tr(type.description)}</small></Link>)}
     </div>
     <div className="adm-queue-grid">
-      {types.map(type=><section className="panel" key={type.key} id={type.key}><div className="adm-work-head"><div><h2>{type.title}</h2><p>{type.description}</p></div>{type.key==='media'?<div className="adm-tools"><Link className="btn btn-sm" to="/admin/narrations?status=reviewing">Thuyết minh</Link><Link className="btn btn-sm" to="/admin/subtitles?status=reviewing">Phụ đề</Link></div>:
-          <Link className="btn btn-sm" to={type.href}>Mở trang</Link>}</div>
+      {types.map(type=><section className="panel" key={type.key} id={type.key}><div className="adm-work-head"><div><h2>{tr(type.title)}</h2><p>{tr(type.description)}</p></div>{type.key==='media'?<div className="adm-tools"><Link className="btn btn-sm" to="/admin/narrations?status=reviewing"><AdminT vi={"Thuyết minh"} /></Link><Link className="btn btn-sm" to="/admin/subtitles?status=reviewing"><AdminT vi={"Phụ đề"} /></Link></div>:
+          <Link className="btn btn-sm" to={type.href}><AdminT vi={"Mở trang"} /></Link>}</div>
         {lists[type.key].length ? lists[type.key].slice(0,6).map((item,i)=>{const task=taskDetails(type.key,item);return <div className="adm-queue-item" key={item.id ?? `${item.kind}-${item.videoId}-${item.language}-${i}`}>
-          <div><strong>{task.name}</strong><small>{task.sub}</small></div><Link to={task.href}>Xử lý →</Link></div>}) : <div className="adm-empty-state">{loading?'Đang tải dữ liệu…':'Không có công việc nào trong nhóm này.'}</div>}
-        {lists[type.key].length>6&&<p className="adm-table-meta">Còn {lists[type.key].length-6} việc khác. Vào trang nghiệp vụ để xem tất cả.</p>}
+          <div><strong>{tr(task.name)}</strong><small>{task.sub}</small></div><Link to={task.href}><AdminT vi={"Xử lý →"} /></Link></div>}) : <div className="adm-empty-state">{tr(loading?'Đang tải dữ liệu…':'Không có công việc nào trong nhóm này.')}</div>}
+        {lists[type.key].length>6&&<p className="adm-table-meta"><AdminT vi={"Còn"} /> {lists[type.key].length-6} <AdminT vi={"việc khác. Vào trang nghiệp vụ để xem tất cả."} /></p>}
       </section>)}
     </div>
   </>;

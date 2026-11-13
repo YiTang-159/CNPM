@@ -1,3 +1,4 @@
+import AdminT, { useAdminT } from '../components/AdminTranslation.jsx';
 import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -27,6 +28,7 @@ function parseLines(value) {
 
 /** Một trang cho thuyết minh/phụ đề: danh sách -> biên tập -> kiểm duyệt -> lịch sử. */
 export default function AdminMediaResults({kind}) {
+  const tr = useAdminT();
   const [params] = useSearchParams();
   const isSubtitle = kind === 'subtitles';
   const label = isSubtitle ? 'Phụ đề' : 'Thuyết minh';
@@ -104,67 +106,67 @@ export default function AdminMediaResults({kind}) {
         version:editor.version,status:editor.status,lines:editor.lines.map(x=>({
           start:x.start,end:x.end,text:x.text.trim()}))});
       setEditor(null);setHistory([]);await load();
-      setMessage(`Đã lưu ${label.toLowerCase()} #${editor.videoId} (${editor.language}) vào SQL, có ghi lịch sử phiên bản.`);
+      setMessage(`${tr('Đã lưu')} ${tr(label).toLowerCase()} #${editor.videoId} (${editor.language}) ${tr('vào SQL, có ghi lịch sử phiên bản.')}`);
     } catch(e) { setMessage('Không lưu được: '+errorText(e)); }
     finally { setSaving(false); }
   }
   return <>
     <div className={`adm-head media-page-heading ${isSubtitle ? 'media-page-subtitles' : 'media-page-narrations'}`}><div>
-      <span className="media-page-kicker">{isSubtitle ? 'VĂN BẢN TRÊN VIDEO' : 'KỊCH BẢN GIỌNG ĐỌC'}</span>
-      <h1>Quản lý {label.toLowerCase()}</h1>
-      <p>{summary}</p>
-    </div><div className="adm-tools"><Link className="btn btn-sm" to={isSubtitle ? adminHref('/admin/narrations',{videoId:params.get('videoId')}) : adminHref('/admin/subtitles',{videoId:params.get('videoId')})}>{isSubtitle ? 'Qua thuyết minh' : 'Qua phụ đề'}</Link><button className="btn btn-sm" type="button" onClick={load} disabled={loading}>Làm mới</button></div></div>
+      <span className="media-page-kicker">{tr(isSubtitle ? 'VĂN BẢN TRÊN VIDEO' : 'KỊCH BẢN GIỌNG ĐỌC')}</span>
+      <h1><AdminT vi={"Quản lý"} /> {tr(label).toLowerCase()}</h1>
+      <p>{tr(summary)}</p>
+    </div><div className="adm-tools"><Link className="btn btn-sm" to={isSubtitle ? adminHref('/admin/narrations',{videoId:params.get('videoId')}) : adminHref('/admin/subtitles',{videoId:params.get('videoId')})}>{tr(isSubtitle ? 'Qua thuyết minh' : 'Qua phụ đề')}</Link><button className="btn btn-sm" type="button" onClick={load} disabled={loading}><AdminT vi={"Làm mới"} /></button></div></div>
     <AdminActiveFilter params={params} base={isSubtitle ? "/admin/subtitles" : "/admin/narrations"}/>
     <div className={`media-flow-guide ${isSubtitle ? 'media-flow-subtitles' : 'media-flow-narrations'}`}>
-      <div><strong>{isSubtitle ? 'Quy trình phụ đề' : 'Quy trình thuyết minh'}</strong>
-        <span>{isSubtitle ? 'Đầu ra: văn bản có thời gian (.srt / .vtt)' : 'Đầu ra hiện tại: kịch bản lời đọc; nghe thử bằng trình duyệt'}</span></div>
+      <div><strong>{tr(isSubtitle ? 'Quy trình phụ đề' : 'Quy trình thuyết minh')}</strong>
+        <span>{tr(isSubtitle ? 'Đầu ra: văn bản có thời gian (.srt / .vtt)' : 'Đầu ra hiện tại: kịch bản lời đọc; nghe thử bằng trình duyệt')}</span></div>
       <ol>{(isSubtitle
         ? ['Chọn video và ngôn ngữ', 'Sửa câu chữ, kiểm tra mốc thời gian', 'Duyệt và xuất tệp phụ đề']
-        : ['Chọn video và ngôn ngữ', 'Soạn kịch bản, nghe thử giọng đọc', 'Duyệt và lưu phiên bản nội dung']).map(step => <li key={step}>{step}</li>)}</ol>
+        : ['Chọn video và ngôn ngữ', 'Soạn kịch bản, nghe thử giọng đọc', 'Duyệt và lưu phiên bản nội dung']).map(step => <li key={step}>{tr(step)}</li>)}</ol>
     </div>
     <div className="ops-kpis">{Object.entries(LABELS).map(([state,name])=><div className="ops-kpi" key={state}>
-      <strong>{counts[state]||0}</strong><span>{name}</span></div>)}</div>
+      <strong>{counts[state]||0}</strong><span>{tr(name)}</span></div>)}</div>
     <section className="panel ops-panel">
-      <div className="ops-head"><h2>{isSubtitle ? 'Danh sách phụ đề theo video' : 'Danh sách kịch bản thuyết minh'}</h2><span className="fine">Hiện {visible.length}/{items.length} bản ghi (tối đa 500 bản gần nhất)</span></div>
+      <div className="ops-head"><h2>{tr(isSubtitle ? 'Danh sách phụ đề theo video' : 'Danh sách kịch bản thuyết minh')}</h2><span className="fine"><AdminT vi={"Hiện"} /> {visible.length}/{items.length} <AdminT vi={"bản ghi (tối đa 500 bản gần nhất)"} /></span></div>
       <div className="ops-toolbar">
-        <label>Tìm video / email<input value={filter.query} placeholder="Tên video, email hoặc mã video" onChange={e=>setFilter(v=>({...v,query:e.target.value}))}/></label>
-        <label>Trạng thái<select value={filter.status} onChange={e=>setFilter(v=>({...v,status:e.target.value}))}>
-          <option value="all">Tất cả</option>{Object.entries(LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
-        <label>Ngôn ngữ<select value={filter.language} onChange={e=>setFilter(v=>({...v,language:e.target.value}))}>
-          <option value="all">Tất cả</option>{languages.map(l=><option key={l}>{l}</option>)}</select></label>
+        <label><AdminT vi={"Tìm video / email"} /><input value={filter.query} placeholder={tr("Tên video, email hoặc mã video")} onChange={e=>setFilter(v=>({...v,query:e.target.value}))}/></label>
+        <label><AdminT vi={"Trạng thái"} /><select value={filter.status} onChange={e=>setFilter(v=>({...v,status:e.target.value}))}>
+          <option value="all">{tr("Tất cả")}</option>{Object.entries(LABELS).map(([k,v])=><option key={k} value={k}>{tr(v)}</option>)}</select></label>
+        <label><AdminT vi={"Ngôn ngữ"} /><select value={filter.language} onChange={e=>setFilter(v=>({...v,language:e.target.value}))}>
+          <option value="all">{tr("Tất cả")}</option>{languages.map(l=><option key={l}>{l}</option>)}</select></label>
       </div>
-      <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Video</th><th>Khách hàng</th><th>Ngôn ngữ</th><th>Trạng thái</th><th>Phiên bản</th><th>Cập nhật</th><th>Thao tác</th></tr></thead>
-        <tbody>{visible.map(row=><tr key={row.id}><td><Link className="adm-inline-link" to={adminHref('/admin/videos',{videoId:row.videoId})}>#{row.videoId}</Link> {row.title}</td><td>{row.userEmail}<Link className="adm-inline-link" to={adminHref('/admin/users',{email:row.userEmail})}>Khách hàng →</Link></td><td>{row.language}</td>
-          <td><span className={`ops-state ops-state-${row.status}`}>{LABELS[row.status]||row.status}</span></td><td>v{row.version}</td>
-          <td>{row.updatedAt?new Date(row.updatedAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'}):'—'}</td><td><button className="btn btn-sm" onClick={()=>selectItem(row)}>{isSubtitle ? 'Biên tập phụ đề' : 'Mở kịch bản'}</button></td></tr>)}</tbody>
-      </table>{!loading && !visible.length?<p className="fine">Chưa có kết quả phù hợp. Hãy xử lý video từ trang User hoặc tạo bản mới bên dưới.</p>:null}</div>
+      <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th><AdminT vi={"Video"} /></th><th><AdminT vi={"Khách hàng"} /></th><th><AdminT vi={"Ngôn ngữ"} /></th><th><AdminT vi={"Trạng thái"} /></th><th><AdminT vi={"Phiên bản"} /></th><th><AdminT vi={"Cập nhật"} /></th><th><AdminT vi={"Thao tác"} /></th></tr></thead>
+        <tbody>{visible.map(row=><tr key={row.id}><td><Link className="adm-inline-link" to={adminHref('/admin/videos',{videoId:row.videoId})}>#{row.videoId}</Link> {row.title}</td><td>{row.userEmail}<Link className="adm-inline-link" to={adminHref('/admin/users',{email:row.userEmail})}><AdminT vi={"Khách hàng →"} /></Link></td><td>{row.language}</td>
+          <td><span className={`ops-state ops-state-${row.status}`}>{tr(LABELS[row.status]||row.status)}</span></td><td>v{row.version}</td>
+          <td>{row.updatedAt?new Date(row.updatedAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'}):'—'}</td><td><button className="btn btn-sm" onClick={()=>selectItem(row)}>{tr(isSubtitle ? 'Biên tập phụ đề' : 'Mở kịch bản')}</button></td></tr>)}</tbody>
+      </table>{!loading && !visible.length?<p className="fine"><AdminT vi={"Chưa có kết quả phù hợp. Hãy xử lý video từ trang User hoặc tạo bản mới bên dưới."} /></p>:null}</div>
     </section>
-    <section className="panel ops-panel"><h2>{isSubtitle ? 'Tạo phụ đề cho video đã tải lên' : 'Tạo kịch bản thuyết minh cho video đã tải lên'}</h2>
-      <p className="fine">{isSubtitle ? 'Khởi tạo bộ câu chữ cần hiển thị trên video và thời gian xuất hiện.' : 'Khởi tạo kịch bản sẽ được dùng để thuyết minh bằng giọng nói. Chưa tạo tệp âm thanh.'}</p>
+    <section className="panel ops-panel"><h2>{tr(isSubtitle ? 'Tạo phụ đề cho video đã tải lên' : 'Tạo kịch bản thuyết minh cho video đã tải lên')}</h2>
+      <p className="fine">{tr(isSubtitle ? 'Khởi tạo bộ câu chữ cần hiển thị trên video và thời gian xuất hiện.' : 'Khởi tạo kịch bản sẽ được dùng để thuyết minh bằng giọng nói. Chưa tạo tệp âm thanh.')}</p>
       <div className="ops-toolbar"><label>Video<select value={newData.videoId} onChange={e=>setNewData(v=>({...v,videoId:e.target.value}))}>
-        <option value="">-- Chọn video --</option>{videos.map(v=><option key={v.id} value={v.id}>#{v.id} – {v.title} ({v.userEmail})</option>)}</select></label>
-        <label>Ngôn ngữ<select value={newData.language} onChange={e=>setNewData(v=>({...v,language:e.target.value}))}>
+        <option value="">{tr("-- Chọn video --")}</option>{videos.map(v=><option key={v.id} value={v.id}>#{v.id} – {v.title} ({v.userEmail})</option>)}</select></label>
+        <label><AdminT vi={"Ngôn ngữ"} /><select value={newData.language} onChange={e=>setNewData(v=>({...v,language:e.target.value}))}>
           {languages.map(l=><option key={l} value={l}>{l}</option>)}</select></label>
-        <button className="btn" onClick={newEditor}>Tạo bản nháp</button></div>
-      {!videos.length?<p className="fine">Chưa có video trong SQL Server. Khách hàng cần tải video trước khi biên tập nội dung.</p>:null}
+        <button className="btn" onClick={newEditor}><AdminT vi={"Tạo bản nháp"} /></button></div>
+      {!videos.length?<p className="fine"><AdminT vi={"Chưa có video trong SQL Server. Khách hàng cần tải video trước khi biên tập nội dung."} /></p>:null}
     </section>
-    {message?<p className="ops-notice" role="status">{message}</p>:null}
-    {editor && <section className="panel ops-panel" aria-label="Biên tập nội dung">
-      <div className="ops-head"><div><h2>Biên tập {label.toLowerCase()} – #{editor.videoId} / {editor.language}</h2>
-        <p className="fine">{editor.title} · Phiên bản hiện tại: v{editor.version}{editor.originalStatus==='published'?' · Nếu sửa bản đã xuất bản, hãy chuyển về Bản nháp.':''}</p></div>
-        <button className="btn btn-sm" onClick={()=>{setEditor(null);setHistory([])}}>Đóng</button></div>
-      <div className="ops-toolbar"><label>Trạng thái kiểm duyệt<select value={editor.status} onChange={e=>setEditor(v=>({...v,status:e.target.value}))}>
-        {Object.entries(LABELS).map(([s,t])=><option value={s} key={s}>{t}</option>)}</select></label>
-        <p className="fine">Xuất bản chỉ khi bản ghi đang ở trạng thái Chờ duyệt. Mọi lần lưu đều ghi lịch sử.</p></div>
+    {message?<p className="ops-notice" role="status">{tr(message)}</p>:null}
+    {editor && <section className="panel ops-panel" aria-label={tr("Biên tập nội dung")}>
+      <div className="ops-head"><div><h2><AdminT vi={"Biên tập"} /> {tr(label).toLowerCase()} – #{editor.videoId} / {editor.language}</h2>
+        <p className="fine">{editor.title} <AdminT vi={"· Phiên bản hiện tại: v"} />{editor.version}{tr(editor.originalStatus==='published'?' · Nếu sửa bản đã xuất bản, hãy chuyển về Bản nháp.':'')}</p></div>
+        <button className="btn btn-sm" onClick={()=>{setEditor(null);setHistory([])}}><AdminT vi={"Đóng"} /></button></div>
+      <div className="ops-toolbar"><label><AdminT vi={"Trạng thái kiểm duyệt"} /><select value={editor.status} onChange={e=>setEditor(v=>({...v,status:e.target.value}))}>
+        {Object.entries(LABELS).map(([s,t])=><option value={s} key={s}>{tr(t)}</option>)}</select></label>
+        <p className="fine"><AdminT vi={"Xuất bản chỉ khi bản ghi đang ở trạng thái Chờ duyệt. Mọi lần lưu đều ghi lịch sử."} /></p></div>
       {isSubtitle ? <SubtitleEditor key={`${editor.videoId}-${editor.language}`} editor={editor} patchRow={patchRow}
         addRow={addRow} removeRow={removeRow} onNotice={setMessage} />
         : <NarrationEditor key={`${editor.videoId}-${editor.language}`} editor={editor} patchRow={patchRow}
           addRow={addRow} removeRow={removeRow} onNotice={setMessage} />}
-      <div className="adm-actions ops-gap"><button className="btn btn-primary" disabled={saving} onClick={save}>{saving?'Đang lưu…':'Lưu vào SQL Server'}</button></div>
-      <h3>Lịch sử chỉnh sửa</h3>
-      {history.length?<div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Phiên bản</th><th>Trạng thái</th><th>Người sửa</th><th>Thời gian</th></tr></thead>
-        <tbody>{history.map(h=><tr key={h.id}><td>v{h.version}</td><td>{LABELS[h.status]||h.status}</td><td>{h.editor}</td>
-          <td>{new Date(h.changedAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'})}</td></tr>)}</tbody></table></div>:<p className="fine">Chưa có lịch sử chỉnh sửa bằng Admin.</p>}
+      <div className="adm-actions ops-gap"><button className="btn btn-primary" disabled={saving} onClick={save}>{tr(saving?'Đang lưu…':'Lưu vào SQL Server')}</button></div>
+      <h3><AdminT vi={"Lịch sử chỉnh sửa"} /></h3>
+      {history.length?<div className="adm-table-wrap"><table className="adm-table"><thead><tr><th><AdminT vi={"Phiên bản"} /></th><th><AdminT vi={"Trạng thái"} /></th><th><AdminT vi={"Người sửa"} /></th><th><AdminT vi={"Thời gian"} /></th></tr></thead>
+        <tbody>{history.map(h=><tr key={h.id}><td>v{h.version}</td><td>{tr(LABELS[h.status]||h.status)}</td><td>{h.editor}</td>
+          <td>{new Date(h.changedAt).toLocaleString('vi-VN', {timeZone:'Asia/Ho_Chi_Minh'})}</td></tr>)}</tbody></table></div>:<p className="fine"><AdminT vi={"Chưa có lịch sử chỉnh sửa bằng Admin."} /></p>}
     </section>}
   </>;
 }

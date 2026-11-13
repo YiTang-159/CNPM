@@ -1,3 +1,4 @@
+import AdminT, { useAdminT } from './AdminTranslation.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import './AdminServices.css';
@@ -23,19 +24,20 @@ export function useAdminRecords(load) {
 }
 
 export function ServiceHeader({ title, description, loading, reload, search, setSearch }) {
+  const tr = useAdminT();
   return <>
     <div className="adm-head"><div><h1>{title}</h1><p>{description}</p></div></div>
     <div className="service-toolbar">
-      <label>Tìm kiếm<input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tên, email hoặc nội dung" /></label>
-      <button type="button" className="btn" disabled={loading} onClick={reload}>Làm mới danh sách</button>
+      <label><AdminT vi={"Tìm kiếm"} /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={tr("Tên, email hoặc nội dung")} /></label>
+      <button type="button" className="btn" disabled={loading} onClick={reload}><AdminT vi={"Làm mới danh sách"} /></button>
     </div>
   </>;
 }
 
 export function ServiceState({ loading, error, empty }) {
-  if (loading) return <p role="status">Đang tải dữ liệu…</p>;
+  if (loading) return <p role="status"><AdminT vi={"Đang tải dữ liệu…"} /></p>;
   if (error) return <p className="service-error" role="alert">{error}</p>;
-  if (empty) return <p className="service-empty">Chưa có dữ liệu phù hợp.</p>;
+  if (empty) return <p className="service-empty"><AdminT vi={"Chưa có dữ liệu phù hợp."} /></p>;
   return null;
 }
 

@@ -1,3 +1,4 @@
+import AdminT from '../components/AdminTranslation.jsx';
 import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
@@ -25,15 +26,15 @@ export default function Admin() {
   useEffect(()=>{load();},[load]);
   useAutoRefresh(load);
   return <>
-    <div className="adm-head"><div><h1>Thống kê truy cập</h1>
-      <p>Theo dõi người truy cập và lượt xem theo thời gian. Dữ liệu vận hành, đơn hàng và công việc nằm tại Tổng quan hệ thống.</p></div>
-      <div className="adm-tools"><Link className="btn btn-sm" to="/admin/dashboard">Về tổng quan</Link>
+    <div className="adm-head"><div><h1><AdminT vi={"Thống kê truy cập"} /></h1>
+      <p><AdminT vi={"Theo dõi người truy cập và lượt xem theo thời gian. Dữ liệu vận hành, đơn hàng và công việc nằm tại Tổng quan hệ thống."} /></p></div>
+      <div className="adm-tools"><Link className="btn btn-sm" to="/admin/dashboard"><AdminT vi={"Về tổng quan"} /></Link>
         <div className="seg" role="group" aria-label={t('ad_range')}>
           {RANGES.map(n=><button key={n} type="button" aria-pressed={span===n} onClick={()=>setSpan(n)}>{t('ad_r'+n)}</button>)}
         </div><button type="button" className="btn btn-sm" onClick={load}>{t('ad_refresh')}</button>
       </div></div>
     {!HAS_API&&<p className="adm-note">{t('ad_local')} <button type="button" className="btn btn-sm" onClick={()=>{statsApi.seed();adminApi.seed();load();}}>{t('ad_seed')}</button> <button type="button" className="btn btn-sm" onClick={()=>{statsApi.reset();adminApi.clearSamples();load();}}>{t('ad_reset')}</button></p>}
-    {failed&&<p role="alert" className="ops-notice">Không tải được thống kê. Kiểm tra kết nối API hoặc đăng nhập lại.</p>}
+    {failed&&<p role="alert" className="ops-notice"><AdminT vi={"Không tải được thống kê. Kiểm tra kết nối API hoặc đăng nhập lại."} /></p>}
     {!st&&!failed&&<p role="status">{t('ad_loading')}</p>}
     {st&&<><div className="kpis">
       <Kpi id="ad-now" label={t('ad_now')} value={num(L,st.activeNow)}>{t('ad_now_d')}</Kpi>

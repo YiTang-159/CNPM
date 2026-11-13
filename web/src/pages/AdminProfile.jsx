@@ -1,3 +1,4 @@
+import AdminT, { useAdminT } from '../components/AdminTranslation.jsx';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -6,6 +7,7 @@ import PasswordInput from '../components/PasswordInput.jsx';
 
 /** Hồ sơ Admin dùng API /api/me hiện có; không dùng trang Account của khách. */
 export default function AdminProfile() {
+  const tr = useAdminT();
   const { user, updateUser } = useAuth();
   const [name, setName] = useState(user?.name || '');
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
@@ -43,30 +45,30 @@ export default function AdminProfile() {
   }
 
   return <>
-    <div className="adm-head"><div><h1>Hồ sơ & bảo mật</h1><p>Cập nhật thông tin đăng nhập quản trị. Thay đổi được lưu qua API và SQL Server.</p></div>
-      <Link to="/admin/dashboard" className="btn btn-sm">Về tổng quan</Link></div>
-    {status && <p className="adm-profile-success" role="status">{status}</p>}
-    {error && <p className="adm-profile-error" role="alert">{error}</p>}
+    <div className="adm-head"><div><h1><AdminT vi={"Hồ sơ & bảo mật"} /></h1><p><AdminT vi={"Cập nhật thông tin đăng nhập quản trị. Thay đổi được lưu qua API và SQL Server."} /></p></div>
+      <Link to="/admin/dashboard" className="btn btn-sm"><AdminT vi={"Về tổng quan"} /></Link></div>
+    {status && <p className="adm-profile-success" role="status">{tr(status)}</p>}
+    {error && <p className="adm-profile-error" role="alert">{tr(error)}</p>}
     <div className="adm-profile-grid">
-      <section className="panel adm-profile-card"><h2>Thông tin tài khoản</h2><p className="fine-i">Bạn đang đăng nhập với vai trò quản trị viên.</p>
+      <section className="panel adm-profile-card"><h2><AdminT vi={"Thông tin tài khoản"} /></h2><p className="fine-i"><AdminT vi={"Bạn đang đăng nhập với vai trò quản trị viên."} /></p>
         <form onSubmit={saveProfile}>
-          <label htmlFor="admin-profile-name">Tên hiển thị</label>
+          <label htmlFor="admin-profile-name"><AdminT vi={"Tên hiển thị"} /></label>
           <input id="admin-profile-name" value={name} maxLength={100} required onChange={e => setName(e.target.value)} />
-          <label htmlFor="admin-profile-email">Email đăng nhập</label>
+          <label htmlFor="admin-profile-email"><AdminT vi={"Email đăng nhập"} /></label>
           <input id="admin-profile-email" value={user?.email || ''} readOnly />
-          <p className="fine-i">Email và vai trò quản trị không thể thay đổi tại đây.</p>
-          <button type="submit" className="btn btn-primary" disabled={busy}>Lưu thông tin</button>
+          <p className="fine-i"><AdminT vi={"Email và vai trò quản trị không thể thay đổi tại đây."} /></p>
+          <button type="submit" className="btn btn-primary" disabled={busy}><AdminT vi={"Lưu thông tin"} /></button>
         </form>
       </section>
-      <section className="panel adm-profile-card"><h2>Đổi mật khẩu</h2><p className="fine-i">Chỉ thay đổi mật khẩu của tài khoản đang đăng nhập.</p>
+      <section className="panel adm-profile-card"><h2><AdminT vi={"Đổi mật khẩu"} /></h2><p className="fine-i"><AdminT vi={"Chỉ thay đổi mật khẩu của tài khoản đang đăng nhập."} /></p>
         <form onSubmit={savePassword}>
-          <label htmlFor="admin-pass-current">Mật khẩu hiện tại</label>
+          <label htmlFor="admin-pass-current"><AdminT vi={"Mật khẩu hiện tại"} /></label>
           <PasswordInput id="admin-pass-current" autoComplete="current-password" value={passwords.current} onChange={e => setPasswords(p => ({ ...p, current: e.target.value }))} />
-          <label htmlFor="admin-pass-next">Mật khẩu mới</label>
+          <label htmlFor="admin-pass-next"><AdminT vi={"Mật khẩu mới"} /></label>
           <PasswordInput id="admin-pass-next" autoComplete="new-password" value={passwords.next} onChange={e => setPasswords(p => ({ ...p, next: e.target.value }))} />
-          <label htmlFor="admin-pass-confirm">Xác nhận mật khẩu mới</label>
+          <label htmlFor="admin-pass-confirm"><AdminT vi={"Xác nhận mật khẩu mới"} /></label>
           <PasswordInput id="admin-pass-confirm" autoComplete="new-password" value={passwords.confirm} onChange={e => setPasswords(p => ({ ...p, confirm: e.target.value }))} />
-          <button type="submit" className="btn btn-primary" disabled={busy}>Cập nhật mật khẩu</button>
+          <button type="submit" className="btn btn-primary" disabled={busy}><AdminT vi={"Cập nhật mật khẩu"} /></button>
         </form>
       </section>
     </div>

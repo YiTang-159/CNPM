@@ -1,3 +1,4 @@
+import AdminT, { useAdminT } from '../components/AdminTranslation.jsx';
 import { formatMinorMoney } from '../shared/format.js';
 import { useAutoRefresh } from '../utils/useAutoRefresh.js';
 import { useCallback, useEffect, useState } from 'react';
@@ -22,19 +23,21 @@ const summaryCards = [
 ];
 
 function DataTable({ heading, to, columns, rows, fields }) {
+  const tr = useAdminT();
   return <section className="panel dashboard-table">
-    <div className="panel-head"><h2>{heading}</h2><Link to={to}>Xem tất cả →</Link></div>
+    <div className="panel-head"><h2>{heading}</h2><Link to={to}><AdminT vi={"Xem tất cả →"} /></Link></div>
     <div className="tbl-wrap"><table className="utable">
-      <thead><tr>{columns.map(c=><th scope="col" key={c}>{c}</th>)}</tr></thead>
+      <thead><tr>{columns.map(c=><th scope="col" key={c}>{tr(c)}</th>)}</tr></thead>
       <tbody>{rows.length ? rows.map((r,i)=><tr key={r.id ?? i}>
         {fields.map((fn,j)=><td key={j}>{fn(r)}</td>)}
-      </tr>) : <tr><td colSpan={columns.length}>Chưa có dữ liệu trong SQL Server.</td></tr>}</tbody>
+      </tr>) : <tr><td colSpan={columns.length}><AdminT vi={"Chưa có dữ liệu trong SQL Server."} /></td></tr>}</tbody>
     </table></div>
   </section>;
 }
 
 /** Dữ liệu thật từ DubchefDB, chỉ Admin có token mới gọi được endpoint. */
 export default function AdminDashboard() {
+  const tr = useAdminT();
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -63,63 +66,63 @@ export default function AdminDashboard() {
   const latest = data?.latest || {};
   return <>
     <div className="adm-head">
-      <div><h1>Tổng quan điều hành</h1><p>Số liệu vận hành từ SQL Server · Cập nhật: {date(data?.generatedAt)}</p></div>
-      <div className="adm-tools"><Link className="btn btn-sm" to="/admin/queue">Việc cần xử lý</Link><button type="button" className="btn btn-sm" onClick={() => load()}>Làm mới dữ liệu</button></div>
+      <div><h1><AdminT vi={"Tổng quan điều hành"} /></h1><p><AdminT vi={"Số liệu vận hành từ SQL Server · Cập nhật:"} /> {date(data?.generatedAt)}</p></div>
+      <div className="adm-tools"><Link className="btn btn-sm" to="/admin/queue"><AdminT vi={"Việc cần xử lý"} /></Link><button type="button" className="btn btn-sm" onClick={() => load()}><AdminT vi={"Làm mới dữ liệu"} /></button></div>
     </div>
-    {loading && <p role="status">Đang tải dữ liệu từ SQL Server…</p>}
-    {error && <p role="alert" className="err">{error}</p>}
+    {loading && <p role="status"><AdminT vi={"Đang tải dữ liệu từ SQL Server…"} /></p>}
+    {error && <p role="alert" className="err">{tr(error)}</p>}
     {data && <>
-      <div className="adm-work-head"><div><h2>Toàn cảnh hoạt động</h2><p>Chọn một chỉ số để đi đến trang quản lý tương ứng.</p></div><Link className="btn btn-sm" to="/admin/queue">Xem việc cần xử lý →</Link></div>
+      <div className="adm-work-head"><div><h2><AdminT vi={"Toàn cảnh hoạt động"} /></h2><p><AdminT vi={"Chọn một chỉ số để đi đến trang quản lý tương ứng."} /></p></div><Link className="btn btn-sm" to="/admin/queue"><AdminT vi={"Xem việc cần xử lý →"} /></Link></div>
       <div className="kpis dashboard-kpis">
         {summaryCards.map(([key,title,to,description]) =>
           <Link to={to} className="dashboard-kpi-link" key={key}>
-            <Kpi label={title} value={number(st[key])}>{description}</Kpi>
+            <Kpi label={tr(title)} value={number(st[key])}>{tr(description)}</Kpi>
           </Link>)}
       </div>
-      <section className="panel adm-journey-panel"><div className="panel-head"><h2>Điều hành theo quy trình</h2><span className="fine">Đi nhanh từ khách hàng đến giao dịch và nội dung</span></div>
-        <nav className="adm-journey" aria-label="Các quy trình quản trị">
-          <Link to="/admin/users"><strong>1. Khách hàng</strong><small>Trạng thái và lịch sử liên quan</small></Link>
-          <Link to="/admin/pricing"><strong>2. Gói & chính sách giá</strong><small>Kiểm tra đơn giá đang áp dụng</small></Link>
-          <Link to="/admin/orders"><strong>3. Đơn hàng</strong><small>Tra cứu và liên kết tài khoản</small></Link>
-          <Link to="/admin/payments"><strong>4. Đối soát</strong><small>Kiểm tra giao dịch mô phỏng</small></Link>
-          <Link to="/admin/videos"><strong>5. Video & nội dung</strong><small>Biên tập, kiểm duyệt kết quả</small></Link>
+      <section className="panel adm-journey-panel"><div className="panel-head"><h2><AdminT vi={"Điều hành theo quy trình"} /></h2><span className="fine"><AdminT vi={"Đi nhanh từ khách hàng đến giao dịch và nội dung"} /></span></div>
+        <nav className="adm-journey" aria-label={tr("Các quy trình quản trị")}>
+          <Link to="/admin/users"><strong><AdminT vi={"1. Khách hàng"} /></strong><small><AdminT vi={"Trạng thái và lịch sử liên quan"} /></small></Link>
+          <Link to="/admin/pricing"><strong><AdminT vi={"2. Gói & chính sách giá"} /></strong><small><AdminT vi={"Kiểm tra đơn giá đang áp dụng"} /></small></Link>
+          <Link to="/admin/orders"><strong><AdminT vi={"3. Đơn hàng"} /></strong><small><AdminT vi={"Tra cứu và liên kết tài khoản"} /></small></Link>
+          <Link to="/admin/payments"><strong><AdminT vi={"4. Đối soát"} /></strong><small><AdminT vi={"Kiểm tra giao dịch mô phỏng"} /></small></Link>
+          <Link to="/admin/videos"><strong><AdminT vi={"5. Video & nội dung"} /></strong><small><AdminT vi={"Biên tập, kiểm duyệt kết quả"} /></small></Link>
         </nav></section>
       <section className="panel">
-        <div className="panel-head"><h2>Những việc cần chú ý</h2><Link to="/admin/queue">Xem hàng đợi công việc →</Link></div>
+        <div className="panel-head"><h2><AdminT vi={"Những việc cần chú ý"} /></h2><Link to="/admin/queue"><AdminT vi={"Xem hàng đợi công việc →"} /></Link></div>
         <div className="dashboard-alerts">
-          <Link to="/admin/feedback"><b>{number(st.openFeedback)}</b><span>Phản hồi chưa giải quyết</span></Link>
-          <Link to="/admin/videos"><b>{number(st.processingVideos)}</b><span>Video đang xử lý</span></Link>
-          <Link to="/admin/orders?status=pending"><b>{number(st.pendingOrders)}</b><span>Đơn hàng đang chờ</span></Link>
-          <Link to="/admin/queue"><b>{number(st.pendingMediaReview)}</b><span>Thuyết minh / phụ đề chờ duyệt</span></Link>
-          <Link to="/admin/feedback"><b>{number(st.urgentFeedback)}</b><span>Phản hồi ưu tiên cao cần xử lý</span></Link>
+          <Link to="/admin/feedback"><b>{number(st.openFeedback)}</b><span><AdminT vi={"Phản hồi chưa giải quyết"} /></span></Link>
+          <Link to="/admin/videos"><b>{number(st.processingVideos)}</b><span><AdminT vi={"Video đang xử lý"} /></span></Link>
+          <Link to="/admin/orders?status=pending"><b>{number(st.pendingOrders)}</b><span><AdminT vi={"Đơn hàng đang chờ"} /></span></Link>
+          <Link to="/admin/queue"><b>{number(st.pendingMediaReview)}</b><span><AdminT vi={"Thuyết minh / phụ đề chờ duyệt"} /></span></Link>
+          <Link to="/admin/feedback"><b>{number(st.urgentFeedback)}</b><span><AdminT vi={"Phản hồi ưu tiên cao cần xử lý"} /></span></Link>
         </div>
       </section>
       <section className="panel">
-        <div className="panel-head"><h2>Đơn đã đánh dấu thanh toán theo loại tiền</h2><Link to="/admin/orders">Quản lý đơn hàng →</Link></div>
-        <p className="fine-i">{data.paymentNote}</p>
+        <div className="panel-head"><h2><AdminT vi={"Đơn đã đánh dấu thanh toán theo loại tiền"} /></h2><Link to="/admin/orders"><AdminT vi={"Quản lý đơn hàng →"} /></Link></div>
+        <p className="fine-i">{tr(data.paymentNote)}</p>
         <div className="dashboard-currencies">
           {data.paidOrdersByCurrency?.length ? data.paidOrdersByCurrency.map(c =>
             <div className="dashboard-currency" key={c.currency}>
               <span>{String(c.currency).trim()}</span><strong>{money(c.amount,c.currency)}</strong>
-              <small>{number(c.orders)} đơn</small>
-            </div>) : <p>Chưa có đơn nào được đánh dấu đã thanh toán.</p>}
+              <small>{number(c.orders)} <AdminT vi={"đơn"} /></small>
+            </div>) : <p><AdminT vi={"Chưa có đơn nào được đánh dấu đã thanh toán."} /></p>}
         </div>
       </section>
       <div className="dashboard-tables">
-        <DataTable heading="Người dùng mới" to="/admin/users" columns={['Họ tên','Email','Trạng thái','Thời điểm']}
+        <DataTable heading={tr("Người dùng mới")} to="/admin/users" columns={['Họ tên','Email','Trạng thái','Thời điểm']}
           rows={latest.users || []} fields={[
-            r=>r.name, r=>r.email, r=>r.status, r=>date(r.createdAt)]}/>
-        <DataTable heading="Video mới tải" to="/admin/videos" columns={['Video','Chủ sở hữu','Trạng thái','Kết quả']}
+            r=>r.name, r=>r.email, r=>tr(r.status), r=>date(r.createdAt)]}/>
+        <DataTable heading={tr("Video mới tải")} to="/admin/videos" columns={['Video','Chủ sở hữu','Trạng thái','Kết quả']}
           rows={latest.videos || []} fields={[
-            r=>r.title, r=>r.email, r=>r.status, r=>`${number(r.narrations)} TM · ${number(r.subtitles)} PĐ`]}/>
-        <DataTable heading="Phản hồi gần nhất" to="/admin/feedback" columns={['Người gửi','Nội dung','Trạng thái','Ngày']}
+            r=>r.title, r=>r.email, r=>tr(r.status), r=>`${number(r.narrations)} TM · ${number(r.subtitles)} PĐ`]}/>
+        <DataTable heading={tr("Phản hồi gần nhất")} to="/admin/feedback" columns={['Người gửi','Nội dung','Trạng thái','Ngày']}
           rows={latest.feedback || []} fields={[
-            r=>r.email, r=>r.message, r=>r.status, r=>date(r.createdAt)]}/>
-        <DataTable heading="Đơn hàng mới nhất" to="/admin/orders" columns={['Khách hàng','Số tiền','Trạng thái','Ngày']}
+            r=>r.email, r=>r.message, r=>tr(r.status), r=>date(r.createdAt)]}/>
+        <DataTable heading={tr("Đơn hàng mới nhất")} to="/admin/orders" columns={['Khách hàng','Số tiền','Trạng thái','Ngày']}
           rows={latest.orders || []} fields={[
-            r=>r.email, r=>money(r.amount,r.currency), r=>r.status, r=>date(r.createdAt)]}/>
+            r=>r.email, r=>money(r.amount,r.currency), r=>tr(r.status), r=>date(r.createdAt)]}/>
       </div>
-      <p className="fine-i">Mỗi thông tin có trang quản lý chi tiết. Dashboard chỉ đọc và không thay đổi bản ghi.</p>
+      <p className="fine-i"><AdminT vi={"Mỗi thông tin có trang quản lý chi tiết. Dashboard chỉ đọc và không thay đổi bản ghi."} /></p>
     </>}
   </>;
 }

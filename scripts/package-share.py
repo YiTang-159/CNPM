@@ -32,6 +32,10 @@ PATTERNS = (
 
 def is_private(path: Path) -> bool:
     relative = path.relative_to(ROOT)
+    # Single purpose-built public illustration; do NOT whitelist uploads or user media.
+    if relative.as_posix() == 'web/public/demo/recipe-demo.mp4':
+        return path.stat().st_size > 2_000_000
+
     parts = relative.parts
     if any(part in BLOCKED_DIRS for part in parts[:-1]):
         return True

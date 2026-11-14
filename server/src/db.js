@@ -8,6 +8,8 @@ import { hashPassword } from './auth.js';
 import { attachWorkflows } from './workflows.js';
 import { attachAdminOperations } from './adminOperations.js';
 import { attachLegacyOrders } from './legacyOrders.js';
+import { attachPricing } from './pricingRepo.js';
+import { calculateOrderSnapshot } from './pricingPolicy.js';
 import { lockAccount, charge, grantPaidOrder, refundUnfinishedUpload, balance } from './entitlements.js';
 
 const DB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db');
@@ -62,6 +64,10 @@ const mapOrder = (r) => ({
   outs: r.SoVideoDich,
   currency: r.LoaiTien.trim(),
   amountMinor: Number(r.SoTien), // BIGINT trả về dạng chuỗi
+  priceSnapshot: r.PhienBanGiaSnapshot == null ? null : {
+    uploadMinor:Number(r.DonGiaDangSnapshot),translationMinor:Number(r.DonGiaDichSnapshot),
+    version:Number(r.PhienBanGiaSnapshot),currency:r.LoaiTien.trim(),
+  },
   status: r.TrangThai,
   createdAt: new Date(r.NgayTao).toISOString(),
   ref: r.MaThamChieu || null,
@@ -134,6 +140,8 @@ export async function openRepo() {
   await runScript(pool, '12-quyen-su-dung-goi.sql');
   // Idempotent migration; creates only the evidence/audit table, never assigns owners.
   await runScript(pool, '13-doi-soat-chu-don-hang-cu.sql');
+  await runScript(pool, 'migrations/014_pricing.sql');
+  await runScript(pool, 'seed/001_pricing_defaults.sql');
   console.log('SQL Server sẵn sàng.');
 
   const repo = {
@@ -149,23 +157,31 @@ export async function openRepo() {
     },
 
     async createOrder(o) {
-      // Không để client tự chỉ định chủ đơn hàng. Kiểm tra MaNguoiDung/email/trạng thái
-      // ngay trong cùng câu INSERT: không có tài khoản hợp lệ thì không tạo đơn.
-      const r = await pool.request()
-        .input('uid', sql.Int, o.userId)
-        .input('name', sql.NVarChar(100), o.name)
-        .input('email', sql.NVarChar(254), o.email)
-        .input('up', sql.Int, o.uploads)
-        .input('out', sql.Int, o.outs)
-        .input('cur', sql.Char(3), o.currency)
-        .input('amt', sql.BigInt, o.amountMinor)
-        .query(`INSERT INTO dbo.DonHang (MaNguoiDung, TenKhachHang, EmailKhachHang,
-                  SoVideoDang, SoVideoDich, LoaiTien, SoTien)
-                OUTPUT inserted.*
-                SELECT u.MaNguoiDung, @name, @email, @up, @out, @cur, @amt
-                FROM dbo.NguoiDung u
-                WHERE u.MaNguoiDung=@uid AND u.Email=@email AND u.TrangThai='active'`);
-      return r.recordset[0] ? mapOrder(r.recordset[0]) : null;
+      const tx = new sql.Transaction(pool); await tx.begin();
+      try {
+        // Locks the source price until the order snapshot is written. Client amount is ignored.
+        const row=(await new sql.Request(tx).input('cur',sql.Char(3),o.currency)
+          .query('SELECT * FROM dbo.BangGia WITH (HOLDLOCK) WHERE LoaiTien=@cur')).recordset[0];
+        if(!row) throw Object.assign(new Error('invalid_currency'),{code:'invalid_currency'});
+        const price={currency:row.LoaiTien.trim(),uploadMinor:Number(row.DonGiaDangMinor),
+          translationMinor:Number(row.DonGiaDichMinor),maxVideos:row.GioiHanVideo,
+          maxTranslations:row.GioiHanBanDich,version:Number(row.PhienBan)};
+        if(o.priceVersion != null && o.priceVersion !== price.version)
+          throw Object.assign(new Error('price_changed'),{code:'price_changed'});
+        const quote=calculateOrderSnapshot(price,o.uploads,o.outs);
+        const r=await new sql.Request(tx).input('uid',sql.Int,o.userId)
+          .input('name',sql.NVarChar(100),o.name).input('email',sql.NVarChar(254),o.email)
+          .input('up',sql.Int,o.uploads).input('out',sql.Int,o.outs)
+          .input('cur',sql.Char(3),quote.currency).input('amt',sql.BigInt,quote.amountMinor)
+          .input('priceUp',sql.BigInt,quote.uploadMinor).input('priceOut',sql.BigInt,quote.translationMinor)
+          .input('version',sql.BigInt,quote.version)
+          .query(`INSERT INTO dbo.DonHang (MaNguoiDung,TenKhachHang,EmailKhachHang,
+            SoVideoDang,SoVideoDich,LoaiTien,SoTien,DonGiaDangSnapshot,DonGiaDichSnapshot,PhienBanGiaSnapshot)
+            OUTPUT inserted.* SELECT u.MaNguoiDung,@name,@email,@up,@out,@cur,@amt,@priceUp,@priceOut,@version
+            FROM dbo.NguoiDung u WHERE u.MaNguoiDung=@uid AND u.Email=@email AND u.TrangThai='active'`);
+        await tx.commit();
+        return r.recordset[0] ? mapOrder(r.recordset[0]) : null;
+      } catch(e) { await tx.rollback().catch(()=>{}); throw e; }
     },
 
     // Tra cứu trạng thái đã lưu của một đơn. userId=null chỉ dành cho webhook đã xác minh chữ ký.
@@ -447,6 +463,7 @@ export async function openRepo() {
     /** Cùng dạng với visitStats: visitors = số người quét (không trùng), views = số lượt quét. */
     qrStats: (span, tz, now) => aggregate(pool, 'dbo.LuotQuetQR', 'NgayQuet', span, tz, now),
   };
+  attachPricing(pool, repo);
   attachWorkflows(pool, repo);
   attachAdminOperations(pool, repo);
   attachLegacyOrders(pool, repo);

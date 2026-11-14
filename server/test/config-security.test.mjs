@@ -13,13 +13,13 @@ test('production requires strong separate SQL and token secrets, and explicit CO
     const bad = { ...strong }; delete bad[missing];
     assert.throws(() => validateServerEnvironment(bad));
   }
-  assert.throws(() => validateServerEnvironment({ ...strong, DB_PASSWORD: 'Dubchef@12345' }));
+  assert.throws(() => validateServerEnvironment({ ...strong, DB_PASSWORD: 'CompanyName@12345' }));
   assert.throws(() => validateServerEnvironment({ ...strong, TOKEN_SECRET: 'dev-secret' }));
   assert.throws(() => validateServerEnvironment({ ...strong, CORS_ORIGIN: '*' }));
 });
 
 test('keep original SQL password ONLY for loopback-only Docker; never public deployment', () => {
-  const env = { ...strong, DB_PASSWORD: 'Dubchef@12345', LOCAL_DOCKER_INSTALL: 'true',
+  const env = { ...strong, DB_PASSWORD: 'CompanyName@12345', LOCAL_DOCKER_INSTALL: 'true',
     DB_BIND_ADDRESS: '127.0.0.1', API_BIND_ADDRESS: '127.0.0.1' };
   assert.doesNotThrow(() => validateServerEnvironment(env));
   assert.throws(() => validateServerEnvironment({ ...env, API_BIND_ADDRESS: '0.0.0.0' }));

@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { HAS_API } from '../api/client.js';
 import Header from './Header.jsx';
 import Footer from './Footer.jsx';
+import MobileBottomNav from './MobileBottomNav.jsx';
 import { trackVisit } from '../api/analytics.js';
 import { useI18n } from '../context/I18nContext.jsx';
 
@@ -45,6 +46,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <MobileBottomNav />
     </>
   );
 }

@@ -10,7 +10,7 @@ export const ADMIN_GROUPS = [
     { to: '/admin/feedback', name: 'Phản hồi & hỗ trợ', icon: 'message', hint: 'Tiếp nhận, phản hồi, xử lý yêu cầu' },
   ] },
   { title: 'KINH DOANH', links: [
-    { to: '/admin/pricing', name: 'Gói dịch vụ & bảng giá', icon: 'tag', hint: 'Chính sách giá và gói mẫu hiện áp dụng (chỉ xem)' },
+    { to: '/admin/pricing', name: 'Gói dịch vụ & bảng giá', icon: 'tag', hint: 'Cập nhật giá và theo dõi lịch sử trên SQL Server' },
     { to: '/admin/orders', name: 'Đơn hàng', icon: 'orders', hint: 'Đơn mua, khách hàng và trạng thái' },
     { to: '/admin/payments', name: 'Đối soát thanh toán', icon: 'card', hint: 'Kiểm tra dấu hiệu thanh toán mô phỏng, không xác nhận ngân hàng' },
   ] },

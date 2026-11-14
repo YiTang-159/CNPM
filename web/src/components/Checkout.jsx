@@ -21,7 +21,7 @@ const PAYMENT_TEXT = {
 };
 
 /** Nút Thanh toán và khung thanh toán cho số video đang chọn ở phần tính giá. */
-export default function Checkout({ uploads, outs, total, autoOpen = false }) {
+export default function Checkout({ uploads, outs, total, priceVersion, onPriceChanged, autoOpen = false }) {
   const { t, L } = useI18n();
   const { user } = useAuth();
   const { pathname } = useLocation();
@@ -33,6 +33,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   const txt = key => PAYMENT_TEXT[key]?.[L] || PAYMENT_TEXT[key]?.[0] || ''; 
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [priceChanged,setPriceChanged] = useState(false);
   const [done, setDone] = useState(null);
   const [recent, setRecent] = useState([]);
   const [pending, setPending] = useState(null); // đơn đã tạo, đang chờ khách quét mã QR
@@ -65,7 +66,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
         // Dùng lại đơn pending cùng thông số nếu có, không tự tạo thêm lần thanh toán.
         const same = pending && pending.status === 'pending' && pending.uploads === uploads && pending.outs === outs && pending.currency === CURRENCIES[L];
         const existing = !same && recent.find(o => o.status === 'pending' && o.uploads === uploads && o.outs === outs && o.currency === CURRENCIES[L]);
-        const order = same ? pending : existing || await orders.create({ name:user.name, email:user.email, uploads, outs, L });
+        const order = same ? pending : existing || await orders.create({ name:user.name, email:user.email, uploads, outs, L, priceVersion });
         setPending(order);
         const info = await orders.checkout(order.id);
         setCheckoutUrl(info.checkoutUrl);
@@ -77,16 +78,17 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
       if (method === 'qr') {
         // Đổi phương thức rồi quay lại thì dùng lại đơn cũ nếu số video và loại tiền không đổi, tránh tạo đơn trùng.
         const same = pending && pending.uploads === uploads && pending.outs === outs && pending.currency === CURRENCIES[L];
-        setPending(same ? pending : await orders.create({ name: user.name, email: user.email, uploads, outs, L }));
+        setPending(same ? pending : await orders.create({ name: user.name, email: user.email, uploads, outs, L, priceVersion }));
         setStep('qr');
         refresh();
         return;
       }
-      const order = await orders.create({ name: user.name, email: user.email, uploads, outs, L });
+      const order = await orders.create({ name: user.name, email: user.email, uploads, outs, L, priceVersion });
       const res = await orders.pay(order.id, method);
       setDone(res.order);
       refresh();
     } catch (err) {
+      if(err.message==='price_changed'){setPriceChanged(true);onPriceChanged?.();}
       setFailed(true);
     } finally {
       setBusy(false);
@@ -152,6 +154,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   return (
     <section className="checkout" aria-labelledby="co-h">
       <h3 id="co-h">{t('co_title')}</h3>
+      {priceChanged && <p role="alert" className="err">Giá đã được cập nhật. Đóng khung này, kiểm tra giá mới và xác nhận lại trước khi đặt hàng.</p>}
       <p className="fine">{mode === 'demo' ? txt('simulation') : mode === 'payos' ? txt('gateway') : txt('unavailable')}</p>
 
       {!user ? (

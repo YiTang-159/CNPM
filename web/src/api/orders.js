@@ -67,8 +67,8 @@ export const orders = {
     return read().find(o => o.id === id) || null;
   },
   /** Tạo đơn chờ thanh toán. Giá do máy chủ tính; ở chế độ lưu tạm thì tính bằng cùng công thức. */
-  async create({ name, email, uploads, outs, L }) {
-    if (BASE) return (await remote('POST', '/api/orders', { name, email, uploads, outs, L })).order;
+  async create({ name, email, uploads, outs, L, priceVersion }) {
+    if (BASE) return (await remote('POST', '/api/orders', { name, email, uploads, outs, L, priceVersion })).order;
     if (!LOCAL_DEMO) throw new Error('payment_unavailable');
     const total = calcPrice(L, uploads, outs).total;
     const list = read();

@@ -44,6 +44,10 @@ export default function Header() {
           <span className="mark" aria-hidden="true"><i /><i /><i /></span>
           Dubchef
         </Link>
+        <div className="mobile-lang-switch" role="group" aria-label={t('langlabel')}>
+          {LANGS.map((code,n)=><button key={code} type="button" lang={code==='zh'?'zh-CN':code}
+            aria-pressed={n===L} onClick={()=>setL(n)}>{LANG_LABEL[code]}</button>)}
+        </div>
         <button
           type="button"
           className="menu-btn"

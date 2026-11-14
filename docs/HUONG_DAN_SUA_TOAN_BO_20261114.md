@@ -4,7 +4,7 @@
 
 Bản ZIP này giữ nguyên `name: dubchef`, SQL Server 2022, volume `dubchef_dubchef-data`, database `DubchefDB`, cổng `1433`. File `.env` cá nhân trong bản tải về được giữ nguyên theo bản gốc. **Đừng xóa dữ liệu Docker, đừng chạy `docker compose down -v`, đừng đặt lại mật khẩu SA.**
 
-Thông tin SSMS theo yêu cầu: **Server** `localhost,1433`; **Authentication** SQL Server Authentication; **Login** `sa`; **Password** `Dubchef@12345`; **Trust server certificate** bật. Trong Docker, API kết nối tới `DB_HOST=db`, không phải `localhost`; đây là DNS nội bộ Docker, không phải thay mật khẩu. File `web/.env` giữ trỏ tới `http://localhost:3000`.
+Thông tin SSMS theo yêu cầu: **Server** `localhost,1433`; **Authentication** SQL Server Authentication; **Login** `sa`; **Password** mật khẩu thật lấy từ `.env` cục bộ (không đưa vào repo); **Trust server certificate** bật. Trong Docker, API kết nối tới `DB_HOST=db`, không phải `localhost`; đây là DNS nội bộ Docker, không phải thay mật khẩu. File `web/.env` giữ trỏ tới `http://localhost:3000`.
 
 > **Chú ý:** mật khẩu trên là mật khẩu đã dùng sẵn trên SQL Server volume, chỉ chấp nhận cho môi trường Docker cục bộ bind ở `127.0.0.1`. Khi đưa backend công khai, dùng tài khoản/quyền SQL thích hợp và đổi mật khẩu tại SQL Server **rồi mới** sửa `.env` cùng lúc. Không đưa `.env` hoặc `backups` lên GitHub, và không công khai ZIP riêng tư.
 

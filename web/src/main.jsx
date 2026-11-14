@@ -17,3 +17,23 @@ createRoot(document.getElementById('root')).render(
     </HashRouter>
   </React.StrictMode>
 );
+
+// Production PWA: report updates, don't interrupt an in-progress video/upload/payment.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(registration => {
+      registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        worker?.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+            // User-controlled update, never a forced reload during payment.
+            if (window.confirm('Dubchef có phiên bản mới. Tải lại trang ngay?')) {
+              worker.postMessage({ type: 'SKIP_WAITING' });
+              window.location.reload();
+            }
+          }
+        });
+      });
+    }).catch(() => {});
+  });
+}

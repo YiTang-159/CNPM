@@ -1,41 +1,72 @@
-import AdminT, { useAdminT } from '../components/AdminTranslation.jsx';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { SAMPLE_PACKS, unitPrice, calcPrice, OUT_PER_VIDEO, MAX_VIDEOS } from '../shared/pricing.js';
-import { planPrice, formatMoney } from '../shared/format.js';
-import { I } from '../shared/i18n.js';
-import { useI18n } from '../context/I18nContext.jsx';
+import { manageApi } from '../api/workflows.js';
+import usePricingPolicy from '../hooks/usePricingPolicy.js';
+import { formatMinorMoney } from '../shared/format.js';
 
-const currencies = [{ code: 'VND', label: 'Việt Nam (VND)' },{ code: 'USD', label: 'Hoa Kỳ (USD)' },{ code: 'CNY', label: 'Trung Quốc (CNY)' }];
-/** Bảng quản trị giá phản ánh đúng nguồn tính giá của User + Backend; hiện chỉ đọc. */
-export default function AdminPricing() {
-  const tr = useAdminT();
-  const { L } = useI18n();
-  const [currency, setCurrency] = useState(0);
-  const [yearly, setYearly] = useState(false);
-  return <>
-    <div className="adm-head"><div><h1><AdminT vi={"Gói dịch vụ & bảng giá"} /></h1>
-      <p><AdminT vi={"Tra cứu chính sách giá mà khách hàng đang xem. Giá đặt hàng được API tính lại, không dựa vào số tiền khách gửi lên."} /></p></div>
-      <Link className="btn btn-sm" to="/admin/orders"><AdminT vi={"Xem đơn hàng"} /></Link></div>
-    <div className="adm-policy-note" role="note"><strong><AdminT vi={"Chế độ xem cấu hình — chưa hỗ trợ sửa giá trong Admin."} /></strong>
-      <p><AdminT vi={"Hiện đơn giá nằm trong"} /> <code>shared/pricing.js</code> <AdminT vi={"và bảng giá định kỳ nằm trong"} /> <code>shared/i18n.js</code><AdminT vi={". Sửa giá cần đồng bộ web, backend, mobile và kiểm thử trước khi công bố. Trang này không ghi thay đổi vào SQL Server."} /></p></div>
-    <section className="panel"><div className="adm-work-head"><div><h2><AdminT vi={"Đơn giá theo video"} /></h2><p><AdminT vi={"Áp dụng cho bảng tính phí theo số lượng video và ngôn ngữ."} /></p></div></div>
-      <div className="adm-toolbar"><label className="adm-field"><AdminT vi={"Tiền tệ"} /><select value={currency} onChange={e=>setCurrency(Number(e.target.value))}>
-        {currencies.map((item,i)=><option key={item.code} value={i}>{tr(item.label)}</option>)}</select></label></div>
-      <div className="ops-kpis"><div className="ops-kpi"><strong>{formatMoney(currency,unitPrice(currency,0))}</strong><span><AdminT vi={"Giá / video tải lên"} /></span></div>
-        <div className="ops-kpi"><strong>{formatMoney(currency,unitPrice(currency,1))}</strong><span><AdminT vi={"Giá / video dịch ra"} /></span></div>
-        <div className="ops-kpi"><strong>{MAX_VIDEOS}</strong><span><AdminT vi={"Tối đa video nhập mỗi lượt · tối đa"} /> {OUT_PER_VIDEO} <AdminT vi={"bản dịch/video"} /></span></div></div>
-    </section>
-    <section className="panel"><div className="panel-head"><h2><AdminT vi={"Gói mẫu trên trang khách hàng"} /></h2><span className="fine"><AdminT vi={"Dữ liệu trực tiếp từ công thức tính phí dùng chung"} /></span></div>
-      <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th><AdminT vi={"Gói"} /></th><th><AdminT vi={"Video tải lên"} /></th><th><AdminT vi={"Video dịch ra"} /></th><th><AdminT vi={"Giá tính theo cấu hình"} /></th><th><AdminT vi={"Đường dẫn nghiệp vụ"} /></th></tr></thead>
-        <tbody>{SAMPLE_PACKS.map(pack=><tr key={pack.id}><td><strong><AdminT vi={"Gói mẫu #"} />{pack.id}</strong></td><td>{pack.uploads}</td><td>{pack.outs}</td>
-          <td><strong>{formatMoney(currency,calcPrice(currency,pack.uploads,pack.outs).total)}</strong></td><td><Link to="/admin/orders"><AdminT vi={"Đơn hàng liên quan →"} /></Link></td></tr>)}</tbody></table></div>
-    </section>
-    <section className="panel"><div className="adm-work-head"><div><h2><AdminT vi={"Bảng giá định kỳ đang hiển thị"} /></h2><p><AdminT vi={"Đây là thông tin giới thiệu gói dịch vụ; không tự động tạo thuê bao khi khách đặt đơn số lượng video."} /></p></div>
-      <div className="adm-tools"><button type="button" className="btn btn-sm" aria-pressed={!yearly} onClick={()=>setYearly(false)}><AdminT vi={"Theo tháng"} /></button>
-        <button type="button" className="btn btn-sm" aria-pressed={yearly} onClick={()=>setYearly(true)}><AdminT vi={"Giá có giảm 20%"} /></button></div></div>
-      <div className="adm-price-grid">{[0,1,2].map(i=><article key={i} className="adm-price-card"><h3>{I[`pl${i+1}`]?.[L] || `${tr("Gói")} ${i+1}`}</h3>
-        <strong>{formatMoney(currency,planPrice(currency,i,yearly))}</strong><p><AdminT vi={"Giá trình bày trên trang Bảng giá"} /></p></article>)}</div>
-    </section>
-  </>;
+const names={VND:'Việt Nam (VND)',USD:'Đô la Mỹ (USD) — hiển thị tham khảo',CNY:'Nhân dân tệ (CNY) — hiển thị tham khảo'};
+const fields=[['uploadMinor','Giá / video tải lên (đơn vị nhỏ nhất)'],
+ ['translationMinor','Giá / video dịch ra (đơn vị nhỏ nhất)'],['maxVideos','Giới hạn video / lượt'],
+ ['maxTranslations','Tối đa bản dịch / video'],['annualDiscountPct','Giảm giá năm (%)']];
+
+export default function AdminPricing(){
+ const {pricing,error:loadError,refresh}=usePricingPolicy();
+ const [currency,setCurrency]=useState('VND');
+ const row=pricing?.currencies?.find(x=>x.currency===currency);
+ const [draft,setDraft]=useState(null),[reason,setReason]=useState(''),[busy,setBusy]=useState(false);
+ const [message,setMessage]=useState(''),[error,setError]=useState(''),[history,setHistory]=useState([]);
+ const loadHistory=()=>manageApi.pricingHistory().then(x=>setHistory(x.history||[])).catch(()=>setError('Chưa tải được lịch sử giá.'));
+ // Polling must not erase an Admin's unsaved edits every ten seconds.
+ useEffect(()=>{if(row) setDraft({...row});},[currency,row?.version]);
+ useEffect(()=>{loadHistory();},[]);
+ const changed=draft&&row&&fields.some(([k])=>Number(draft[k])!==row[k]);
+ const reset=()=>{setDraft(row?{...row}:null);setReason('');setError('');};
+ async function save(e){
+   e.preventDefault();if(!changed||busy)return;
+   const next=Object.fromEntries(fields.map(([k])=>[k,Number(draft[k])]));
+   if(!reason.trim())return setError('Cần ghi lý do thay đổi giá.');
+   if(!window.confirm('Giá mới sẽ áp dụng cho đơn MỚI từ bây giờ. Bạn xác nhận lưu?'))return;
+   setBusy(true);setError('');setMessage('');
+   try{
+     await manageApi.updatePricing({currency,version:row.version,...next,reason:reason.trim()});
+     await refresh();await loadHistory();setMessage('Đã cập nhật SQL Server. Đơn cũ giữ nguyên giá đã chụp.');setReason('');
+   }catch(e){setError(e.code==='price_changed'?'Có Admin khác vừa sửa giá. Tải giá mới trước khi lưu.':e.code||'Không lưu được giá.');await refresh();}
+   finally{setBusy(false);}
+ }
+ return <>
+  <div className="adm-head"><div><h1>Quản lý giá</h1><p>Giá đơn hàng lấy từ SQL Server, không lấy số tiền client gửi.</p></div>
+  <Link to="/pricing" className="btn btn-sm">Xem trước bảng giá người dùng</Link></div>
+  <section className="panel"><h2>Đơn giá và giới hạn sử dụng</h2>
+    <p className="fine">payOS chỉ thu VND; USD/CNY để hiển thị tham khảo khi demo.</p>
+    {loadError && <p role="alert" className="err">{loadError}</p>}
+    <label className="adm-field">Tiền tệ
+      <select value={currency} onChange={e=>{setCurrency(e.target.value);setMessage('');setError('');}}>
+       {Object.entries(names).map(([k,v])=><option value={k} key={k}>{v}</option>)}
+      </select></label>
+    {draft && <form onSubmit={save} aria-label="Cập nhật giá" style={{display:'grid',gap:12,marginTop:16}}>
+      <p role="status">Phiên bản giá: {row.version} · Cập nhật: {new Date(row.updatedAt).toLocaleString('vi-VN')}</p>
+      {fields.map(([key,label])=><label key={key} className="adm-field">{label}
+        <input type="number" required min={key==='maxVideos'||key==='maxTranslations'?1:0}
+          max={key==='maxTranslations'?3:key==='maxVideos'?5000:key==='annualDiscountPct'?90:100000000}
+          step="1" value={draft[key]} onChange={e=>setDraft(old=>({...old,[key]:e.target.value}))}/>
+      </label>)}
+      <p className="fine">Giá hiện tại: {formatMinorMoney(row.uploadMinor,currency)} / tải lên · {formatMinorMoney(row.translationMinor,currency)} / dịch ra</p>
+      <label className="adm-field">Lý do thay đổi giá <textarea required maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} rows={2}/></label>
+      <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+        <button className="btn btn-primary" disabled={busy||!changed||!reason.trim()} type="submit">{busy?'Đang lưu...':'Lưu giá'}</button>
+        <button className="btn" type="button" disabled={busy} onClick={reset}>Hủy</button>
+        <button className="btn" type="button" disabled={busy} onClick={()=>refresh()}>Tải giá mới</button>
+      </div>
+      {error&&<p role="alert" className="err">{error}</p>}{message&&<p role="status">{message}</p>}
+    </form>}
+  </section>
+  <section className="panel"><h2>Gói đang hiển thị</h2>
+    <div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Tên gói</th><th>Video đăng</th><th>Video dịch</th><th>Hiển thị</th></tr></thead>
+    <tbody>{(pricing?.packs||[]).map(pack=><tr key={pack.id}><td>{pack.name}</td><td>{pack.uploads}</td><td>{pack.outs}</td><td>{pack.enabled?'Có':'Ẩn'}</td></tr>)}</tbody></table></div>
+    <p className="fine">Gói hiện đọc từ SQL; chức năng thêm/sửa/ẩn gói vẫn chưa có API ghi.</p>
+  </section>
+  <section className="panel"><h2>Lịch sử sửa giá</h2><div className="adm-table-wrap"><table className="adm-table"><thead><tr><th>Thời điểm</th><th>Tiền tệ</th><th>Phiên bản</th><th>Người sửa</th><th>Lý do</th></tr></thead>
+    <tbody>{history.map(h=><tr key={h.id}><td>{new Date(h.changedAt).toLocaleString('vi-VN')}</td><td>{h.currency}</td><td>{h.previousVersion} → {h.version}</td><td>{h.changedBy}</td><td>{h.reason}</td></tr>)}</tbody></table></div>
+  </section>
+ </>;
 }

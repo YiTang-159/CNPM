@@ -68,3 +68,6 @@ test-errors.txt
 .DS_Store
 .idea/
 .vscode/*.log
+
+# The one intentionally public, original demo clip is part of the source release.
+!web/public/demo/recipe-demo.mp4

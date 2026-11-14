@@ -7,7 +7,6 @@ export function isConfiguredAdminPassword(password) {
 }
 
 const UNSAFE_DB_PASSWORDS = new Set([
-  'Dubchef@12345',
   'CHANGE_TO_A_STRONG_UNIQUE_PASSWORD',
   'GENERATE_USING_NPM_RUN_SETUP_LOCAL',
 ]);
@@ -44,7 +43,7 @@ export function validateServerEnvironment(env = process.env) {
     // ONLY the existing local Docker installation may keep its original SA password.
     // An internet-facing deployment must rotate it separately (SQL + .env together).
     const localDockerOnly = loopbackDocker;
-    if ((dbPassword.length < 12 || UNSAFE_DB_PASSWORDS.has(dbPassword)) && !localDockerOnly)
+    if ((dbPassword.length < 12 || UNSAFE_DB_PASSWORDS.has(dbPassword) || /(?:dubchef|12345)/i.test(dbPassword)) && !localDockerOnly)
       throw new Error('DB_PASSWORD là mật khẩu yếu/mẫu; cần đổi mật khẩu SQL Server và cập nhật .env.');
     if (typeof env.TOKEN_SECRET !== 'string' || env.TOKEN_SECRET.length < 32 ||
         /^CHANGE_TO_|^GENERATE_USING_/.test(env.TOKEN_SECRET))

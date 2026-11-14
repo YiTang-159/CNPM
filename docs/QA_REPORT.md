@@ -1,58 +1,75 @@
-# DUBCHEF — QA REPORT (15/11/2026)
+# DUBCHEF — QA và nghiệm thu tạm thời, 15/11/2026
 
-**Kết luận: HOÀN THÀNH MỘT PHẦN, CHƯA ĐẠT TIÊU CHUẨN NGHIỆM THU DOANH NGHIỆP.** Đã đối chiếu source trong `Dubchef_Enterprise_Hardening_2026-11-14.zip`. Đây là bản sửa trên bản sao, **không phải** thay đổi trực tiếp Docker/SQL Server hay GitHub của người dùng.
+**Trạng thái: BẢN SỬA MỘT PHẦN — CHƯA ĐẠT NGHIỆM THU 10/10.**
 
-## Phần A — giao diện công khai
+Báo cáo này chỉ phản ánh việc thay đổi mã nguồn ZIP và chạy các lệnh trong môi trường làm việc hiện tại. **Không có quyền truy cập SQL Server/WSL/Docker Windows, GitHub remote, payOS, tài khoản hosting hoặc thiết bị điện thoại thật của người dùng.** Không được xem các kết quả tĩnh/unit tests là chứng nhận sản phẩm chạy được thương mại. Không tác động Docker volume, mật khẩu SQL hay `.env` đang dùng trên máy người dùng.
 
-| Mã | Mức độ | Phát hiện / xử lý | File | Bằng chứng |
-|---|---|---|---|---|
-| A1 | Medium | Hai nút cùng dẫn về Admin; bỏ banner trùng, chỉ giữ nút trong header khi Admin xem trang công khai | `web/src/components/Layout.jsx`, `Header.jsx`, `styles.css` | `docs/evidence/qa/source-contracts.txt` (source contract PASS); **chưa chạy browser** |
-| A2 | Medium | Header dùng sticky top=0; bổ sung CSS z-index, focus, heading balance/responsive. **Chưa xác nhận** khoảng trống 60px ở 360/768/1280, cần Playwright/browser thực | `web/src/styles.css` | `web-lint-direct.txt` PASS; không có screenshot viewport |
-| A3 | High | Localhost QR không phù hợp điện thoại. Thêm `VITE_PUBLIC_BASE_URL` HTTPS; ẩn QR và vô hiệu Copy/Download khi chưa có URL công khai thay vì xuất QR sai; vẫn còn cần cấu hình host thật và quét điện thoại thực | `web/src/api/qr.js`, `Home.jsx`, `AdminQr.jsx`, `web/.env.example` | `source-contracts.txt` PASS; backend QR `/api/qr-scan` và bảng `LuotQuetQR` đã có trong bản gốc |
-| A4 | Low | Footer/menu đã trỏ các route cụ thể; thay email giả `.example` bằng `VITE_CONTACT_EMAIL`, nếu chưa có email thì dẫn tới trang Liên hệ. Form Contact đã gọi SQL API, thêm chống double-submit và loading. **Chưa thử ghi SQL thật** | `Footer.jsx`, `Contact.jsx`, `shared/publicConfig.js` | `source-contracts.txt` PASS; xem `server/src/app.js` và `db/02-schema.sql` |
-| A5 | High | Các lời quảng cáo về giọng tự nhiên, đơn vị và kỹ thuật nấu ăn **chưa có bài kiểm định ngôn ngữ/giọng TTS chuẩn**. Chưa điều chỉnh các phát biểu chưa xác minh, cần duyệt nội dung và kiểm chứng riêng | `shared/i18n.js`, `server/src/localTranslate.js`, `server/src/audioExport.js` | CHƯA XÁC MINH |
-| A6 | Low | Thêm `text-wrap:balance`, `overflow-wrap` cho heading; chưa chụp cuộn thực | `web/src/styles.css` | Static source only |
+## Nhóm 1 — chặn demo / bảo mật
 
-## Phần B — kiểm kê & kiểm thử
-
-- `docs/UI_INVENTORY.md` gồm 27 route tìm trong `web/src/App.jsx`, thống kê component và thẻ tương tác trực tiếp theo mã nguồn. Không coi static scan là kiểm kê tuyệt đối modal/child/conditional controls.
-- `tests/e2e/ui-crawler.spec.mjs` thêm smoke crawler theo 3 vai trò. **CHƯA CHẠY** vì môi trường hiện không có Playwright browser và không có tài khoản test SQL. Bài kiểm tra đòi `DUBCHEF_E2E_BASE_URL`, `CUSTOMER_EMAIL/PASSWORD`, `ADMIN_EMAIL/PASSWORD` và môi trường test riêng; không skip khi thiếu cấu hình. Crawler hiện mới đi qua route, link/ảnh/h1/placeholder và phân quyền UI; **chưa click mọi nút, chưa kiểm request 4xx/5xx và chưa đo axe/Lighthouse**.
-- Chưa xác minh đủ luồng quên mật khẩu/đổi mật khẩu, webhook, video, tất cả thao tác Admin hay lỗi console thực tế.
-
-## Phần C — SQL Server
-
-- Source: `server/src/db.js` tự chạy các script `db/*.sql` ở startup. `dbo.NguoiDung`, `dbo.DonHang`, `dbo.GiaoDich`, `dbo.LienHe`, `dbo.LuotQuetQR` và các bảng nghiệp vụ hiện hữu; repo dùng truy vấn tham số cho các đường tạo đơn/liên hệ/QR đã kiểm tra.
-- Tạo `docs/DATABASE.md`, `docs/ERD.md` (ERD phần dữ liệu xác minh được). **CHƯA** chạy SQL Server, migration+seed từ DB trắng/idempotence thực, chuẩn hóa toàn bộ FK/INDEX, SchemaMigrations, tổ chức lại toàn bộ `db/` vì thay đổi schema mà không có SQL thử có nguy cơ làm hỏng DB đang chạy.
-
-## Phần E — quản lý giá (yêu cầu CRITICAL, CHƯA HOÀN TẤT)
-
-- Đã truy vết hằng `20000`, `10000`, `500`, `3` và `PRICES` trong `shared/`, bản copy `web/src/shared/`, `mobile/`.
-- Trang `web/src/pages/AdminPricing.jsx` hiện **chỉ đọc**, không có API cập nhật SQL. `server/src/orders.js` tính tiền từ `shared/pricing.js` bằng hằng. **Chưa cho phép Admin sửa giá** nhằm tránh rủi ro lệch tiền và gian lận nửa chừng.
-- Chưa có SQL snapshot giá theo đơn, phiên bản/RowVersion, lịch sử sửa giá, điều khiển đồng thời hai admin và update web realtime; xem `docs/ADMIN_CONFIG_AUDIT.md`. **Toàn bộ bài kiểm thử E6 chưa đạt/chưa chạy**.
-
-## Kết quả chạy thực tế tại môi trường sửa mã
-
-| Lệnh chính xác | Output / trạng thái | File log |
+| Phát hiện | Xử lý trong source | Bằng chứng / còn thiếu |
 |---|---|---|
-| `npm run test:shared` | **24 PASS, 0 FAIL, 0 SKIP** | `docs/evidence/qa/shared-tests.txt` |
-| `node --test scripts/qa-source-contracts.test.mjs` | **4 PASS, 0 FAIL, 0 SKIP**; đây là kiểm tra cấu trúc source, không thay browser E2E | `docs/evidence/qa/source-contracts.txt` |
-| `npm run test:server` (dùng `node_modules` từ ZIP gốc chỉ để thử, không đóng gói) | **57 PASS, 3 FAIL, 0 SKIP**; thiếu SQL và eSpeak thật | `docs/evidence/qa/backend-tests.txt` |
-| `node node_modules/eslint/bin/eslint.js .` (cwd `web/`) | **PASS, exit 0** | `docs/evidence/qa/web-lint-direct.txt` |
-| `node node_modules/vitest/vitest.mjs run` (cwd `web/`) | **FAIL** thiếu `@rollup/rollup-linux-x64-gnu` trong modules gốc Windows; `npm ci` thử nhưng không hoàn tất | `docs/evidence/qa/web-test-direct.txt` |
-| `python scripts/package-share.py --check` | **PASS** | `docs/evidence/qa/package-check.txt` |
-| Docker smoke, SQL integration, payOS, Playwright, Lighthouse, axe | **KHÔNG CHẠY** (không có các dịch vụ, browser/cấu hình xác thực trong môi trường hiện tại) | Không có output giả |
+| CSDL trắng thiếu Admin nhưng API vẫn start | `server/src/adminBootstrap.js`, `server/src/index.js` ngăn khởi động nếu không có Admin và thiếu mật khẩu hợp lệ; nếu đã tồn tại Admin trong SQL, **giữ nguyên** mật khẩu cũ. `scripts/setup-local.mjs` sinh mật khẩu Admin ≥12 ký tự, chỉ in một lần khi chạy terminal tương tác, không in trong log CI | `server/test/admin-bootstrap.test.mjs` unit 4 PASS. Chưa test SQL trắng thực |
+| `.env`, dữ liệu, keystore, `.git`, backup bị mang vào ZIP | `scripts/package-share.py` loại dữ liệu riêng, quét secret; Git hook/CI từ bản trước; không chứa `.git`/tệp `.env` trong ZIP đầu ra | `docs/evidence/qa-2026-11-15/package-check.txt` PASS. **Chưa tẩy lịch sử GitHub hoặc xoay vòng secret**; cần chủ repo theo `docs/SECURITY.md` |
+| URL localhost sai khi dùng điện thoại | `web/.env.example` dùng `/backend`, Docker Nginx reverse proxy; `VITE_PUBLIC_BASE_URL` chỉ nhận URL HTTPS khi có host public, QR không hiện nếu chưa cấu hình | Source và lint; chưa có domain public, test quét QR thực |
 
-## Rủi ro tồn đọng, ưu tiên sửa tiếp
+## Nhóm 2 — giá SQL và Admin sửa giá
 
-1. **P0:** Chuyển giá/gói/giới hạn sang SQL đồng bộ và giao dịch snapshot, concurrency, audit, backend enforcement, payOS matching; test từ SQL sạch mới được sửa UI Admin cho phép lưu.
-2. **P0:** Kiểm thử dịch, video MP3/MP4, thanh toán, khóa người dùng, phân quyền Admin trên Docker SQL test riêng.
-3. **P1:** Nâng crawler thành thật sự duyệt mọi điều khiển an toàn, contract validation, axe/Lighthouse theo 360/768/1280 và ảnh chụp; đã cập nhật các test có hợp đồng cũ về QR localhost/nhãn Admin để khẳng định quy tắc MỚI nghiêm ngặt hơn (QR địa chỉ riêng phải bị ẩn, hai nút trùng phải còn một); chưa chạy được Vitest trên Linux do thiếu Rollup native.
-4. **P1:** Migration versioning, rollback, backup thử và chuẩn hóa SQL; không thao tác trực tiếp trên volume sản xuất.
-5. **P1:** Cấu hình URL HTTPS công khai và email liên hệ chính thức trước khi public; đảm bảo QR đếm trong SQL qua API, không dùng localStorage ở bản thương mại.
+- `db/migrations/014_pricing.sql`, `db/seed/001_pricing_defaults.sql`: thêm `SchemaMigrations`, `BangGia`, `LichSuBangGia`, `GoiDichVu`, snapshot giá lên `DonHang`, seed chỉ chạy nếu chưa có giá. **Chưa chạy migration trên SQL thật.** Phải sao lưu trước khi áp dụng; test ở DB trắng/thử nghiệm trước. Hệ thống hiện còn các SQL script legacy không versioned.
+- `server/src/pricingRepo.js`, `pricingPolicy.js`, `db.js`, `app.js`: API giá công khai, API chỉnh giá Admin, audit actor/lý do, kiểm version tránh hai Admin ghi đè, máy chủ tính tiền và lưu snapshot trong giao dịch SQL; không tin giá client. `server/test/pricing-policy.test.mjs`, `pricing-api.test.mjs` PASS unit/mock (không phải E2E SQL).
+- `web/src/pages/AdminPricing.jsx`: nhập đơn giá, giới hạn, % giảm năm; có Lưu/Hủy, xác nhận, lịch sử, thông báo lỗi. Giữ draft người đang sửa khi polling mỗi 10 giây. **Bảng gói chỉ đọc, chưa thêm/sửa/ẩn được gói.**
+- `web/src/pages/Pricing.jsx`, `Checkout.jsx`, `hooks/usePricingPolicy.js`, `mobile/src/screens/PricingScreen.js`: giá/giới hạn hiển thị từ API, polling 10 giây/focus, yêu cầu xác nhận giá mới khi đổi; mobile có nút Thử lại lúc lỗi mạng. `docs/ADMIN_CONFIG_AUDIT.md` ghi rõ các nguồn chưa đồng nhất.
+- **Chưa đạt yêu cầu hết hard-code:** `shared/pricing.js`, hai bản copy web/mobile và legacy dev fallback còn các hằng 20000/10000/500/3; các trang khác và luồng tiêu lượt video cần kiểm chứng thêm. Chưa có test PayOS webhook/giá snapshot trên SQL thật, e2e hai trình duyệt chưa chạy.
 
-## Hướng dẫn áp dụng an toàn
+## Nhóm 3 — UI/links/test crawler
 
-1. Sao lưu cả thư mục Git/`.env` riêng tư và **Docker SQL volume hiện tại** trước khi thay file; không chạy `docker compose down -v`.
-2. Chỉ chép thay những file đã sửa sau khi review diff; không chép đè `.env`, không reset SQL.
-3. Docker web image build lại để nhận giá trị `VITE_` (biến compile-time); khi chưa có HTTPS public, QR được ẩn theo thiết kế an toàn.
-4. Chạy test với SQL riêng và browser trước khi coi là bản doanh nghiệp; chưa khẳng định 10/10.
+- Từ bản QA trước: bỏ banner Admin trùng (`Layout.jsx`), dùng một nút về quản trị trong `Header.jsx`; email `.example` được tránh ở các điểm đã rà; QR không có URL HTTPS thì không xuất; form Liên hệ có loading. CSS focus, heading balance, footer, 27 route kiểm kê tại `docs/UI_INVENTORY.md`.
+- Bổ sung `tests/e2e/mobile-layout.spec.mjs`, `tests/e2e/pricing-live.spec.mjs` và crawler `tests/e2e/ui-crawler.spec.mjs`. **Các Playwright spec chỉ được phân tích cú pháp, CHƯA chạy browser và không chứng minh “mọi nút” hoạt động.**
+- Chưa thực hiện Lighthouse, axe, cuộn thật ở 360/768/1280, xác minh UI Admin mọi tab, toàn bộ validation/form/404 ở 3 vai trò.
+
+## Nhóm 4 — SQL Server
+
+- `db/migrations/014_pricing.sql`, `db/seed/001_pricing_defaults.sql`, `db/tests/014_pricing_smoke.sql`, `db/queries/00_suspicious_records.sql` bổ sung tách cấu hình và kiểm tra dữ liệu, không đụng đến volume người dùng.
+- `docs/DATABASE.md`, `docs/ERD.md` mô tả một phần schema, kết nối SSMS `127.0.0.1,1433` không lộ mật khẩu.
+- **Chưa** dọn sạch toàn bộ SQL trùng, không sửa `Supabase`/localStorage dev mode, không kiểm định mọi constraint/FK/index, migration hai lượt, DB trắng hoặc dữ liệu thật. Chưa chạy SQL test integration vì không có DB trong container hiện tại.
+
+## Nhóm 5 — bằng chứng kiểm thử
+
+| Lệnh đã chạy ở thư mục `CNPM/` | Kết quả thực | Log |
+|---|---|---|
+| `npm run test:shared` | **24 PASS, 0 FAIL, 0 SKIP** | `docs/evidence/qa-2026-11-15/shared.txt` |
+| `npm run test:server` | **68 PASS, 3 FAIL, 0 SKIP** (71 bài; lỗi SQL thật và eSpeak) | `docs/evidence/qa-2026-11-15/backend.txt` |
+| `(cd web && node node_modules/eslint/bin/eslint.js .)` | **PASS, exit 0** | `docs/evidence/qa-2026-11-15/web-eslint.txt` |
+| `(cd web && node node_modules/vitest/vitest.mjs run)` | **FAIL** do thiếu module Rollup Linux ở bộ node_modules dùng để kiểm tra | `docs/evidence/qa-2026-11-15/web-vitest.txt` |
+| `python scripts/package-share.py --check` | **PASS**, số tệp cập nhật theo lần đóng gói cuối | `docs/evidence/qa-2026-11-15/package-check.txt` |
+| `node --check tests/e2e/mobile-layout.spec.mjs` và `pricing-live.spec.mjs` | **Parse PASS**, **không phải E2E PASS** | `docs/evidence/qa-2026-11-15/e2e-parse.txt` |
+| Docker smoke, SQL thật, payOS checkout, Playwright browsers, iPhone/Android, Lighthouse, axe | **CHƯA THỰC HIỆN** | Chưa có bằng chứng, không đánh dấu PASS |
+
+Không bỏ qua bất kỳ test thất bại nào; 3 bài FAIL cần CI có SQL Server và eSpeak/FFmpeg thật. Không lưu log mô phỏng. Chưa có test giao dịch tiền thật/sandbox; không sử dụng tiền thật khi chưa được chủ tài khoản cấp quyền.
+
+## Nhóm 6 — chất lượng thương mại / tài liệu
+
+- Giọng đọc đang dùng eSpeak NG cho luồng MP3/MP4, speechSynthesis cho demo video mẫu; **chưa có Piper/Coqui tự nhiên và chưa kiểm chứng** các tuyên bố về giọng/định lượng/đơn vị nấu ăn.
+- Whisper chưa được chứng minh chạy ổn trên điện thoại tầm trung. Chưa có số liệu hiệu năng/queue job/giới hạn đồng thời, chưa dọn toàn bộ tài liệu legacy nhằm tránh mất nội dung học thuật.
+
+## Nhóm 7 — điện thoại
+
+- `scripts/lan.mjs`, `scripts/lan-firewall.ps1`, `scripts/lan-qr.py`: mở **chỉ web** `0.0.0.0:5173` trên LAN Private; API/SQL giữ loopback, Nginx proxy `/backend`. Cần chạy trên Windows thật để chứng minh firewall/IP mạng.
+- Web PWA: `web/index.html`, `web/public/manifest.webmanifest`, icons, `web/public/sw.js`, `web/src/main.jsx`; service worker chỉ cache static, **không cache dữ liệu cá nhân, giá, thanh toán, API**. CSS mobile safe-area/touch targets, tab dưới 4 mục, nút đổi ngôn ngữ; chưa chạy Safari/iPhone/Android.
+- Expo `mobile/app.json`: loại owner/projectId của người khác, thêm icon/build metadata; cần `eas init` với chủ dự án và build preview. App không có đầy đủ Admin như web, chưa chạy CI APK.
+- `docs/MOBILE.md` ghi hướng dẫn chi tiết và ma trận thiết bị **CHƯA XÁC MINH**.
+
+## Nhóm 8 — chấm demo điện thoại
+
+- `web/public/demo/recipe-demo.mp4`, `web/src/pages/Demo.jsx`: video đồ họa gốc với ba bản phụ đề **soạn sẵn, có ghi nhãn mẫu**; không yêu cầu Whisper/Ollama/lượt trả tiền; giọng nói mẫu từ thiết bị nếu hỗ trợ.
+- `docs/DEPLOYMENT.md` phân tích SQL Server + Ollama, lựa chọn laptop Docker cho demo nội bộ; **CHƯA TRIỂN KHAI HTTPS STAGING, CHƯA CÓ URL công khai**, chưa có uptime, chưa quay video iPhone/Android, chưa nghiệm thu mở site từ xa.
+- Dữ liệu thật SQL chưa được kiểm kê/dọn; script `db/queries/00_suspicious_records.sql` chỉ đọc; **không xóa bản ghi trước khi xác định chắc chắn là dữ liệu thử**.
+
+## Rủi ro P0 / thao tác tiếp trên môi trường có quyền
+
+1. **Sao lưu DB** và chạy migration `014_pricing.sql` + seed trong DB **thử riêng**, kiểm idempotence, kiểm giá/đơn cũ/quyền gói và giao dịch thực; không chạy `docker compose down -v`.
+2. Thực hiện `npm ci`, lint, test, build web/mobile trên môi trường Linux sạch; chạy SQL/eSpeak media integration thật, Playwright 2 trình duyệt, Lighthouse/axe.
+3. Với chủ repo: tẩy `.git` history bằng `git filter-repo`, force push có phối hợp và rotate mọi secret; không tự làm trên GitHub người dùng.
+4. Hoàn thiện chỉnh sửa danh sách gói từ Admin, các giá trị config khác, xóa mọi fallback giá cứng và thêm test snapshot/webhook/giới hạn job.
+5. Muốn giảng viên ở xa mở điện thoại cần **HTTPS tunnel/hosting thực** do chủ dự án cấu hình; không có URL nếu chưa triển khai.
+
+**Không chấm 10/10 hoặc tuyên bố production-ready khi bất kỳ mục bắt buộc nào bên trên chưa có kết quả xác minh.**

@@ -22,6 +22,7 @@
     "test:media:docker": "docker compose exec -T -e MEDIA_INTEGRATION=true api node --test test/media.integration.test.mjs",
     "monitor": "node scripts/monitor-system.mjs",
     "perf:smoke": "node scripts/perf-smoke.mjs",
-    "backup": "node scripts/backup-dubchef.mjs backup"
+    "backup": "node scripts/backup-dubchef.mjs backup",
+    "lan": "node scripts/lan.mjs"
   }
 }

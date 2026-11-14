@@ -69,6 +69,8 @@ export const workApi = {
   sendFeedback: (message, videoId = null) => request('/api/feedback', { method: 'POST', body: { message, videoId } }),
 };
 export const manageApi = {
+  pricingHistory: () => request('/api/admin/pricing/history'),
+  updatePricing: body => request('/api/admin/pricing', {method:'PUT',body}),
   videos: () => request('/api/admin/videos'),
   videoResults: id => request(`/api/admin/videos/${id}/translations`),
   updateVideo: (id, status) => request(`/api/admin/videos/${id}`, { method: 'PATCH', body: { status } }),

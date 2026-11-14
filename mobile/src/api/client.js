@@ -69,6 +69,7 @@ const norm = (s) => s.trim().toLowerCase();
 
 export const api = {
   languages: () => remote('/api/languages'),
+  pricing: () => { if(!BASE) throw new ApiError('net'); return remote('/api/pricing'); },
   createVideo: (token,body) => remote('/api/videos',body,{token}),
   saveResults: (token,id,segments) => remote(`/api/videos/${id}/results`,{segments},{token}),
   videoResults: (token,id) => remote(`/api/videos/${id}/results`,undefined,{token}),

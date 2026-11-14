@@ -7,20 +7,22 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dubchef.app"
+      "bundleIdentifier": "com.dubchef.app",
+      "buildNumber": "1"
     },
     "android": {
-      "package": "com.dubchef.app"
+      "package": "com.dubchef.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#135c4b"
+      },
+      "versionCode": 1
     },
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "extra": {
-      "eas": {
-        "projectId": "0a553c99-0f12-4ccf-8030-70b9d2620d80"
-      }
-    },
-    "owner": "ynhi38"
+    "extra": {},
+    "icon": "./assets/icon.png"
   }
 }

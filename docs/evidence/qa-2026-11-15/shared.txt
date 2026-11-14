@@ -1,0 +1,158 @@
+
+> dubchef@1.0.0 test:shared
+> node --test shared/*.test.mjs
+
+TAP version 13
+# Subtest: VND in SQL is displayed without cent conversion
+ok 1 - VND in SQL is displayed without cent conversion
+  ---
+  duration_ms: 23.424621
+  type: 'test'
+  ...
+# Subtest: USD stored cents display as dollars
+ok 2 - USD stored cents display as dollars
+  ---
+  duration_ms: 0.318421
+  type: 'test'
+  ...
+# Subtest: CNY stored fen display as yuan
+ok 3 - CNY stored fen display as yuan
+  ---
+  duration_ms: 0.321645
+  type: 'test'
+  ...
+# Subtest: mọi khóa đều có đủ 3 bản dịch không rỗng
+ok 4 - mọi khóa đều có đủ 3 bản dịch không rỗng
+  ---
+  duration_ms: 1.142643
+  type: 'test'
+  ...
+# Subtest: các bước video mẫu có đủ vi/en/zh
+ok 5 - các bước video mẫu có đủ vi/en/zh
+  ---
+  duration_ms: 0.204929
+  type: 'test'
+  ...
+# Subtest: giá theo năm giảm 20%
+ok 6 - giá theo năm giảm 20%
+  ---
+  duration_ms: 0.11879
+  type: 'test'
+  ...
+# Subtest: formatMoney trả về chuỗi có chữ số
+ok 7 - formatMoney trả về chuỗi có chữ số
+  ---
+  duration_ms: 13.112593
+  type: 'test'
+  ...
+# Subtest: giá = số video đăng lên × phí đăng + số video dịch ra × phí dịch
+ok 8 - giá = số video đăng lên × phí đăng + số video dịch ra × phí dịch
+  ---
+  duration_ms: 1.493474
+  type: 'test'
+  ...
+# Subtest: giá bằng USD và CNY không bị sai số số thực
+ok 9 - giá bằng USD và CNY không bị sai số số thực
+  ---
+  duration_ms: 0.232
+  type: 'test'
+  ...
+# Subtest: tăng số video thì giá không bao giờ giảm
+ok 10 - tăng số video thì giá không bao giờ giảm
+  ---
+  duration_ms: 0.256447
+  type: 'test'
+  ...
+# Subtest: parseCount chỉ nhận số nguyên từ 0 đến mức tối đa
+ok 11 - parseCount chỉ nhận số nguyên từ 0 đến mức tối đa
+  ---
+  duration_ms: 0.390539
+  type: 'test'
+  ...
+# Subtest: checkCounts: số video dịch ra tối đa gấp 3 lần số video đăng lên
+ok 12 - checkCounts: số video dịch ra tối đa gấp 3 lần số video đăng lên
+  ---
+  duration_ms: 0.174814
+  type: 'test'
+  ...
+# Subtest: các gói mẫu hợp lệ, có tên và mô tả đủ 3 ngôn ngữ, giá hiển thị được
+ok 13 - các gói mẫu hợp lệ, có tên và mô tả đủ 3 ngôn ngữ, giá hiển thị được
+  ---
+  duration_ms: 22.311521
+  type: 'test'
+  ...
+# Subtest: formatMoney hiện 2 chữ số thập phân khi số lẻ
+ok 14 - formatMoney hiện 2 chữ số thập phân khi số lẻ
+  ---
+  duration_ms: 0.334424
+  type: 'test'
+  ...
+# Subtest: dịch Việt sang Anh qua API nội bộ, dùng POST và token
+ok 15 - dịch Việt sang Anh qua API nội bộ, dùng POST và token
+  ---
+  duration_ms: 2.56569
+  type: 'test'
+  ...
+# Subtest: cùng ngôn ngữ trả nguyên văn, không gọi API
+ok 16 - cùng ngôn ngữ trả nguyên văn, không gọi API
+  ---
+  duration_ms: 0.356438
+  type: 'test'
+  ...
+# Subtest: dịch tới cả ba ngôn ngữ, giữ nguyên tiếng nguồn
+ok 17 - dịch tới cả ba ngôn ngữ, giữ nguyên tiếng nguồn
+  ---
+  duration_ms: 0.996633
+  type: 'test'
+  ...
+# Subtest: dịch từng dòng theo thứ tự, bỏ dòng trống
+ok 18 - dịch từng dòng theo thứ tự, bỏ dòng trống
+  ---
+  duration_ms: 0.394986
+  type: 'test'
+  ...
+# Subtest: không có token không được gọi dịch vụ
+ok 19 - không có token không được gọi dịch vụ
+  ---
+  duration_ms: 0.710922
+  type: 'test'
+  ...
+# Subtest: không có API URL không tự động gọi một dịch vụ miễn phí
+ok 20 - không có API URL không tự động gọi một dịch vụ miễn phí
+  ---
+  duration_ms: 0.233362
+  type: 'test'
+  ...
+# Subtest: lỗi mạng và HTTP 500 phản ánh đúng tình trạng
+ok 21 - lỗi mạng và HTTP 500 phản ánh đúng tình trạng
+  ---
+  duration_ms: 0.709761
+  type: 'test'
+  ...
+# Subtest: HTTP 429 và model_missing được nhận diện
+ok 22 - HTTP 429 và model_missing được nhận diện
+  ---
+  duration_ms: 0.395988
+  type: 'test'
+  ...
+# Subtest: chỉ dịch ngôn ngữ đang bật và không dịch trùng
+ok 23 - chỉ dịch ngôn ngữ đang bật và không dịch trùng
+  ---
+  duration_ms: 0.605814
+  type: 'test'
+  ...
+# Subtest: bản Web và Mobile luôn đồng bộ với shared, không có URL dịch miễn phí
+ok 24 - bản Web và Mobile luôn đồng bộ với shared, không có URL dịch miễn phí
+  ---
+  duration_ms: 1.167772
+  type: 'test'
+  ...
+1..24
+# tests 24
+# suites 0
+# pass 24
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 179.411848

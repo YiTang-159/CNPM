@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import Field from '../components/Field.jsx';
 import Checkout from '../components/Checkout.jsx';
-import { formatMoney, planPrice } from '../shared/format.js';
-import { calcPrice, checkCounts, parseCount, SAMPLE_PACKS, unitPrice } from '../shared/pricing.js';
+import { formatMoney } from '../shared/format.js';
+import usePricingPolicy from '../hooks/usePricingPolicy.js';
 
-const PLANS = [1, 2, 3];
+
+
 
 export default function Pricing() {
   const { t, L } = useI18n();
@@ -21,11 +22,21 @@ export default function Pricing() {
   const [uploads, setUploads] = useState(() => initial(resume && resume.uploads));
   const [outs, setOuts] = useState(() => initial(resume && resume.outs));
   const [yearly, setYearly] = useState(false);
+  const {pricing, error:pricingError,refresh} = usePricingPolicy();
+  const row = pricing?.currencies?.find(item=>item.currency===['VND','USD','CNY'][L]);
+  const packs=pricing?.packs?.filter(x=>x.enabled) || [];
+  const [confirmedVersion,setConfirmedVersion] = useState(null);
+  useEffect(()=>{if(row && confirmedVersion===null)setConfirmedVersion(row.version);},[row,confirmedVersion]);
+  const changed=Boolean(row && confirmedVersion!==null && row.version!==confirmedVersion);
+  const minorFactor=L===0?1:100;
+  const parseCount=txt=> {const v=String(txt).trim();return /^\d{1,6}$/.test(v) && Number(v)<=(row?.maxVideos??0)?Number(v):null;};
+  const unitPrice=kind=>row? (kind===0?row.uploadMinor:row.translationMinor)/minorFactor:0;
+  const calcPrice=(uploads,outs)=>({up:uploads*unitPrice(0),out:outs*unitPrice(1),total:uploads*unitPrice(0)+outs*unitPrice(1)});
 
   const u = parseCount(uploads);
   const o = parseCount(outs);
-  const err = checkCounts(u, o);
-  const price = err ? null : calcPrice(L, u, o);
+  const err = u == null || o == null ? 'pc_bad' : o>u*(row?.maxTranslations??0) ? 'pc_over' : null;
+  const price = err || !row ? null : calcPrice(u,o);
   // Lỗi "nhập sai số" gắn vào ô bị sai; lỗi "dịch ra quá nhiều" gắn vào ô số video dịch ra.
   const upErr = u === null ? 'pc_bad' : null;
   const outErr = o === null ? 'pc_bad' : err === 'pc_over' ? 'pc_over' : null;
@@ -69,7 +80,7 @@ export default function Pricing() {
                 aria-describedby="pc-hint"
               />
             </Field>
-            <p className="fine" id="pc-hint" style={{ marginTop: 0 }}>{t('pc_hint')}</p>
+            <p className="fine" id="pc-hint" style={{ marginTop: 0 }}>{row ? `${row.maxVideos} video / lượt, tối đa ${row.maxTranslations} bản dịch / video` : 'Đang tải giới hạn sử dụng...'}</p>
           </div>
           <div className="plan" aria-live="polite">
             {price ? (
@@ -87,13 +98,13 @@ export default function Pricing() {
                     <tr>
                       <th scope="row">{t('pc_row_up')}</th>
                       <td>{u}</td>
-                      <td>{formatMoney(L, unitPrice(L, 0))}</td>
+                      <td>{formatMoney(L, unitPrice(0))}</td>
                       <td>{formatMoney(L, price.up)}</td>
                     </tr>
                     <tr>
                       <th scope="row">{t('pc_row_out')}</th>
                       <td>{o}</td>
-                      <td>{formatMoney(L, unitPrice(L, 1))}</td>
+                      <td>{formatMoney(L, unitPrice(1))}</td>
                       <td>{formatMoney(L, price.out)}</td>
                     </tr>
                   </tbody>
@@ -105,28 +116,33 @@ export default function Pricing() {
                 </p>
               </>
             ) : (
-              <p className="fine" style={{ margin: 0 }}>{t(err)}</p>
+              <p role="status" className="fine" style={{margin:0}}>{!row ? pricingError || 'Đang tải bảng giá từ SQL...' : t(err)}</p>
             )}
           </div>
         </div>
-        {price ? <Checkout uploads={u} outs={o} total={price.total} autoOpen={Boolean(resume)} /> : null}
+        {changed && <div className="ops-notice" role="alert">
+          Giá đã được cập nhật. Vui lòng kiểm tra số tiền mới và xác nhận trước khi thanh toán.
+          <button className="btn btn-sm" type="button" onClick={()=>setConfirmedVersion(row.version)}>Tôi xác nhận giá mới</button>
+        </div>}
+        {price && !changed ? <Checkout uploads={u} outs={o} total={price.total}
+          priceVersion={row.version} onPriceChanged={()=>refresh()} autoOpen={Boolean(resume)} /> : null}
       </div>
 
       <div className="section">
         <div className="wrap">
           <h2 className="sec">{t('pk_title')}</h2>
-          <p className="fine" style={{ marginTop: 12 }}>{t('pk_sub')}</p>
+          <p className="fine" style={{ marginTop: 12 }}>{t('pk_sub')} Giá gói được tính theo số lượt và đơn giá hiện hành trong SQL Server.</p>
           <div className="plans packs">
-            {SAMPLE_PACKS.map((pack) => (
+            {packs.map((pack) => (
               <section className="plan" key={pack.id} aria-labelledby={'pk-' + pack.id}>
-                <h3 id={'pk-' + pack.id}>{t('pk' + pack.id + '_n')}</h3>
-                <p>{t('pk' + pack.id + '_d')}</p>
+                <h3 id={'pk-' + pack.id}>{pack.name}</h3>
+                <p>Quyền sử dụng gói được khai báo trong SQL Server.</p>
                 <ul>
                   <li>{pack.uploads} {t('pk_vid')}</li>
                   <li>{pack.outs} {t('pk_out')}</li>
                 </ul>
                 <p className="price" data-testid={'pk-price-' + pack.id}>
-                  {formatMoney(L, calcPrice(L, pack.uploads, pack.outs).total)}
+                  {formatMoney(L, calcPrice(pack.uploads, pack.outs).total)}
                 </p>
                 <button type="button" className="btn" onClick={() => applyPack(pack)}>
                   {t('pk_use')}
@@ -139,28 +155,30 @@ export default function Pricing() {
       </div>
 
       <div className="wrap" style={{ paddingBottom: 96 }}>
-        <h2 className="sec">{t('pl_title')}</h2>
+        <h2 className="sec">Gói từ bảng giá SQL Server</h2>
+        <p className="fine">Bảng dưới đây chỉ ước tính gói tháng/năm. Hệ thống hiện chưa bán thuê bao tự gia hạn; số tiền chính thức hiển thị trong khung thanh toán phía trên và tính lại tại máy chủ.</p>
         <div className="toggle" role="group" aria-label={t('pl_title')}>
           <button type="button" aria-pressed={!yearly} onClick={() => setYearly(false)}>{t('pr_monthly')}</button>
           <button type="button" aria-pressed={yearly} onClick={() => setYearly(true)}>{t('pr_yearly')}</button>
         </div>
         <div className="plans">
-          {PLANS.map((n, p) => {
+          {packs.slice(0,3).map((pack,p) => {
+            const n=p+1;
             const pick = p === 1;
             return (
               <section className={'plan' + (pick ? ' pick' : '')} key={n} aria-labelledby={'pl-' + n}>
                 <h3 id={'pl-' + n}>
-                  {t('pl' + n)}
+                  {pack.name}
                   {pick ? <span className="badge">{t('pl_pick')}</span> : null}
                 </h3>
                 <p className="price">
-                  {formatMoney(L, planPrice(L, p, yearly))} <small>{t('pr_per')}</small>
+                  {formatMoney(L,calcPrice(pack.uploads,pack.outs).total*(yearly?1-row.annualDiscountPct/100:1))} <small>{t('pr_per')}</small>
                 </p>
                 <ul>
                   {[1, 2, 3].map((k) => <li key={k}>{t('pl' + n + '_' + k)}</li>)}
                 </ul>
                 {user ? <button className={'btn' + (pick ? ' btn-primary' : '')} type="button" onClick={() => {
-                  applyPack(SAMPLE_PACKS[p]);
+                  applyPack(pack);
                   document.getElementById('pc-up')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }}>Tính số video của gói</button> : <Link className={'btn' + (pick ? ' btn-primary' : '')} to="/register">
                   {p === 0 ? t('pl_c1') : t('pl_c')}

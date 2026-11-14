@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
-import { Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AppState, Text, View } from 'react-native';
 import Screen from '../components/Screen';
 import Button from '../components/Button';
 import Field from '../components/Field';
 import { Segmented } from '../components/Controls';
 import { useI18n } from '../context/I18nContext';
 import { useStyles, useTheme } from '../theme';
-import { formatMoney, planPrice } from '../shared/format';
-import { calcPrice, checkCounts, parseCount, SAMPLE_PACKS, unitPrice } from '../shared/pricing';
+import { formatMoney } from '../shared/format';
+import { api } from '../api/client';
 
-const PLANS = [1, 2, 3];
+
+
 const qh = (c) => ({ textAlign: 'right', color: c.muted, fontWeight: '600', fontSize: 12.5 });
 const qc = (c) => ({ textAlign: 'right', color: c.ink, fontSize: 14, fontVariant: ['tabular-nums'] });
 
@@ -33,11 +34,27 @@ export default function PricingScreen({ navigation }) {
   const [uploads, setUploads] = useState('3');
   const [outs, setOuts] = useState('3');
   const [pickedPack, setPickedPack] = useState(null);
+  const [pricing,setPricing] = useState(null);
+  const [loadingError,setLoadingError] = useState('');
+  const refresh=useCallback(()=>api.pricing()
+    .then(data=>{setPricing(data);setLoadingError('');})
+    .catch(()=>setLoadingError('Không thể tải bảng giá. Kiểm tra kết nối và thử lại.')),[]);
+  useEffect(()=>{
+    refresh(); const timer=setInterval(refresh,10000);
+    const listener=AppState.addEventListener('change',status=>{if(status==='active')refresh();});
+    return()=>{clearInterval(timer);listener.remove();};
+  },[refresh]);
+  const row=pricing?.currencies?.find(x=>x.currency===['VND','USD','CNY'][L]);
+  const packs=pricing?.packs?.filter(x=>x.enabled)||[];
+  const factor=L===0?1:100;
+  const unitPrice=kind=>row?(kind===0?row.uploadMinor:row.translationMinor)/factor:0;
+  const calcPrice=(up,out)=>({up:up*unitPrice(0),out:out*unitPrice(1),total:up*unitPrice(0)+out*unitPrice(1)});
+  const parseCount=v=>/^\d{1,6}$/.test(String(v).trim()) && Number(v)<=(row?.maxVideos??0)?Number(v):null;
 
   const u = parseCount(uploads);
   const o = parseCount(outs);
-  const err = checkCounts(u, o);
-  const price = err ? null : calcPrice(L, u, o);
+  const err=u==null||o==null?'pc_bad':o>u*(row?.maxTranslations??0)?'pc_over':null;
+  const price=err||!row?null:calcPrice(u,o);
   // Lỗi "nhập sai số" gắn vào ô bị sai; lỗi "dịch ra quá nhiều" gắn vào ô số video dịch ra.
   const upErr = u === null ? 'pc_bad' : null;
   const outErr = o === null ? 'pc_bad' : err === 'pc_over' ? 'pc_over' : null;
@@ -71,7 +88,8 @@ export default function PricingScreen({ navigation }) {
           error={outErr && t(outErr)}
           keyboardType="number-pad"
         />
-        <Text style={[s.fine, { marginBottom: 16 }]}>{t('pc_hint')}</Text>
+        <Text style={[s.fine, { marginBottom: 16 }]}>{row?`${row.maxVideos} video / lượt, tối đa ${row.maxTranslations} bản dịch / video`:loadingError||'Đang tải bảng giá SQL...'}</Text>
+        {!row && loadingError ? <Button title="Thử lại" onPress={refresh} variant="ghost" /> : null}
         {price ? (
           <View style={[s.card, { padding: 20 }]}>
             <View style={{ flexDirection: 'row', paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.line }}>
@@ -81,8 +99,8 @@ export default function PricingScreen({ navigation }) {
               <Text style={[qh(c), { flex: 1.4 }]}>{t('pc_amount')}</Text>
             </View>
             {[
-              [t('pc_row_up'), u, unitPrice(L, 0), price.up],
-              [t('pc_row_out'), o, unitPrice(L, 1), price.out],
+              [t('pc_row_up'), u, unitPrice(0), price.up],
+              [t('pc_row_out'), o, unitPrice(1), price.out],
             ].map(([name, qty, unit, amount]) => (
               <View key={name} style={{ flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.line }}>
                 <Text style={{ flex: 1.3, fontWeight: '600', color: c.ink, fontSize: 14.5 }}>{name}</Text>
@@ -103,7 +121,7 @@ export default function PricingScreen({ navigation }) {
         <Text accessibilityRole="header" style={s.h2}>{t('pk_title')}</Text>
         <Text style={[s.fine, { marginBottom: 16 }]}>{t('pk_sub')}</Text>
         <View style={{ gap: 16 }}>
-          {SAMPLE_PACKS.map((pack) => (
+          {packs.map((pack) => (
             <View key={pack.id} style={[s.card, { padding: 20 }]}>
               <Text accessibilityRole="header" style={[s.h3, { fontSize: 19 }]}>{t('pk' + pack.id + '_n')}</Text>
               <Text style={[s.p, { marginTop: 4 }]}>{t('pk' + pack.id + '_d')}</Text>
@@ -112,7 +130,7 @@ export default function PricingScreen({ navigation }) {
                 <Check>{pack.outs} {t('pk_out')}</Check>
               </View>
               <Text testID={'pk-price-' + pack.id} style={{ fontSize: 28, fontWeight: '800', color: c.ink, marginBottom: 14 }}>
-                {formatMoney(L, calcPrice(L, pack.uploads, pack.outs).total)}
+                {formatMoney(L, calcPrice(pack.uploads, pack.outs).total)}
               </Text>
               <Button variant="ghost" title={t('pk_use')} onPress={() => applyPack(pack)} />
               {pickedPack === pack.id ? (
@@ -131,12 +149,13 @@ export default function PricingScreen({ navigation }) {
           options={[{ key: 'm', label: t('pr_monthly') }, { key: 'y', label: t('pr_yearly') }]}
         />
         <View style={{ marginTop: 22, gap: 16 }}>
-          {PLANS.map((n, p) => {
+          {packs.slice(0,3).map((pack, p) => {
+            const n=p+1;
             const pick = p === 1;
             return (
               <View key={n} style={[s.card, { padding: 22, borderWidth: pick ? 2 : 1, borderColor: pick ? c.ink : c.line }]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={[s.h3, { fontSize: 20 }]}>{t('pl' + n)}</Text>
+                  <Text style={[s.h3, { fontSize: 20 }]}>{pack.name}</Text>
                   {pick ? (
                     <View style={{ backgroundColor: c.accent, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
                       <Text style={{ color: c.onAccent, fontSize: 12, fontWeight: '600' }}>{t('pl_pick')}</Text>
@@ -144,7 +163,7 @@ export default function PricingScreen({ navigation }) {
                   ) : null}
                 </View>
                 <Text style={{ fontSize: 32, fontWeight: '800', color: c.ink, marginTop: 10 }}>
-                  {formatMoney(L, planPrice(L, p, yearly))}
+                  {formatMoney(L, calcPrice(pack.uploads,pack.outs).total*(yearly?1-row.annualDiscountPct/100:1))}
                   <Text style={{ fontSize: 14, fontWeight: '500', color: c.muted }}> {t('pr_per')}</Text>
                 </Text>
                 <View style={{ marginVertical: 16, gap: 8 }}>

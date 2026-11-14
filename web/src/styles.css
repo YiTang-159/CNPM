@@ -515,3 +515,33 @@ footer{border-top:1px solid var(--line);background:var(--panel);padding:56px 0 3
 .site-admin-preview .admin-preview-bar {min-height:64px;}
 :focus-visible {outline:3px solid #147d65;outline-offset:3px;}
 @media (max-width:760px){.site-admin-preview .admin-preview-bar {flex-wrap:wrap;padding-block:10px;} .admin-preview-actions{margin-left:auto;}}
+
+/* Mobile-first safe areas and touch targets, without changing desktop layout. */
+html { min-height:100%; scroll-padding-top:4rem; }
+body { min-height:100dvh; }
+button, .btn, select, summary, .menu-btn, .lang button, a.user { min-height:44px; }
+@media (max-width:760px) {
+  input, textarea, select { font-size:16px; }
+  .site-header .bar { padding-top:max(8px,env(safe-area-inset-top)); }
+  main { padding-bottom:env(safe-area-inset-bottom); }
+  footer { padding-bottom:max(20px,env(safe-area-inset-bottom)); }
+  .adm-table-wrap, .dashboard-table, .media-lines-table { max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .ops-kpis, .plans, .calc { min-width:0; }
+  .wrap { max-width:100%; }
+}
+
+.mobile-bottom-tabs,.mobile-lang-switch{display:none;}
+@media(max-width:760px){
+  .mobile-lang-switch{display:flex;align-items:center;gap:2px;margin-inline:auto 8px;}
+  .mobile-lang-switch button{border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);min-height:44px;min-width:38px;font-size:.76rem;font-weight:700;}
+  .mobile-lang-switch button[aria-pressed="true"]{border-color:#137959;box-shadow:inset 0 0 0 1px #137959;}
+  .mobile-bottom-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:fixed;bottom:0;left:0;right:0;
+    z-index:80;background:var(--panel);border-top:1px solid var(--line);padding:4px 4px max(5px,env(safe-area-inset-bottom));
+    box-shadow:0 -3px 16px rgba(0,0,0,.1);}
+  .mobile-bottom-tabs a{display:flex;min-height:50px;align-items:center;justify-content:center;flex-direction:column;
+    gap:1px;text-decoration:none;color:var(--ink);font-size:.69rem;font-weight:650;border-radius:9px;}
+  .mobile-bottom-tabs a span:first-child{font-size:1.3rem;line-height:1.4;}
+  .mobile-bottom-tabs a.active{background:var(--bg);color:#137959;}
+  body footer{padding-bottom:calc(80px + env(safe-area-inset-bottom));}
+  body main{padding-bottom:calc(68px + env(safe-area-inset-bottom));}
+}

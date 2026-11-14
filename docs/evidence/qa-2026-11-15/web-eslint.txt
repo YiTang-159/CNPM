@@ -1,0 +1,6 @@
+
+/mnt/data/dubchef_v2/CNPM/web/src/pages/AdminPricing.jsx
+  20:46  warning  React Hook useEffect has a missing dependency: 'row'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+✖ 1 problem (0 errors, 1 warning)
+

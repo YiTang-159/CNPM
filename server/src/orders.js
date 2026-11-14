@@ -1,6 +1,6 @@
 // Luật nghiệp vụ của đơn hàng. Không dùng thư viện ngoài nên kiểm thử được bằng `node --test`.
-// Giá luôn được tính lại ở máy chủ bằng đúng công thức của trang Bảng giá (shared/pricing.js),
-// không tin con số do trình duyệt gửi lên.
+// Hàm priceOrder bên dưới giữ tương thích với unit tests cũ. Đơn mua thật
+// luôn tính tiền SQL + snapshot trong db.js, tuyệt đối không tin client.
 import { randomBytes } from 'node:crypto';
 import { calcPrice, checkCounts, parseCount } from '../../shared/pricing.js';
 
@@ -11,15 +11,21 @@ const MINOR_PER_UNIT = [1, 100, 100];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Kiểm tra dữ liệu tạo đơn. Trả { value } hoặc { error } với mã lỗi ngắn. */
-export function validateOrder(body) {
+export function validateOrder(body, config = null) {
   if (!body || typeof body !== 'object') return { error: 'invalid' };
   const name = String(body.name || '').trim();
   const email = String(body.email || '').trim().toLowerCase();
   if (!name || name.length > 100) return { error: 'name' };
   if (!EMAIL.test(email) || email.length > 254) return { error: 'email' };
-  const uploads = parseCount(body.uploads);
-  const outs = parseCount(body.outs);
-  const err = checkCounts(uploads, outs);
+  const parse = (input, upper) => {
+    if(!/^\d{1,6}$/.test(String(input).trim())) return null;
+    const n=Number(input); return Number.isSafeInteger(n) && n<=upper ? n : null;
+  };
+  const maxUp=config?.maxVideos ?? 500;
+  const maxOut=config?.maxTranslations ?? 3;
+  const uploads = parse(body.uploads,maxUp);
+  const outs = parse(body.outs,maxUp*maxOut);
+  const err = uploads == null || outs == null ? 'pc_bad' : outs>uploads*maxOut ? 'pc_over': null;
   if (err) return { error: err === 'pc_over' ? 'over' : 'count' };
   if (outs === 0) return { error: 'empty' };
   const L = Number(body.L);

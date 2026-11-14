@@ -7,7 +7,8 @@ import { pipeline } from 'node:stream/promises';
 import { Transform } from 'node:stream';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import cors from 'cors';
-import { METHODS, newTransactionRef, priceOrder, validateOrder } from './orders.js';
+import { METHODS, newTransactionRef, validateOrder } from './orders.js';
+import { cleanPriceUpdate } from './pricingPolicy.js';
 import { hashPassword, isLegacyHash, makeToken, readToken, verifyPassword } from './auth.js';
 import { buildStats } from './stats.js';
 import { validMediaLines, validateFeedback, MEDIA_STATES } from './adminPolicy.js';
@@ -33,7 +34,7 @@ const publicUser = (u, secret) => ({ id: u.id, name: u.name, email: u.email, rol
 
 export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 7, uploadDir = DEFAULT_UPLOAD_DIR, maxUploadBytes = MAX_VIDEO,
   paymentMode = process.env.PAYMENT_MODE || 'disabled',
-  payosGateway = null } = {}) {
+  payosGateway = null, adminReady = true } = {}) {
   if (!['demo', 'payos', 'disabled'].includes(paymentMode)) throw new Error('PAYMENT_MODE không hợp lệ');
   if (paymentMode === 'demo' && process.env.NODE_ENV === 'production' && process.env.LOCAL_DOCKER_INSTALL !== 'true')
     throw new Error('PAYMENT_MODE=demo chỉ được chạy trong môi trường phát triển/Docker cục bộ.');
@@ -173,7 +174,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   app.get('/api/health', wrap(async (req, res) => {
     try {
       await repo.ping();
-      res.json({ ok: true, db: true });
+      res.status(adminReady ? 200 : 503).json({ ok: Boolean(adminReady), db: true, adminReady: Boolean(adminReady) });
     } catch (e) {
       res.status(503).json({ ok: false, db: false });
     }
@@ -187,15 +188,37 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     });
   }));
 
+  // Database is the single source for price and limits; public GET cannot leak account info.
+  app.get('/api/pricing', wrap(async (_req,res) => {
+    if (!repo.getPricing) return res.status(503).json({code:'pricing_unavailable'});
+    res.json(await repo.getPricing());
+  }));
+  app.get('/api/admin/pricing/history', adminOnly, wrap(async (_req,res) => {
+    res.json({ history:await repo.getPricingHistory() });
+  }));
+  app.put('/api/admin/pricing', adminOnly, wrap(async(req,res) => {
+    const checked=cleanPriceUpdate(req.body);
+    if(checked.error) return res.status(400).json({code:checked.error});
+    try { res.json({pricing:await repo.updatePricing(checked.value,req.currentUser.email)}); }
+    catch(e) { if(e.code==='price_changed') return res.status(409).json({code:e.code}); throw e; }
+  }));
+
   // Tạo đơn: giá do máy chủ tính, trạng thái "pending"
   app.post('/api/orders', throttle('orders', 30, 60 * 1000), customerOnly, wrap(async (req, res) => {
-    const v = validateOrder(req.body);
+    const policy = repo.getPricing ? await repo.getPricing() : null;
+    if (repo.getPricing && (!Number.isSafeInteger(req.body?.priceVersion) || req.body.priceVersion < 1))
+      return res.status(409).json({code:'price_changed'});
+    const selectedCurrency = ['VND','USD','CNY'][Number(req.body?.L)];
+    const configured = policy?.currencies?.find(p => p.currency === selectedCurrency);
+    const v = validateOrder(req.body, configured || undefined);
     if (v.error) return res.status(400).json({ code: v.error });
     if (v.value.email !== req.currentUser.email) return res.status(403).json({ code: 'forbidden' });
     if (paymentMode === 'payos' && v.value.L !== 0) return res.status(422).json({code:'currency_unsupported'});
     // Chủ sở hữu lấy từ token đã đối chiếu SQL, tuyệt đối không lấy MaNguoiDung từ form.
-    const order = await repo.createOrder({ ...v.value, userId: req.currentUser.id,
-      name: req.currentUser.name, ...priceOrder(v.value) });
+    let order;
+    try { order = await repo.createOrder({ ...v.value, currency:selectedCurrency,
+      priceVersion:req.body?.priceVersion, userId:req.currentUser.id, name:req.currentUser.name }); }
+    catch(e) { if(['price_changed','invalid_quantity'].includes(e.code)) return res.status(409).json({code:e.code}); throw e; }
     if (!order) return res.status(409).json({ code: 'account_unavailable' });
     res.status(201).json({ order });
   }));

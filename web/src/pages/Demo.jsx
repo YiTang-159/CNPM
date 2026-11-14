@@ -20,6 +20,7 @@ export default function Demo() {
   const { user } = useAuth();
   const uploadRef = useRef(null);
   const [saveStatus, setSaveStatus] = useState('');
+  const [sampleMode,setSampleMode] = useState(false);
   usePageTitle('d_title');
 
   // --- video + lời thoại ---
@@ -162,6 +163,7 @@ export default function Demo() {
 
   const pickFile = (f) => {
     if (!f || running) return;
+    setSampleMode(false);
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     setFile(f);
     setFileName(f.name);
@@ -178,6 +180,23 @@ export default function Demo() {
     } else {
       setSaveStatus('API chưa được cấu hình, không thể lưu video vào SQL Server.');
     }
+  };
+
+  // Fully disclosed, pre-authored sample. No Whisper, Ollama, payment or SQL is called.
+  const trySample = () => {
+    if (running) return;
+    stopSpeech();
+    if(objectUrl) URL.revokeObjectURL(objectUrl);
+    setObjectUrl('');setFile(null);setFileName('Video minh họa Dubchef');
+    setSampleMode(true);setNeedInput(false);setTranslateErr('');setSaveStatus('');
+    setSourceLang('vi');setTranslate(true);setShowPipe(false);setSttPhase('');
+    setSegments([
+      {start:0,end:3,vi:'Cho hai muỗng canh dầu ăn vào chảo.',en:'Add two tablespoons of cooking oil to the pan.',zh:'往锅里加入两汤匙食用油。'},
+      {start:3,end:6,vi:'Xào tỏi băm trong hai mươi giây.',en:'Stir-fry minced garlic for twenty seconds.',zh:'将蒜末翻炒二十秒。'},
+      {start:6,end:9,vi:'Cho hai trăm gam rau vào và đảo đều.',en:'Add two hundred grams of vegetables and stir evenly.',zh:'加入二百克蔬菜，翻炒均匀。'},
+    ]);
+    setI(0);setVoice(firstAvailableVoice('vi',['vi','en','zh']));
+    setSubs({vi:true,en:true,zh:true});setDone(true);
   };
 
   const jump = (n) => {
@@ -324,7 +343,7 @@ export default function Demo() {
   const voiceMissing = segments && voice !== 'off' && (!hasSpeech || (voicesLoaded() && !voiceFor(voice)));
   const avail = segments ? availableVoiceLangs() : null; // null = chưa tải xong danh sách giọng, chưa vội khoá
   const anyLocked = avail && segLangs.some((l) => !avail[l]);
-  const videoSrc = objectUrl;
+  const videoSrc = sampleMode ? '/demo/recipe-demo.mp4' : objectUrl;
   const activeStages = stageKeys;
   const sttRunning = running && stages[0] === 'run';
 
@@ -352,6 +371,17 @@ export default function Demo() {
             <strong>{t('d_drop')}</strong>
           )}
         </label>
+        <div className="ops-notice" style={{marginTop:14}}>
+          <button className="btn btn-primary" type="button" disabled={running} onClick={trySample}>
+            Thử với video mẫu (không cần tải AI)
+          </button>
+          <p className="fine" style={{marginTop:8}}>
+            Đây là video đồ họa minh họa với phụ đề ba ngôn ngữ biên soạn trước,
+            không phải kết quả Whisper/Ollama. Giọng đọc mẫu phụ thuộc giọng có sẵn trên thiết bị.
+            Tải video riêng để kiểm thử quy trình xử lý thật.
+          </p>
+        </div>
+        {sampleMode && <p role="status" className="note">Đang xem video mẫu. Không ghi dữ liệu hoặc trừ lượt sử dụng.</p>}
         {saveStatus ? <p className="note" role="status" style={{ marginTop: 10 }}>{saveStatus} {!user ? <Link to="/login" state={{ from: '/demo' }}>Đăng nhập</Link> : null}</p> : null}
         {needInput ? <p className="err" role="alert" style={{ marginTop: 10 }}>{t('d_need')}</p> : null}
 
@@ -403,6 +433,8 @@ export default function Demo() {
                 <video
                   ref={videoRef}
                   src={videoSrc}
+                  playsInline
+                  preload="metadata"
                   controls
                   controlsList="nofullscreen"
                   onTimeUpdate={onTimeUpdate}

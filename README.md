@@ -87,3 +87,11 @@ CI chạy Shared, Web, Mobile, toàn bộ Backend và job SQL Server riêng. CD 
 `npm ci` yêu cầu Internet/registry npm hoạt động. Môi trường máy mới không tự cài Docker, không tự xoay vòng mật khẩu SQL hiện hành. CI kiểm thử độc lập; **không được diễn giải lỗi thiếu công cụ ở máy kiểm tra là PASS**.
 
 **Nếu cập nhật mã vào repository Git cũ:** sao chép mã nguồn đã chỉnh nhưng **KHÔNG xóa `.env` cũ trên máy**. Chạy `powershell -ExecutionPolicy Bypass -File scripts/untrack-private.ps1` (Windows) hoặc `bash scripts/untrack-private.sh` (Git Bash/WSL) từ thư mục gốc để bỏ theo dõi secret; lệnh dùng `git rm --cached`, **không xóa file vật lý**. Tiếp đó kiểm tra `git status`, commit code đã kiểm tra, và thực hiện quy trình xóa lịch sử/đổi khóa trong `docs/SECURITY.md` dưới sự đồng ý của chủ repo. Nếu dùng bản ZIP mới hoàn toàn, chạy `npm run setup:local` trên máy mới để tạo secret mới.
+
+
+## Trạng thái bản QA 15/11/2026 (không phải production)
+
+- [Báo cáo QA và test thật](docs/QA_REPORT.md), [hướng dẫn điện thoại LAN/HTTPS/Expo](docs/MOBILE.md), [kiến trúc triển khai](docs/DEPLOYMENT.md).
+- Đã thêm SQL pricing migration + API giá + form Admin, PWA/Expo metadata và video mẫu có nhãn rõ; **chưa nghiệm thu SQL thật, thanh toán payOS, browser/mobile thực, URL HTTPS hoặc 10/10**.
+- LAN cùng Wi-Fi riêng: `npm run lan` (Windows firewall Private theo `docs/MOBILE.md`). Chỉ mở cổng web 5173, không mở 3000/1433 ra LAN.
+- **Không xóa SQL volume** (`docker compose down -v`), không chép đè `.env`, không áp dụng migration vào DB đang dùng trước khi sao lưu và test với DB trắng riêng.

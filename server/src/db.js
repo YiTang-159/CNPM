@@ -12,14 +12,19 @@ import { lockAccount, charge, grantPaidOrder, refundUnfinishedUpload, balance } 
 
 const DB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db');
 
+function requiredDbPassword() {
+  if (!process.env.DB_PASSWORD) throw new Error('Thiếu DB_PASSWORD; cấu hình trong .env riêng (không sử dụng mật khẩu mặc định).');
+  return process.env.DB_PASSWORD;
+}
+
 function config(database) {
   return {
     server: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT || 1433),
     user: process.env.DB_USER || 'sa',
-    password: process.env.DB_PASSWORD || 'Dubchef@12345',
+    password: requiredDbPassword(),
     database,
-    options: { encrypt: true, trustServerCertificate: true }, // chứng chỉ tự ký của container
+    options: { encrypt: true, trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true' }, // chỉ tin chứng chỉ tự ký khi chủ động bật
     pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
   };
 }

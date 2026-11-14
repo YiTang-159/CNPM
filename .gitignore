@@ -17,3 +17,20 @@ uploads/
 backups/
 *.bak
 *.tar.gz
+
+# Không commit dữ liệu thực, thông tin xác thực, khóa ký và các bản export
+db/data/
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.key
+*.sqlite
+*.sqlite3
+*.db
+**/secrets/
+**/private/
+**/coverage/
+**/.env.local
+**/.env.production

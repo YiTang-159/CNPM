@@ -117,22 +117,16 @@ android {
         versionCode 1
         versionName "1.0.0"
     }
-    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-    }
+    // Android Gradle Plugin creates a local debug key; never distribute one in source.
+    // Release signing keys belong in EAS/CI secrets, not build.gradle or this ZIP.
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
+            // Default Android debug signing (per-developer machine).
         }
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Release is unsigned here; EAS/CI must provide a private release key.
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"

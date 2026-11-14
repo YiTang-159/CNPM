@@ -8,10 +8,10 @@ services:
     container_name: dubchef-db
     environment:
       ACCEPT_EULA: "Y"
-      # Mật khẩu phải có chữ hoa, chữ thường, số, ký hiệu, từ 8 ký tự. Đổi bằng biến DB_PASSWORD.
-      MSSQL_SA_PASSWORD: ${DB_PASSWORD:-Dubchef@12345}
+      # BẮT BUỘC đặt DB_PASSWORD mạnh trong .env; không còn mật khẩu mặc định.
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD:?Chay npm run setup:local de tao .env va DB_PASSWORD}
     ports:
-      - "1433:1433"
+      - "${DB_BIND_ADDRESS:-127.0.0.1}:1433:1433"
     volumes:
       - dubchef-data:/var/opt/mssql
     restart: unless-stopped
@@ -36,18 +36,19 @@ services:
       DB_HOST: db
       DB_PORT: "1433"
       DB_USER: sa
-      DB_PASSWORD: ${DB_PASSWORD:-Dubchef@12345}
+      DB_PASSWORD: ${DB_PASSWORD:?Thieu DB_PASSWORD trong .env}
       DB_NAME: DubchefDB
-      CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:5173,http://192.168.0.109:5173,https://yitang-159.github.io}"
+      DB_TRUST_SERVER_CERTIFICATE: "${DB_TRUST_SERVER_CERTIFICATE:-true}" # self-signed only in local Docker
+      CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173}"
       # Tài khoản quản trị chỉ được tạo khi ADMIN_PASSWORD (>= 12 ký tự) được đặt trong .env (chạy: npm run setup:local).
-      # Không đặt TOKEN_SECRET thì API tự sinh khóa ngẫu nhiên (đăng nhập lại sau mỗi lần khởi động).
+      # Production yêu cầu TOKEN_SECRET mạnh và cố định; không sinh khóa tạm thời.
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@dubchef.vn}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       TOKEN_SECRET: ${TOKEN_SECRET:-}
     volumes:
       - dubchef-uploads:/app/server/uploads
     ports:
-      - "3000:3000"
+      - "${API_BIND_ADDRESS:-127.0.0.1}:3000:3000"
     restart: on-failure
 
 volumes:

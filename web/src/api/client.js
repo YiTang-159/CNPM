@@ -89,7 +89,9 @@ const norm = (s) => s.trim().toLowerCase();
 /** Email của quản trị viên. Đăng ký tài khoản bằng email này để vào trang /admin. */
 export const ADMIN_EMAIL = (import.meta.env && import.meta.env.VITE_ADMIN_EMAIL) || 'admin@dubchef.vn';
 /** Mật khẩu của tài khoản quản trị có sẵn (chỉ dùng khi chưa có Backend, để demo). */
-export const ADMIN_PASSWORD = (import.meta.env && import.meta.env.VITE_ADMIN_PASSWORD) || 'admin12345';
+export const ADMIN_PASSWORD = import.meta.env?.DEV
+  ? (import.meta.env.VITE_ADMIN_PASSWORD || (import.meta.env.MODE === 'test' ? 'test-admin-only' : ''))
+  : ''; // không nhúng mật khẩu Admin vào build production
 export const isAdmin = (user) => Boolean(user) && (user.role === 'admin' || (LOCAL_DEV && !BASE && norm(user.email || '') === norm(ADMIN_EMAIL)));
 
 export const api = {
@@ -110,7 +112,7 @@ export const api = {
     if (SUPA) return supa('app_login', { p_email: email, p_password: password });
     if (!LOCAL_DEV) throw new ApiError('net');
     // Tài khoản quản trị có sẵn, không cần đăng ký.
-    if (norm(email) === norm(ADMIN_EMAIL) && password === ADMIN_PASSWORD) {
+    if (ADMIN_PASSWORD && norm(email) === norm(ADMIN_EMAIL) && password === ADMIN_PASSWORD) {
       return { user: { name: 'Admin', email: norm(ADMIN_EMAIL), role: 'admin' } };
     }
     const found = read(K_USERS, []).find((u) => u.email === norm(email));

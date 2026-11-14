@@ -6,12 +6,17 @@ let content='';
 try { content=await readFile(target,'utf8'); } catch(e) { if(e.code!=='ENOENT') throw e; }
 const keys=new Map(content.split(/\r?\n/).filter(x=>x.trim()&&!x.trim().startsWith('#')&&x.includes('=')).map(x=>[x.slice(0,x.indexOf('=')).trim(),x.slice(x.indexOf('=')+1).trim()]));
 // Existing SQL credentials and connection settings are preserved byte for byte.
-const defaults={ADMIN_EMAIL:'admin@dubchef.vn',ADMIN_PASSWORD:'Admin!'+randomBytes(18).toString('hex'),TOKEN_SECRET:randomBytes(48).toString('hex'),PAYMENT_DEMO:'true'};
+const defaults={DB_PASSWORD:'Db!'+randomBytes(24).toString('hex'),ADMIN_EMAIL:'admin@dubchef.vn',ADMIN_PASSWORD:'Admin!'+randomBytes(18).toString('hex'),TOKEN_SECRET:randomBytes(48).toString('hex'),PAYMENT_MODE:'disabled',PAYMENT_DEMO:'false',CORS_ORIGIN:'http://localhost:5173,http://127.0.0.1:5173',DB_BIND_ADDRESS:'127.0.0.1',API_BIND_ADDRESS:'127.0.0.1',DB_TRUST_SERVER_CERTIFICATE:'true'};
 for(const [key,value] of Object.entries(defaults)) {
-  if(keys.get(key)) continue;
+  const existing = keys.get(key);
+  // Only replace template placeholders. Never rotate a real existing SQL password automatically.
+  if(existing && !existing.startsWith('CHANGE_TO_') && !existing.startsWith('GENERATE_USING_')) continue;
   const pattern=new RegExp('^'+key+'=.*$','m');
   if(pattern.test(content))content=content.replace(pattern,key+'='+value);
   else content+=(content.endsWith('\n')||!content?'':'\n')+key+'='+value+'\n';
 }
 await writeFile(target,content,{mode:0o600});
-console.log('Đã bổ sung cấu hình còn thiếu, giữ nguyên kết nối SQL. Xem ADMIN_EMAIL và ADMIN_PASSWORD trong .env để đăng nhập. Mật khẩu không in ra log.');
+console.log('Đã thêm biến còn thiếu vào .env (không ghi đè mật khẩu SQL cũ). Giữ bí mật file này; không chia sẻ .env.');
+if (['Dubchef@12345', 'CHANGE_TO_A_STRONG_UNIQUE_PASSWORD', 'GENERATE_USING_NPM_RUN_SETUP_LOCAL'].includes(keys.get('DB_PASSWORD'))) {
+  console.warn('CẢNH BÁO: DB_PASSWORD hiện tại là mật khẩu mẫu/yếu. Với DB đã có dữ liệu, đổi mật khẩu SA trong SQL Server trước rồi cập nhật .env theo docs/BAO_MAT_VA_CHIA_SE.md.');
+}

@@ -1,0 +1,36 @@
+/** Startup checks for Docker/production. No secret is logged. */
+const UNSAFE_DB_PASSWORDS = new Set([
+  'Dubchef@12345',
+  'CHANGE_TO_A_STRONG_UNIQUE_PASSWORD',
+  'GENERATE_USING_NPM_RUN_SETUP_LOCAL',
+]);
+
+export function parseAllowedOrigins(value) {
+  if (typeof value !== 'string' || !value.trim()) throw new Error('Thiếu CORS_ORIGIN');
+  const origins = value.split(',').map(s => s.trim());
+  if (origins.length > 30 || origins.some(s => !s || s === '*' || s === 'null'))
+    throw new Error('CORS_ORIGIN phải là danh sách URL cụ thể, không dùng dấu *');
+  for (const origin of origins) {
+    let url;
+    try { url = new URL(origin); } catch { throw new Error('CORS_ORIGIN chứa URL không hợp lệ'); }
+    if (!['http:', 'https:'].includes(url.protocol) || url.origin !== origin || url.username || url.password)
+      throw new Error('CORS_ORIGIN phải chỉ gồm origin http(s), không có path/credentials');
+  }
+  return [...new Set(origins)];
+}
+
+export function validateServerEnvironment(env = process.env) {
+  const dbPassword = String(env.DB_PASSWORD || '');
+  if (!dbPassword) throw new Error('Thiếu DB_PASSWORD. Chạy npm run setup:local và giữ .env riêng.');
+  // Existing installations MUST rotate SA password first; changing .env alone does not rotate SQL credentials.
+  if (env.NODE_ENV === 'production') {
+    if (dbPassword.length < 12 || UNSAFE_DB_PASSWORDS.has(dbPassword))
+      throw new Error('DB_PASSWORD là mật khẩu yếu/mẫu; cần đổi mật khẩu SQL Server và cập nhật .env.');
+    if (typeof env.TOKEN_SECRET !== 'string' || env.TOKEN_SECRET.length < 32 ||
+        /^CHANGE_TO_|^GENERATE_USING_/.test(env.TOKEN_SECRET))
+      throw new Error('Thiếu TOKEN_SECRET cố định, ngẫu nhiên, tối thiểu 32 ký tự.');
+    parseAllowedOrigins(env.CORS_ORIGIN);
+  } else if (env.CORS_ORIGIN) {
+    parseAllowedOrigins(env.CORS_ORIGIN);
+  }
+}

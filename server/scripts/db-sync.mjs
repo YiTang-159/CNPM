@@ -11,13 +11,14 @@ const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db',
 // Bảng cha trước, bảng con sau (GiaoDich tham chiếu DonHang). Xóa theo thứ tự ngược lại.
 const TABLES = ['NguoiDung', 'DonHang', 'GiaoDich', 'LuotTruyCap', 'LienHe', 'LuotQuetQR'];
 
+if (!process.env.DB_PASSWORD) throw new Error('Thiếu DB_PASSWORD trong biến môi trường');
 const pool = await new sql.ConnectionPool({
   server: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT || 1433),
   user: process.env.DB_USER || 'sa',
-  password: process.env.DB_PASSWORD || 'Dubchef@12345',
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || 'DubchefDB',
-  options: { encrypt: true, trustServerCertificate: true },
+  options: { encrypt: true, trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true' },
   requestTimeout: 120000,
 }).connect();
 

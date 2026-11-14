@@ -16,6 +16,7 @@ import { createPayosGateway } from './payos.js';
 import { QuotaError } from './entitlements.js';
 import { localTranslate } from './localTranslate.js';
 import { validateLegacyOwnerLink } from './legacyOrders.js';
+import { parseAllowedOrigins } from './securityConfig.js';
 
 const MAX_VIDEO = 150 * 1024 * 1024;
 const DEFAULT_UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
@@ -42,16 +43,44 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }
   const UPLOAD_DIR = resolve(uploadDir);
   const app = express();
-  app.use(cors({ origin: corsOrigin === '*' ? true : corsOrigin.split(',').map((s) => s.trim()) }));
+  if (process.env.NODE_ENV === 'production' && corsOrigin === '*')
+    throw new Error('Production không cho phép CORS_ORIGIN=*');
+  const origins = corsOrigin === '*' ? true : parseAllowedOrigins(corsOrigin);
+  app.use(cors({ origin: origins, optionsSuccessStatus: 204 }));
   app.use(express.json({ limit: '1mb' }));
   app.disable('x-powered-by');
   app.use((req, res, next) => {
     res.set('X-Content-Type-Options', 'nosniff');
     res.set('Referrer-Policy', 'no-referrer');
     res.set('X-Frame-Options', 'DENY');
-    if (/^\/api\/(admin|me|auth|orders)(\/|$)/.test(req.path)) res.set('Cache-Control', 'no-store');
+    res.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.set('X-Permitted-Cross-Domain-Policies', 'none');
+    if (req.path.startsWith('/api/')) res.set('Cache-Control', 'no-store');
     next();
   });
+
+  // Giới hạn yêu cầu theo IP cho các endpoint công khai nhạy cảm.
+  // Không tin X-Forwarded-For từ client (Express trust proxy mặc định là false).
+  const requestBuckets = new Map();
+  const throttle = (name, max, windowMs) => (req, res, next) => {
+    const now = Date.now();
+    const key = `${name}:${req.ip}`;
+    const old = requestBuckets.get(key);
+    if (!old || old.until <= now) {
+      if (requestBuckets.size >= 10000) {
+        for (const [k, v] of requestBuckets) if (v.until <= now) requestBuckets.delete(k);
+        if (requestBuckets.size >= 10000) return res.status(429).json({ code: 'too_many' });
+      }
+      requestBuckets.set(key, { count: 1, until: now + windowMs });
+      return next();
+    }
+    if (old.count >= max) {
+      res.set('Retry-After', String(Math.max(1, Math.ceil((old.until - now) / 1000))));
+      return res.status(429).json({ code: 'too_many' });
+    }
+    old.count++;
+    return next();
+  };
 
   // Xác thực lại với SQL ở mỗi request: khóa/xóa tài khoản sẽ vô hiệu hóa token cũ.
   const auth = wrap(async (req, res, next) => {
@@ -203,7 +232,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }));
 
   // ---- Tài khoản ----
-  app.post('/api/auth/register', wrap(async (req, res) => {
+  app.post('/api/auth/register', throttle('register', 20, 15 * 60 * 1000), wrap(async (req, res) => {
     const b = req.body || {};
     const name = String(b.name || '').trim();
     const email = String(b.email || '').trim().toLowerCase();
@@ -227,10 +256,13 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     const now = Date.now();
     const f = loginFails.get(ip);
     loginFails.set(ip, f && f.until >= now ? { count: f.count + 1, until: f.until } : { count: 1, until: now + LOGIN_WINDOW_MS });
-    if (loginFails.size > 10000) for (const [k, v] of loginFails) if (v.until < now) loginFails.delete(k);
+    if (loginFails.size > 10000) {
+      for (const [k, v] of loginFails) if (v.until < now) loginFails.delete(k);
+      if (loginFails.size > 10000) loginFails.delete(loginFails.keys().next().value);
+    }
   };
 
-  app.post('/api/auth/login', wrap(async (req, res) => {
+  app.post('/api/auth/login', throttle('login', 60, 15 * 60 * 1000), wrap(async (req, res) => {
     const b = req.body || {};
     if (failsOf(req.ip) >= LOGIN_MAX_FAILS) return res.status(429).json({ code: 'too_many' });
     const user = await repo.findUser(String(b.email || '').trim().toLowerCase());
@@ -688,13 +720,16 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     }
   }));
 
+  // JSON 404, tránh trả HTML cho đường dẫn API sai.
+  app.use('/api', (_req, res) => res.status(404).json({ code: 'not_found' }));
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     if (err instanceof QuotaError) return res.status(409).json({code:err.code});
     if (err?.code==='idempotency_conflict') return res.status(409).json({code:err.code});
     if (err && err.type === 'entity.parse.failed') return res.status(400).json({ code: 'invalid_json' });
     if (err && err.type === 'entity.too.large') return res.status(413).json({ code: 'too_large' });
-    console.error(err);
+    if (process.env.NODE_ENV === 'production') console.error('API error:', err?.name || 'internal');
+    else console.error(err);
     res.status(500).json({ code: 'server' });
   });
   return app;

@@ -60,7 +60,7 @@ export function createPayosGateway(config = process.env, transport = fetch) {
           'x-api-key': apiKey,
         },
       });
-      if (!response.ok) throw new Error('payment_gateway_unavailable');
+      if (!response.ok) throw new Error([400, 409].includes(response.status) ? 'payment_request_rejected' : 'payment_gateway_unavailable');
       const data = await response.json();
       if (data.code !== '00' || !verifyPayosData(data.data, data.signature, checksumKey)) throw new Error('payment_gateway_invalid_response');
       return data.data;
@@ -83,7 +83,7 @@ export function createPayosGateway(config = process.env, transport = fetch) {
       catch (error) {
         // Nếu khách tải lại trang, payOS có thể từ chối tạo lại cùng orderCode.
         // Chỉ tái sử dụng link trước đó sau khi GET từ payOS và kiểm tra chữ ký, số tiền và trạng thái.
-        if (error.message !== 'payment_gateway_unavailable') throw error;
+        if (!['payment_gateway_unavailable', 'payment_request_rejected'].includes(error.message)) throw error;
         const old = await request(`/v2/payment-requests/${order.id}`);
         if (Number(old.orderCode) !== order.id || Number(old.amount) !== amount ||
             old.status !== 'PENDING' || !/^[a-zA-Z0-9]{8,80}$/.test(String(old.id || '')))

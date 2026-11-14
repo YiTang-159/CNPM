@@ -5,7 +5,7 @@ import { createWriteStream } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { Transform } from 'node:stream';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 import cors from 'cors';
 import { METHODS, newTransactionRef, priceOrder, validateOrder } from './orders.js';
 import { hashPassword, isLegacyHash, makeToken, readToken, verifyPassword } from './auth.js';
@@ -14,7 +14,7 @@ import { validMediaLines, validateFeedback, MEDIA_STATES } from './adminPolicy.j
 import { produceVoiceover } from './audioExport.js';
 import { createPayosGateway } from './payos.js';
 import { QuotaError } from './entitlements.js';
-import { localTranslate } from './localTranslate.js';
+import { localTranslate, getOllamaStatus } from './localTranslate.js';
 import { validateLegacyOwnerLink } from './legacyOrders.js';
 import { parseAllowedOrigins } from './securityConfig.js';
 
@@ -36,6 +36,8 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   paymentMode = process.env.PAYMENT_MODE || (paymentDemo ? 'demo' : 'disabled'),
   payosGateway = null } = {}) {
   if (!['demo', 'payos', 'disabled'].includes(paymentMode)) throw new Error('PAYMENT_MODE không hợp lệ');
+  if (paymentMode === 'demo' && process.env.NODE_ENV === 'production' && process.env.LOCAL_DOCKER_INSTALL !== 'true')
+    throw new Error('PAYMENT_MODE=demo chỉ được chạy trong môi trường phát triển/Docker cục bộ.');
   // Dùng SDK nội bộ có chữ ký. Tránh gọi nhà cung cấp nếu chưa cấu hình.
   let gateway = payosGateway;
   if (paymentMode === 'payos' && !gateway) {
@@ -57,6 +59,39 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.set('X-Permitted-Cross-Domain-Policies', 'none');
     if (req.path.startsWith('/api/')) res.set('Cache-Control', 'no-store');
     next();
+  });
+
+  // In-memory diagnostic counters; no customer data or secrets are logged.
+  const metrics = { requests: 0, failures: 0, totalMs: 0, byStatus: new Map() };
+  app.use((req, res, next) => {
+    if (req.path === '/api/metrics') return next();
+    const start = process.hrtime.bigint();
+    res.once('finish', () => {
+      metrics.requests += 1;
+      if (res.statusCode >= 500) metrics.failures += 1;
+      metrics.totalMs += Number(process.hrtime.bigint() - start) / 1e6;
+      const status = String(res.statusCode);
+      metrics.byStatus.set(status, (metrics.byStatus.get(status) || 0) + 1);
+    });
+    next();
+  });
+  app.get('/api/metrics', (req, res) => {
+    const token = process.env.METRICS_TOKEN || '';
+    if (token.length < 24) return res.status(404).json({ code: 'not_found' });
+    const submitted = /^Bearer (.+)$/i.exec(req.get('authorization') || '')?.[1] || '';
+    const expected = Buffer.from(token); const received = Buffer.from(submitted);
+    if (expected.length !== received.length || !timingSafeEqual(expected, received))
+      return res.status(401).json({ code: 'auth' });
+    const lines = [
+      '# TYPE dubchef_http_requests_total counter',
+      `dubchef_http_requests_total ${metrics.requests}`,
+      '# TYPE dubchef_http_failures_total counter',
+      `dubchef_http_failures_total ${metrics.failures}`,
+      '# TYPE dubchef_http_response_ms_total counter',
+      `dubchef_http_response_ms_total ${metrics.totalMs.toFixed(3)}`,
+    ];
+    for (const [status, count] of metrics.byStatus) lines.push(`dubchef_http_status_total{status="${status}"} ${count}`);
+    res.type('text/plain; version=0.0.4').send(lines.join('\n') + '\n');
   });
 
   // Giới hạn yêu cầu theo IP cho các endpoint công khai nhạy cảm.
@@ -140,6 +175,14 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     } catch (e) {
       res.status(503).json({ ok: false, db: false });
     }
+  }));
+
+  // Độc lập với /api/health: nếu model đang tải, login và DB vẫn sẵn sàng.
+  app.get('/api/health/translation', wrap(async (_req, res) => {
+    const status = await getOllamaStatus();
+    res.status(status.reachable && status.modelReady ? 200 : 503).json({
+      ok: status.reachable && status.modelReady, ...status,
+    });
   }));
 
   // Tạo đơn: giá do máy chủ tính, trạng thái "pending"

@@ -34,3 +34,6 @@ db/data/
 **/coverage/
 **/.env.local
 **/.env.production
+
+# Local diagnostics are generated on-device, not committed
+.local-monitor/

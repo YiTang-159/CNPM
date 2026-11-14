@@ -86,6 +86,22 @@ jobs:
       - name: Đóng gói JavaScript cho Android (kiểm tra import, cú pháp)
         run: npx expo export --platform android --output-dir dist
 
+  media-integration:
+    name: Render MP3/MP4 thật (FFmpeg + eSpeak-ng)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci --prefix server
+      - name: Cài công cụ xuất âm thanh/video
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak-ng
+      - name: Xuất file thật, ffprobe xác minh codec
+        env:
+          MEDIA_INTEGRATION: 'true'
+        run: node --test server/test/media.integration.test.mjs
+
   sql-integration:
     name: SQL Server và toàn bộ Admin
     runs-on: ubuntu-latest

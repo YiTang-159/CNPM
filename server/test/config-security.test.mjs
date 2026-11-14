@@ -18,6 +18,15 @@ test('production requires strong separate SQL and token secrets, and explicit CO
   assert.throws(() => validateServerEnvironment({ ...strong, CORS_ORIGIN: '*' }));
 });
 
+test('keep original SQL password ONLY for loopback-only Docker; never public deployment', () => {
+  const env = { ...strong, DB_PASSWORD: 'Dubchef@12345', LOCAL_DOCKER_INSTALL: 'true',
+    DB_BIND_ADDRESS: '127.0.0.1', API_BIND_ADDRESS: '127.0.0.1' };
+  assert.doesNotThrow(() => validateServerEnvironment(env));
+  assert.throws(() => validateServerEnvironment({ ...env, API_BIND_ADDRESS: '0.0.0.0' }));
+  assert.throws(() => validateServerEnvironment({ ...env, DB_BIND_ADDRESS: '0.0.0.0' }));
+  assert.throws(() => validateServerEnvironment({ ...env, LOCAL_DOCKER_INSTALL: 'false' }));
+});
+
 test('CORS exact allowlist rejects wildcard, embedded credentials, paths and non-HTTP schemes', () => {
   assert.deepEqual(parseAllowedOrigins('https://example.org,http://localhost:5173,https://example.org'),
     ['https://example.org', 'http://localhost:5173']);

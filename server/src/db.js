@@ -233,7 +233,7 @@ export async function openRepo() {
         .input('n', sql.Int, limit)
         .query(`SELECT TOP (@n) o.*, p.MaThamChieu, p.NguonXacNhan
                 FROM dbo.DonHang o
-                OUTER APPLY (SELECT TOP (1) MaThamChieu FROM dbo.GiaoDich p
+                OUTER APPLY (SELECT TOP (1) MaThamChieu, NguonXacNhan FROM dbo.GiaoDich p
                   WHERE p.MaDonHang=o.MaDonHang AND p.TrangThai='success'
                   ORDER BY p.MaGiaoDich DESC) p
                 WHERE o.MaNguoiDung=@uid

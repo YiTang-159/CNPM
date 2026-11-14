@@ -24,7 +24,12 @@ export function validateServerEnvironment(env = process.env) {
   if (!dbPassword) throw new Error('Thiếu DB_PASSWORD. Chạy npm run setup:local và giữ .env riêng.');
   // Existing installations MUST rotate SA password first; changing .env alone does not rotate SQL credentials.
   if (env.NODE_ENV === 'production') {
-    if (dbPassword.length < 12 || UNSAFE_DB_PASSWORDS.has(dbPassword))
+    // ONLY the existing local Docker installation may keep its original SA password.
+    // An internet-facing deployment must rotate it separately (SQL + .env together).
+    const localDockerOnly = env.LOCAL_DOCKER_INSTALL === 'true' &&
+      ['127.0.0.1', '::1'].includes(env.DB_BIND_ADDRESS) &&
+      ['127.0.0.1', '::1'].includes(env.API_BIND_ADDRESS);
+    if ((dbPassword.length < 12 || UNSAFE_DB_PASSWORDS.has(dbPassword)) && !localDockerOnly)
       throw new Error('DB_PASSWORD là mật khẩu yếu/mẫu; cần đổi mật khẩu SQL Server và cập nhật .env.');
     if (typeof env.TOKEN_SECRET !== 'string' || env.TOKEN_SECRET.length < 32 ||
         /^CHANGE_TO_|^GENERATE_USING_/.test(env.TOKEN_SECRET))

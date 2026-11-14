@@ -17,6 +17,11 @@
     "mobile": "npm --prefix mobile run start",
     "lint": "npm --prefix web run lint && npm --prefix mobile run lint",
     "db:export": "node server/scripts/db-sync.mjs export",
-    "db:import": "node server/scripts/db-sync.mjs import"
+    "db:import": "node server/scripts/db-sync.mjs import",
+    "test:ollama:docker": "docker compose exec -T api node scripts/test-ollama.mjs",
+    "test:media:docker": "docker compose exec -T -e MEDIA_INTEGRATION=true api node --test test/media.integration.test.mjs",
+    "monitor": "node scripts/monitor-system.mjs",
+    "perf:smoke": "node scripts/perf-smoke.mjs",
+    "backup": "node scripts/backup-dubchef.mjs backup"
   }
 }

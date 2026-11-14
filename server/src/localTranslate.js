@@ -24,3 +24,19 @@ export async function localTranslate(text, from, to, { endpoint = process.env.OL
     throw new LocalTranslationError(err.name === 'AbortError' ? 'timeout' : 'unavailable');
   } finally { clearTimeout(timeout); }
 }
+
+// Status is best-effort; translation works only after the model was downloaded.
+export async function getOllamaStatus({ endpoint = process.env.OLLAMA_URL || 'http://ollama:11434',
+  model = process.env.OLLAMA_MODEL || 'qwen2.5:3b', fetchImpl = fetch } = {}) {
+  try {
+    const response = await fetchImpl(`${endpoint.replace(/\/$/, '')}/api/tags`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!response.ok) return { reachable: false, modelReady: false };
+    const body = await response.json();
+    const available = Array.isArray(body.models) && body.models.some(m => m.name === model || m.model === model);
+    return { reachable: true, modelReady: Boolean(available) };
+  } catch {
+    return { reachable: false, modelReady: false };
+  }
+}

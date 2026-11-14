@@ -8,7 +8,7 @@ services:
     container_name: dubchef-db
     environment:
       ACCEPT_EULA: "Y"
-      # BẮT BUỘC đặt DB_PASSWORD mạnh trong .env; không còn mật khẩu mặc định.
+      # Giữ nguyên mật khẩu của SQL volume hiện tại; KHÔNG tự đổi/đặt lại SA.
       MSSQL_SA_PASSWORD: ${DB_PASSWORD:?Chay npm run setup:local de tao .env va DB_PASSWORD}
     ports:
       - "${DB_BIND_ADDRESS:-127.0.0.1}:1433:1433"
@@ -27,6 +27,12 @@ services:
       PORT: "3000"
       # Mặc định KHÔNG mô phỏng thu tiền. Chỉ dùng demo khi chủ động bật.
       PAYMENT_MODE: ${PAYMENT_MODE:-disabled}
+      LOCAL_DOCKER_INSTALL: "true"  # chỉ cho phép mật khẩu SQL cũ khi cổng DB/API bind loopback
+      DB_BIND_ADDRESS: ${DB_BIND_ADDRESS:-127.0.0.1}
+      API_BIND_ADDRESS: ${API_BIND_ADDRESS:-127.0.0.1}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
       PAYMENT_DEMO: ${PAYMENT_DEMO:-false}
       PAYOS_CLIENT_ID: ${PAYOS_CLIENT_ID:-}
       PAYOS_API_KEY: ${PAYOS_API_KEY:-}
@@ -51,7 +57,38 @@ services:
       - "${API_BIND_ADDRESS:-127.0.0.1}:3000:3000"
     restart: on-failure
 
+  # Ollama chạy trên máy người dùng và chỉ truy cập qua Docker network.
+  # Model được tải một lần vào volume riêng, không ảnh hưởng SQL/Uploads.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dubchef-ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+    volumes:
+      - dubchef-ollama:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 20s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: dubchef-ollama-init
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: 'ollama pull "$$OLLAMA_MODEL"'
+    restart: "no"
+
 volumes:
   dubchef-data:
   dubchef-uploads:
+  dubchef-ollama:
 

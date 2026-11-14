@@ -10,7 +10,7 @@ import { session } from './client.js';
 const BASE = (import.meta.env && import.meta.env.VITE_PAYMENT_API_URL) || '';
 export const HAS_PAYMENT_API = Boolean(BASE);
 const K_ORDERS = 'dubchef-orders';
-const LOCAL_DEMO = import.meta.env.MODE === 'test' || import.meta.env.VITE_ENABLE_PAYMENT_DEMO === 'true';
+const LOCAL_DEMO = import.meta.env.MODE === 'test' || (import.meta.env.DEV && import.meta.env.VITE_ENABLE_PAYMENT_DEMO === 'true');
 
 /** Thứ tự khớp với L của giao diện: 0 Việt, 1 Anh, 2 Trung. */
 export const CURRENCIES = ['VND', 'USD', 'CNY'];

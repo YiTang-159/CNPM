@@ -27,7 +27,7 @@ export default function Checkout({ uploads, outs, total, autoOpen = false }) {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(autoOpen);
   const [method, setMethod] = useState('card');
-  const [mode, setMode] = useState(HAS_PAYMENT_API ? 'loading' : import.meta.env.MODE === 'test' || import.meta.env.VITE_ENABLE_PAYMENT_DEMO === 'true' ? 'demo' : 'unavailable');
+  const [mode, setMode] = useState(HAS_PAYMENT_API ? 'loading' : import.meta.env.MODE === 'test' || (import.meta.env.DEV && import.meta.env.VITE_ENABLE_PAYMENT_DEMO === 'true') ? 'demo' : 'unavailable');
   const [checkoutUrl, setCheckoutUrl] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const txt = key => PAYMENT_TEXT[key]?.[L] || PAYMENT_TEXT[key]?.[0] || ''; 

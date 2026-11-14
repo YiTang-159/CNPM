@@ -12,3 +12,8 @@ mobile/.env
 !.env.example
 server/uploads/
 uploads/
+
+# Backup SQL va video chua du lieu khach hang; khong commit
+backups/
+*.bak
+*.tar.gz

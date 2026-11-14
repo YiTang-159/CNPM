@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
 import QrCode from '../components/QrCode.jsx';
-import { guestUrl } from '../api/qr.js';
+import { publicGuestUrl } from '../api/qr.js';
 
 const STEPS = ['s1', 's2', 's3', 's4'];
 const BANDS = [
@@ -59,7 +59,7 @@ export default function Home() {
 
       <div className="section">
         <div className="wrap qr-home">
-          <QrCode value={guestUrl()} label={t('qh_alt')} size={176} testId="home-qr" />
+          {publicGuestUrl() ? <QrCode value={publicGuestUrl()} label={t('qh_alt')} size={176} testId="home-qr" /> : <p role="note" className="fine">Mã QR dành cho điện thoại chỉ hiển thị khi có URL HTTPS công khai được cấu hình.</p>}
           <div>
             <h2 className="sec">{t('qh_title')}</h2>
             <p className="lead">{t('qh_sub')}</p>

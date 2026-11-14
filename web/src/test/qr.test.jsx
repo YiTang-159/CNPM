@@ -94,9 +94,10 @@ describe('trang /guest', () => {
     await waitFor(async () => expect((await qrStats.load({}, 7)).stats.total.visitors).toBe(1));
   });
 
-  it('trang chủ có mã QR dẫn tới trang khách', () => {
+  it('trang chủ không phát QR localhost cho điện thoại khi chưa cấu hình HTTPS công khai', () => {
     renderApp('/');
-    expect(screen.getByTestId('home-qr').getAttribute('data-value')).toMatch(/#\/guest$/);
+    expect(screen.queryByTestId('home-qr')).not.toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent(/URL HTTPS công khai/);
   });
 });
 
@@ -114,7 +115,9 @@ describe('trang /admin/qr', () => {
     renderApp('/admin/qr');
     expect(await screen.findByTestId('aq-total')).toHaveTextContent('1');
     expect(screen.getByTestId('aq-today')).toHaveTextContent('1');
-    expect(screen.getByTestId('aq-qrcode').getAttribute('data-value')).toBe(screen.getByTestId('aq-url').textContent);
+    expect(screen.queryByTestId('aq-qrcode')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: I.aq_copy[0] })).toBeDisabled();
+    expect(screen.getByRole('button', { name: I.aq_download[0] })).toBeDisabled();
     // Lấy nhãn từ menu quản trị thực tế, tránh phụ thuộc tên cũ trước khi đổi giao diện V4.
     const qrMenu = ADMIN_LINKS.find((link) => link.to === '/admin/qr');
     expect(qrMenu).toBeDefined();

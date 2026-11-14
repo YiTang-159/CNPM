@@ -1,0 +1,5 @@
+
+> dubchef-web@1.0.0 test
+> vitest run
+
+sh: 1: vitest: Permission denied

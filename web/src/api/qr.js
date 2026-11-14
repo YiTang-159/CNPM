@@ -13,7 +13,7 @@ const SUPA_URL = ((import.meta.env && import.meta.env.VITE_SUPABASE_URL) || '').
 const SUPA_KEY = (import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || '';
 const SUPA = Boolean(SUPA_URL && SUPA_KEY);
 const TZ_HOURS = 7; // ngày thống kê theo giờ Việt Nam
-const PUBLIC_URL = (import.meta.env && import.meta.env.VITE_PUBLIC_URL) || '';
+const PUBLIC_URL = (import.meta.env && (import.meta.env.VITE_PUBLIC_BASE_URL || import.meta.env.VITE_PUBLIC_URL)) || '';
 const K_SCANS = 'dubchef-qr-scans';
 const K_SEEN = 'dubchef-qr-seen'; // sessionStorage: phiên này đã tính một lượt quét rồi
 
@@ -160,3 +160,12 @@ export const qrStats = {
     }
   },
 };
+
+/** Never display a QR that sends mobile guests to a loopback/LAN-only test URL. */
+export function publicGuestUrl(href = window.location.href) {
+  if (!PUBLIC_URL || !/^https:\/\//i.test(PUBLIC_URL)) return null;
+  const url = guestUrl(href);
+  try { const parsed = new URL(url); if (isLocalAddress(url) || parsed.username || parsed.password) return null; }
+  catch { return null; }
+  return url;
+}

@@ -29,7 +29,7 @@ export default function Header() {
       <Link className="brand" to="/" aria-label="Dubchef - website công khai">
         <span className="mark" aria-hidden="true"><i /><i /><i /></span>Dubchef
       </Link>
-      <span className="admin-preview-label">Chế độ xem website công khai</span>
+      <span className="admin-preview-label">Chế độ xem công khai</span>
       <div className="admin-preview-actions">
         <Link to="/admin/dashboard" className="btn btn-sm btn-primary admin-preview-cta">Về trang quản trị</Link>
         <AdminAccountMenu compact />

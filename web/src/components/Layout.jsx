@@ -5,14 +5,9 @@ import Header from './Header.jsx';
 import Footer from './Footer.jsx';
 import { trackVisit } from '../api/analytics.js';
 import { useI18n } from '../context/I18nContext.jsx';
-import { useAuth } from '../context/AuthContext.jsx';
-import { isAdmin } from '../api/client.js';
-import { Link } from 'react-router-dom';
 
 export default function Layout() {
   const { t, L } = useI18n();
-  const { user } = useAuth();
-  const adminPreview = isAdmin(user);
   const { pathname } = useLocation();
   const mainRef = useRef(null);
 
@@ -40,7 +35,6 @@ export default function Layout() {
       <a className="skip" href="#main" onClick={skip}>{t('skip')}</a>
       <Header />
       <main id="main" tabIndex={-1} ref={mainRef}>
-        {adminPreview && <div className="admin-preview-banner" role="status"><div className="wrap admin-preview-banner-inner"><span>Bạn đang xem giao diện công khai, không phải khu vực quản lý.</span><Link to="/admin/dashboard">Quay về Dashboard</Link></div></div>}
         {import.meta.env.PROD && !HAS_API ? <p className="wrap note" role="note" style={{ paddingTop: 16 }}>
           {[
             'Website đang mở ở chế độ xem và trải nghiệm trên thiết bị. Đăng nhập, lưu dữ liệu và quản trị sẽ hoạt động khi kết nối máy chủ được cấu hình.',

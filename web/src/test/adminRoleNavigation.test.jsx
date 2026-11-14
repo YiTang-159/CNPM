@@ -13,9 +13,10 @@ describe('Tách không gian quản trị và website công khai', () => {
   it('Admin xem website có nhãn xem trước và đường về Dashboard, không có menu mua dịch vụ', () => {
     adminSession();
     renderApp('/features');
-    expect(screen.getByText('Chế độ xem website công khai')).toBeInTheDocument();
+    expect(screen.getByText('Chế độ xem công khai')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Về trang quản trị' })).toHaveLength(1);
     expect(screen.getByRole('link', { name: 'Về trang quản trị' })).toHaveAttribute('href', '/admin/dashboard');
-    expect(screen.getByText(/không phải khu vực quản lý/)).toBeInTheDocument();
+    expect(screen.queryByText(/không phải khu vực quản lý/)).not.toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: I.navlabel[0] })).not.toBeInTheDocument();
   });
 

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useI18n } from '../context/I18nContext.jsx';
+import { CONTACT_EMAIL } from '../shared/publicConfig.js';
 
 export default function Footer() {
   const { t } = useI18n();
@@ -40,7 +41,7 @@ export default function Footer() {
         </div>
         <div className="copy">
           <span>{t('ft_copy')}</span>
-          <span>hello@dubchef.example</span>
+          {CONTACT_EMAIL ? <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> : <Link to="/contact">{t('nav_contact')}</Link>}
         </div>
       </div>
     </footer>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../context/I18nContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { usePageTitle } from '../utils/usePageTitle.js';
-import { QR_SHARED, guestUrl, isLocalAddress, qrStats } from '../api/qr.js';
+import { QR_SHARED, publicGuestUrl, qrStats } from '../api/qr.js';
 import { qrSvg } from '../utils/qr.js';
 import QrCode from '../components/QrCode.jsx';
 import { Chart, Kpi, Trend, num, shortDate } from '../components/AdminWidgets.jsx';
@@ -20,7 +20,7 @@ export default function AdminQr() {
   const [failed, setFailed] = useState(false);
   const [copied, setCopied] = useState(false);
   const timer = useRef(0);
-  const url = guestUrl();
+  const url = publicGuestUrl();
 
   const load = useCallback(() => {
     setFailed(false);
@@ -36,6 +36,7 @@ export default function AdminQr() {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   async function copy() {
+    if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -45,6 +46,7 @@ export default function AdminQr() {
   }
 
   function download() {
+    if (!url) return;
     const blob = new Blob([qrSvg(url)], { type: 'image/svg+xml' });
     const href = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -80,16 +82,16 @@ export default function AdminQr() {
 
       <section className="panel" aria-labelledby="aq-code-h">
         <div className="qr-card">
-          <QrCode value={url} label={t('qh_alt')} size={168} testId="aq-qrcode" />
+          {url ? <QrCode value={url} label={t('qh_alt')} size={168} testId="aq-qrcode" /> : <p role="alert">Chưa cấu hình VITE_PUBLIC_BASE_URL bằng URL HTTPS công khai. QR bị tạm ẩn để không đưa khách về localhost.</p>}
           <div className="qr-info">
             <h2 id="aq-code-h">{t('aq_code_title')}</h2>
             <p>{t('aq_code_d')}</p>
             <p className="fine-i" style={{ marginTop: 10 }}>{t('aq_link')}:</p>
             <p><code className="qr-url" data-testid="aq-url">{url}</code></p>
-            {isLocalAddress(url) ? <p className="fine-i" role="note" style={{ marginTop: 8 }}>{t('aq_localhost')}</p> : null}
+            
             <p style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-sm" onClick={copy}>{copied ? t('aq_copied') : t('aq_copy')}</button>
-              <button type="button" className="btn btn-sm" onClick={download}>{t('aq_download')}</button>
+              <button type="button" className="btn btn-sm" onClick={copy} disabled={!url}>{copied ? t('aq_copied') : t('aq_copy')}</button>
+              <button type="button" className="btn btn-sm" onClick={download} disabled={!url}>{t('aq_download')}</button>
             </p>
           </div>
         </div>

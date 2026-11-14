@@ -41,7 +41,7 @@ Chương trình sẽ:
 1. Xác nhận SQL Docker đang chạy và xác định volume lưu video.
 2. Nếu API đang chạy: dừng API để ngăn ghi đồng thời.
 3. Gọi SQL Server `BACKUP DATABASE [DubchefDB] WITH COPY_ONLY, COMPRESSION, CHECKSUM`.
-4. Sao chép `.bak` ra máy và tạo `uploads.tar.gz` trực tiếp từ volume video.
+4. Sao chép `.bak` ra máy và tạo `uploads.tar.gz` bằng container tạm của dịch vụ API qua Docker Compose, từ volume video hiện tại (không tra cứu mã image SHA cũ).
 5. **Khởi động lại API** nếu trước đó API đang chạy, kể cả khi sao lưu lỗi.
 6. Tính SHA-256 và kích thước của hai tệp, ghi `manifest.json`.
 7. Sao chép `.bak` trở lại SQL container, `RESTORE VERIFYONLY WITH CHECKSUM`, **RESTORE vào database tạm** `DubchefRestoreCheck_...`, chạy `DBCC CHECKDB`, kiểm tra có bảng nghiệp vụ, rồi xóa DB tạm.
@@ -133,3 +133,22 @@ Nếu lệnh bị dừng đột ngột bằng Ctrl+C trong lúc API đang tạm 
 docker compose start api
 docker compose ps -a
 ```
+
+
+## H. Khắc phục lỗi Docker `No such image: sha256:...` khi sao lưu video
+
+Nếu Terminal báo `SQL_BACKUP_OK` rồi `docker: Error response from daemon: No such image: sha256:...` thì **bản sao lưu CHƯA hoàn tất**, dù file `database.bak` đã được chép về máy. File `.bak` đơn lẻ chưa đủ để khôi phục video, và chưa có `verification.json`.
+
+Nguyên nhân của script cũ là lấy image API theo ID `docker compose images -q api`, trong khi image có thể đã bị Docker xóa sau khi build/đổi phiên bản. Bản vá này không dùng ID đó nữa; bước sao lưu video chạy `docker compose run --rm -T --no-deps --entrypoint sh ... api` và dùng chung volume video của API.
+
+Tại thư mục gốc CNPM, sau khi chép **file `scripts/backup-dubchef.mjs` bản mới**, chạy:
+
+```powershell
+Test-Path .\scripts\backup-dubchef.mjs
+node --test .\scripts\backup-dubchef.test.mjs
+node .\scripts\backup-dubchef.mjs backup
+```
+
+**Không** chạy `restore ... RESTORE_DUBCHEF` chỉ để kiểm tra. Chỉ kết luận thử khôi phục đã thành công khi có thông báo `BACKUP_AND_RESTORE_VERIFICATION_PASSED` và file `verification.json` trong thư mục backup mới. Những thư mục backup có `BACKUP_FAILED.txt` là bản sao lưu chưa đủ và không dùng để khôi phục sản xuất.
+
+Nếu xuất hiện lỗi mới từ `docker compose run`, xem toàn bộ dòng báo lỗi mới và kiểm tra `docker compose ps -a`; tránh xóa volume/SQL Server.

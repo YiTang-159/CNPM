@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sha256, validManifest } from './backup-dubchef.mjs';
+import { sha256, validManifest, mediaComposeArgs } from './backup-dubchef.mjs';
 
 const script = fileURLToPath(new URL('./backup-dubchef.mjs',import.meta.url));
 
@@ -34,4 +34,23 @@ test('production restore is rejected without an explicit confirmation, before Do
   const r=spawnSync(process.execPath,[script,'restore','backups/fake'],{encoding:'utf8'});
   assert.notEqual(r.status,0);
   assert.match(r.stderr,/RESTORE_DUBCHEF/);
+});
+
+
+test('upload archive uses Docker Compose service, never a stale sha256 image ID', () => {
+  const dir = resolve('backups', 'test_backups');
+  const args = mediaComposeArgs(dir, 'rw', 'tar -czf /backup/uploads.tar.gz -C /app/server/uploads .');
+  assert.deepEqual(args.slice(0, 6), ['run', '--rm', '-T', '--no-deps', '--entrypoint', 'sh']);
+  assert.equal(args[6], '-v');
+  assert.equal(args[7], `${dir}:/backup:rw`);
+  assert.deepEqual(args.slice(8,10), ['api', '-c']);
+  assert.ok(args.at(-1).includes('/app/server/uploads'));
+  assert.ok(!args.some(a => /sha256:/i.test(a)));
+});
+
+test('verification binds the archive read-only and rejects unknown modes', () => {
+  const dir = resolve('backups', 'verify');
+  const args = mediaComposeArgs(dir, 'ro', 'tar -tzf /backup/uploads.tar.gz');
+  assert.equal(args[7], `${dir}:/backup:ro`);
+  assert.throws(() => mediaComposeArgs(dir, 'overwrite', 'true'), /không hợp lệ/);
 });

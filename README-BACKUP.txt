@@ -20,3 +20,9 @@ DUBCHEF - SAO LUU / THU KHOI PHUC KHONG GHI DE DATABASE THAT
 
 KHONG chay docker compose down -v.
 KHONG chia se backup that (co du lieu khach hang) len GitHub.
+
+LOI NO SUCH IMAGE sha256 KHI BACKUP UPLOADS:
+  Chep scripts/backup-dubchef.mjs ban FIX, test:
+  node --test scripts/backup-dubchef.test.mjs
+  node scripts/backup-dubchef.mjs backup
+  Khong dung thu muc backup co BACKUP_FAILED.txt de khoi phuc.

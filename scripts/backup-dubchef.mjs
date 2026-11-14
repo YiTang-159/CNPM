@@ -61,9 +61,9 @@ function dockerCheck() {
   const state = cmd('docker',['inspect','--format','{{.State.Running}}',dbContainer],{capture:true});
   if (state !== 'true') fail('SQL Server dubchef-db không chạy. Khởi động docker compose up -d db trước.');
   cmd('docker',['volume','inspect',uploadsVolume],{capture:true});
-  const image = cmd('docker',['compose','images','-q','api'],{capture:true}).split(/\r?\n/).filter(Boolean)[0];
-  if (!image) fail('Chưa có Docker image của API. Chạy: docker compose build api');
-  return image;
+  // Do not resolve API to its image SHA: `compose images -q api` can return
+  // a stale digest after Docker rebuilds / prunes old images. Media helpers use
+  // `docker compose run api` so Docker Compose selects the current service image.
 }
 function apiWasRunning() {
   const r = spawnSync('docker',['inspect','--format','{{.State.Running}}',apiContainer],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']});
@@ -91,29 +91,33 @@ function runMaintenance(operation, filename) {
   compose('run','--rm','-T','--no-deps','--entrypoint','node','api',
     '/app/server/scripts/db-maintenance.mjs',operation,filename);
 }
-function hostMount(dir, dest = '/backup', readonly = true) {
-  const p = resolve(dir);
-  if (p.includes(',')) fail('Đường dẫn sao lưu không được chứa dấu phẩy (giới hạn cú pháp Docker --mount).');
-  return `type=bind,src=${p},dst=${dest}${readonly ? ',readonly' : ''}`;
+// Use a temporary Compose service container rather than a Docker image SHA.
+// The api service already mounts the SAME named uploads volume as production.
+// `-v` binds the host backup directory; on Windows Docker Compose handles C:\ paths.
+export function mediaComposeArgs(outputDir, mode, command) {
+  if (!['ro', 'rw'].includes(mode)) fail('Chế độ backup media không hợp lệ.');
+  const host = resolve(outputDir);
+  if (host.includes('\n') || host.includes('\r')) fail('Đường dẫn sao lưu không hợp lệ.');
+  return ['run', '--rm', '-T', '--no-deps', '--entrypoint', 'sh',
+    '-v', `${host}:/backup:${mode}`, 'api', '-c', command];
 }
-function mediaCopy(image, outputDir) {
+function mediaRun(outputDir, mode, script) {
+  compose(...mediaComposeArgs(outputDir, mode, script));
+}
+function mediaCopy(outputDir) {
   console.log('Sao lưu Docker volume chứa video/tệp tải lên...');
-  docker('run','--rm','--mount',`type=volume,src=${uploadsVolume},dst=/data,readonly`,
-    '--mount',hostMount(outputDir,'/backup',false), '--entrypoint','sh',image,
-    '-c','tar -C /data -czf /backup/uploads.tar.gz .');
+  mediaRun(outputDir, 'rw',
+    'set -eu; test -d /app/server/uploads; tar -C /app/server/uploads -czf /backup/uploads.tar.gz .');
 }
-function validateArchive(image, outputDir) {
+function validateArchive(outputDir) {
   console.log('Kiểm tra cấu trúc archive video...');
-  docker('run','--rm','--mount',hostMount(outputDir), '--entrypoint','sh',image,
-    '-c','tar -tzf /backup/uploads.tar.gz >/dev/null');
+  mediaRun(outputDir, 'ro', 'set -eu; tar -tzf /backup/uploads.tar.gz >/dev/null');
 }
-function restoreMedia(image, outputDir) {
-  // WARNING: DESTRUCTIVE. This is invoked only from the guarded restore command.
+function restoreMedia(outputDir) {
+  // WARNING: DESTRUCTIVE. Only invoked after explicit restore confirmation.
   console.log('Khôi phục video từ archive (thay thế nội dung volume uploads)...');
-  docker('run','--rm',
-    '--mount',`type=volume,src=${uploadsVolume},dst=/data`,
-    '--mount',hostMount(outputDir), '--entrypoint','sh',image,'-c',
-    'set -eu; find /data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} \\; ; tar -xzf /backup/uploads.tar.gz -C /data');
+  mediaRun(outputDir, 'ro',
+    'set -eu; test -d /app/server/uploads; find /app/server/uploads -mindepth 1 -maxdepth 1 -exec rm -rf -- {} \\; ; tar -xzf /backup/uploads.tar.gz -C /app/server/uploads');
 }
 function uniqueId() {
   const date = new Date().toISOString().replace(/[-:]/g,'').replace(/\..+$/,'').replace('T','_');
@@ -145,8 +149,8 @@ function deleteCopyIn(containerFilename) {
   try { docker('exec','--user','0',dbContainer,'rm','-f',`${sqlFolder}/${containerFilename}`); }
   catch (e) { console.warn(`Không dọn được file SQL tạm: ${e.message}`); }
 }
-function testRestore({dir,m}, image) {
-  validateArchive(image,dir);
+function testRestore({dir,m}) {
+  validateArchive(dir);
   // Unique filename avoids collision with any backup work in progress.
   const tmpFilename = `dubchef_${uniqueId()}.bak`;
   prepareCopyIn(join(dir,dbArchive),tmpFilename);
@@ -161,7 +165,7 @@ function testRestore({dir,m}, image) {
   console.log(`ĐÃ XÁC MINH: ${join(dir,'verification.json')} (đã khôi phục thử vào DB riêng và xóa DB thử).`);
 }
 function performBackup() {
-  const image = dockerCheck();
+  dockerCheck();
   const id = uniqueId();
   const basename = `dubchef_${id}.bak`;
   const dir = join(root,'backups',`dubchef_${id}`);
@@ -173,7 +177,7 @@ function performBackup() {
         runMaintenance('backup',basename);
         docker('cp',`${dbContainer}:${sqlFolder}/${basename}`,join(dir,dbArchive));
       } finally { deleteCopyIn(basename); }
-      mediaCopy(image,dir);
+      mediaCopy(dir);
     });
     const bak = join(dir,dbArchive), archive = join(dir,mediaArchive);
     if (!existsSync(bak) || !existsSync(archive)) fail('Thiếu database.bak hoặc uploads.tar.gz');
@@ -187,7 +191,7 @@ function performBackup() {
     };
     writeFileSync(join(dir,manifestFile),JSON.stringify(manifest,null,2)+'\n');
     console.log(`Bản sao lưu đã tạo: ${dir}`);
-    testRestore({dir,m:manifest},image);
+    testRestore({dir,m:manifest});
     console.log('BACKUP_AND_RESTORE_VERIFICATION_PASSED');
   } catch (e) {
     writeFileSync(join(dir,'BACKUP_FAILED.txt'), `${new Date().toISOString()}\n${e.message}\n`);
@@ -196,22 +200,22 @@ function performBackup() {
 }
 function performVerify() {
   const {dir,m} = fromFolder(selected);
-  const image = dockerCheck();
-  testRestore({dir,m},image);
+  dockerCheck();
+  testRestore({dir,m});
 }
 function performRestore() {
   if (confirm !== 'RESTORE_DUBCHEF') fail('KHÔNG KHÔI PHỤC: Cần nhập chính xác RESTORE_DUBCHEF sau thư mục backup.');
   const {dir,m} = fromFolder(selected);
-  const image = dockerCheck();
+  dockerCheck();
   // A fresh restore test must succeed immediately before the destructive restore.
-  testRestore({dir,m},image);
+  testRestore({dir,m});
   console.warn('CẢNH BÁO: thao tác tiếp theo sẽ GHI ĐÈ DubchefDB và TOÀN BỘ video hiện có.');
   pauseApi(() => {
     const copiedName = `dubchef_${uniqueId()}.bak`;
     prepareCopyIn(join(dir,dbArchive),copiedName);
     try {
       runMaintenance('restore',copiedName);
-      restoreMedia(image,dir);
+      restoreMedia(dir);
     } finally { deleteCopyIn(copiedName); }
   });
   writeFileSync(join(dir,`restore-production-${Date.now()}.txt`),

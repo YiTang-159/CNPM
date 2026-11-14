@@ -23,6 +23,29 @@ services:
       retries: 15
       start_period: 45s
 
+  # Run migrations under a separate principal BEFORE starting the production API.
+  # In local Docker, SA can be used temporarily for this service; use a distinct
+  # DB_MIGRATION_USER / DB_MIGRATION_PASSWORD in real production.
+  migrate:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: '1433'
+      DB_NAME: DubchefDB
+      DB_MIGRATION_USER: ${DB_MIGRATION_USER:-sa}
+      DB_MIGRATION_PASSWORD: ${DB_MIGRATION_PASSWORD:-}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+      DB_TRUST_SERVER_CERTIFICATE: '${DB_TRUST_SERVER_CERTIFICATE:-true}'
+      DB_CREATE_IF_MISSING: 'true'
+      SEED_INITIAL_PRICING: 'true'  # idempotent initial CONFIG values, not demo customer data
+    command: ['node','scripts/run-migrations.mjs']
+    restart: 'no'
+
   api:
     build:
       context: .
@@ -31,6 +54,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       PORT: "3000"
       # Mặc định KHÔNG mô phỏng thu tiền. Chỉ dùng demo khi chủ động bật.
@@ -49,6 +74,10 @@ services:
       DB_HOST: db
       DB_PORT: "1433"
       DB_USER: sa
+      DB_APP_USER: ${DB_APP_USER:-}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:-}
+      DB_MIGRATE_ON_START: 'false'
+      DB_SKIP_CREATE: 'true'
       DB_PASSWORD: ${DB_PASSWORD:?Thieu DB_PASSWORD trong .env}
       DB_NAME: DubchefDB
       DB_TRUST_SERVER_CERTIFICATE: "${DB_TRUST_SERVER_CERTIFICATE:-true}" # self-signed only in local Docker

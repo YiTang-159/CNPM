@@ -1,8 +1,6 @@
 // Kết nối SQL Server, tạo CSDL và bảng khi khởi động, và các câu lệnh cho đơn hàng / thanh toán.
 import sql from 'mssql';
-import { readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createHmac, randomBytes } from 'node:crypto';
 import { ACTIVE_MINUTES, dayKey } from './stats.js';
 import { hashPassword } from './auth.js';
 import { attachWorkflows } from './workflows.js';
@@ -12,7 +10,7 @@ import { attachPricing } from './pricingRepo.js';
 import { calculateOrderSnapshot } from './pricingPolicy.js';
 import { lockAccount, charge, grantPaidOrder, refundUnfinishedUpload, balance } from './entitlements.js';
 
-const DB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db');
+import { runMigrations } from './migrations.mjs';
 
 function requiredDbPassword() {
   if (!process.env.DB_PASSWORD) throw new Error('Thiếu DB_PASSWORD; cấu hình trong .env riêng (không sử dụng mật khẩu mặc định).');
@@ -23,8 +21,8 @@ function config(database) {
   return {
     server: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT || 1433),
-    user: process.env.DB_USER || 'sa',
-    password: requiredDbPassword(),
+    user: process.env.DB_APP_USER || process.env.DB_USER || 'sa',
+    password: process.env.DB_APP_USER ? (process.env.DB_APP_PASSWORD || (() => {throw new Error('Missing DB_APP_PASSWORD');})()) : requiredDbPassword(),
     database,
     options: { encrypt: true, trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true' }, // chỉ tin chứng chỉ tự ký khi chủ động bật
     pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
@@ -43,14 +41,6 @@ async function connect(database, tries = 60) {
       console.log(`Chờ SQL Server (${n}/${tries}): ${e.message}`);
       await sleep(2000);
     }
-  }
-}
-
-/** Chạy một file .sql, tách các lô bằng dòng GO. */
-async function runScript(pool, file) {
-  const text = (await readFile(join(DB_DIR, file), 'utf8')).replace(/^\s*USE\s+\[?DubchefDB\]?\s*;?\s*$/gim, '');
-  for (const batch of text.split(/^\s*GO\s*$/im)) {
-    if (batch.trim()) await pool.request().batch(batch);
   }
 }
 
@@ -131,21 +121,58 @@ export async function openRepo() {
   }
 
   const pool = await connect(process.env.DB_NAME || 'DubchefDB');
-  await runScript(pool, '00-PREFLIGHT.sql');
-  await runScript(pool, '02-schema.sql');
-  await runScript(pool, '04-workflows.sql');
-  await runScript(pool, '07-quan-tri-nghiep-vu.sql');
-  await runScript(pool, '10-an-toan-don-hang-va-nhat-ky.sql');
-  await runScript(pool, '11-nguon-xac-nhan-thanh-toan.sql');
-  await runScript(pool, '12-quyen-su-dung-goi.sql');
-  // Idempotent migration; creates only the evidence/audit table, never assigns owners.
-  await runScript(pool, '13-doi-soat-chu-don-hang-cu.sql');
-  await runScript(pool, 'migrations/014_pricing.sql');
-  await runScript(pool, 'seed/001_pricing_defaults.sql');
+  const migrateOnStart = process.env.DB_MIGRATE_ON_START === 'true' ||
+    (process.env.NODE_ENV !== 'production' && process.env.DB_MIGRATE_ON_START !== 'false');
+  if (migrateOnStart) {
+    const changes = await runMigrations(pool);
+    for (const change of changes) console.log('Migration:', change);
+    // Pricing seeds are only for new/development installations.
+    // Production operators seed explicitly after migrations.
+    if (process.env.NODE_ENV !== 'production') {
+      await (async () => {
+        const { readFile } = await import('node:fs/promises');
+        const { dirname, join } = await import('node:path');
+        const { fileURLToPath } = await import('node:url');
+        const seed = await readFile(join(dirname(fileURLToPath(import.meta.url)), '../../db/seed/001_pricing_defaults.sql'),'utf8');
+        for (const batch of seed.split(/^\s*GO\s*$/im)) if (batch.trim()) await pool.request().batch(batch);
+      })();
+    }
+  }
   console.log('SQL Server sẵn sàng.');
 
   const repo = {
     close: () => pool.close(),
+    async payVerifiedWebhook(id,details) {
+      return repo.payOrder(id,details); // Real repository requires verified event metadata.
+    },
+    // IPs are never persisted in plaintext; stable across API restarts/instances
+    // because every instance uses the same signed auth secret.
+    async getLoginFailureCount(ip, tokenSecret) {
+      const key=createHmac('sha256',tokenSecret).update(String(ip)).digest('hex');
+      const r=await pool.request().input('k',sql.Char(64),key).query(`SELECT CASE
+        WHEN HanKhoa>SYSUTCDATETIME() THEN SoLan ELSE 0 END AS n
+        FROM dbo.LanDangNhapSai WHERE IpHash=@k`);
+      return r.recordset[0]?.n || 0;
+    },
+    async registerLoginFailure(ip, tokenSecret) {
+      const key=createHmac('sha256',tokenSecret).update(String(ip)).digest('hex');
+      await pool.request().input('k',sql.Char(64),key).query(`BEGIN TRY
+        BEGIN TRAN;
+        IF EXISTS(SELECT 1 FROM dbo.LanDangNhapSai WITH(UPDLOCK,HOLDLOCK) WHERE IpHash=@k)
+          UPDATE dbo.LanDangNhapSai SET
+            SoLan=CASE WHEN HanKhoa>SYSUTCDATETIME() THEN SoLan+1 ELSE 1 END,
+            HanKhoa=CASE WHEN HanKhoa>SYSUTCDATETIME() THEN HanKhoa ELSE DATEADD(MINUTE,15,SYSUTCDATETIME()) END,
+            NgayCapNhat=SYSUTCDATETIME() WHERE IpHash=@k;
+        ELSE
+          INSERT dbo.LanDangNhapSai(IpHash,SoLan,HanKhoa)
+            VALUES(@k,1,DATEADD(MINUTE,15,SYSUTCDATETIME()));
+        COMMIT;
+        END TRY BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK; THROW; END CATCH`);
+    },
+    async clearLoginFailures(ip, tokenSecret) {
+      const key=createHmac('sha256',tokenSecret).update(String(ip)).digest('hex');
+      await pool.request().input('k',sql.Char(64),key).query('DELETE dbo.LanDangNhapSai WHERE IpHash=@k');
+    },
     entitlements: async (userId) => balance(pool, userId),
     async entitlementsForEmail(email) {
       const r = await pool.request().input('email', sql.NVarChar(254), email)
@@ -174,10 +201,10 @@ export async function openRepo() {
           .input('up',sql.Int,o.uploads).input('out',sql.Int,o.outs)
           .input('cur',sql.Char(3),quote.currency).input('amt',sql.BigInt,quote.amountMinor)
           .input('priceUp',sql.BigInt,quote.uploadMinor).input('priceOut',sql.BigInt,quote.translationMinor)
-          .input('version',sql.BigInt,quote.version)
+          .input('version',sql.BigInt,quote.version).input('discount',sql.Int,row.GiamGiaNamPct)
           .query(`INSERT INTO dbo.DonHang (MaNguoiDung,TenKhachHang,EmailKhachHang,
-            SoVideoDang,SoVideoDich,LoaiTien,SoTien,DonGiaDangSnapshot,DonGiaDichSnapshot,PhienBanGiaSnapshot)
-            OUTPUT inserted.* SELECT u.MaNguoiDung,@name,@email,@up,@out,@cur,@amt,@priceUp,@priceOut,@version
+            SoVideoDang,SoVideoDich,LoaiTien,SoTien,DonGiaDangSnapshot,DonGiaDichSnapshot,PhienBanGiaSnapshot,GiamGiaSnapshotPct)
+            OUTPUT inserted.* SELECT u.MaNguoiDung,@name,@email,@up,@out,@cur,@amt,@priceUp,@priceOut,@version,@discount
             FROM dbo.NguoiDung u WHERE u.MaNguoiDung=@uid AND u.Email=@email AND u.TrangThai='active'`);
         await tx.commit();
         return r.recordset[0] ? mapOrder(r.recordset[0]) : null;
@@ -201,8 +228,11 @@ export async function openRepo() {
     },
 
     /** Đánh dấu đơn đã trả và ghi giao dịch trong cùng một transaction. Trả null nếu đơn không tồn tại hoặc đã trả. */
-    async payOrder(id, { method, ref, source = 'demo' }) {
+    async payOrder(id, { method, ref, source = 'demo', verifiedWebhook = null }) {
       if (!['demo','payos'].includes(source)) throw new Error('invalid_payment_source');
+      if (source==='payos' && (!verifiedWebhook || !/^payos:[A-Za-z0-9_-]{4,40}$/.test(verifiedWebhook.eventId)
+        || !/^[a-f0-9]{64}$/.test(verifiedWebhook.payloadSha256)))
+        throw new Error('missing_verified_webhook');
       const tx = new sql.Transaction(pool);
       await tx.begin();
       try {
@@ -214,6 +244,13 @@ export async function openRepo() {
           return null;
         }
         const order = upd.recordset[0];
+        if (source==='payos') {
+          // Transactional, unique idempotency record: no financial update without verified event evidence.
+          await new sql.Request(tx).input('event',sql.VarChar(128),verifiedWebhook.eventId)
+            .input('hash',sql.Char(64),verifiedWebhook.payloadSha256).input('orderId',sql.Int,id)
+            .query(`INSERT dbo.WebhookNhan(EventId,NhaCungCap,MaDonHang,ChuKyHopLe,PayloadSha256,KetQua)
+              VALUES(@event,'payos',@orderId,1,@hash,'received')`);
+        }
         await new sql.Request(tx)
           .input('id', sql.Int, id)
           .input('method', sql.VarChar(10), method)
@@ -221,10 +258,14 @@ export async function openRepo() {
           .input('cur', sql.Char(3), order.LoaiTien)
           .input('ref', sql.VarChar(40), ref)
           .input('source', sql.VarChar(20), source)
-          .query(`INSERT INTO dbo.GiaoDich (MaDonHang, PhuongThuc, SoTien, LoaiTien, TrangThai, MaThamChieu, NguonXacNhan)
-                  VALUES (@id, @method, @amt, @cur, 'success', @ref, @source)`);
+          .query(`INSERT INTO dbo.GiaoDich (MaDonHang, PhuongThuc, SoTien, LoaiTien, TrangThai, MaThamChieu, NguonXacNhan,NhaCungCap,PayOSOrderCode)
+                  VALUES (@id, @method, @amt, @cur, 'success', @ref, @source,
+                    CASE WHEN @source='payos' THEN 'payos' ELSE NULL END,
+                    CASE WHEN @source='payos' THEN @id ELSE NULL END)`);
         // Atomic with payment: no paid order can be committed without its credits.
         await grantPaidOrder(tx, order, source);
+        if(source==='payos') await new sql.Request(tx).input('event',sql.VarChar(128),verifiedWebhook.eventId)
+          .query("UPDATE dbo.WebhookNhan SET KetQua='processed',NgayCapNhat=SYSUTCDATETIME() WHERE EventId=@event");
         await tx.commit();
         return { order: mapOrder({ ...order, MaThamChieu: ref, NguonXacNhan: source }), payment: { method, ref, source } };
       } catch (e) {
@@ -288,7 +329,7 @@ export async function openRepo() {
     },
 
     async listUsers() {
-      const r = await pool.request().query('SELECT * FROM dbo.NguoiDung ORDER BY NgayTao DESC, MaNguoiDung DESC');
+      const r = await pool.request().query('SELECT * FROM dbo.NguoiDung WHERE NgayXoa IS NULL ORDER BY NgayTao DESC, MaNguoiDung DESC');
       return r.recordset.map(mapUser);
     },
 
@@ -344,8 +385,8 @@ export async function openRepo() {
         pool.request().query(`SELECT TOP (6) MaDonHang AS id,EmailKhachHang AS email,
           SoTien AS amount,LoaiTien AS currency,TrangThai AS status,NgayTao AS createdAt
           FROM dbo.DonHang ORDER BY NgayTao DESC,MaDonHang DESC`),
-        pool.request().query(`SELECT LoaiTien AS currency, COUNT(*) AS orders,
-          SUM(SoTien) AS amount FROM dbo.DonHang WHERE TrangThai='paid'
+        pool.request().query(`SELECT LoaiTien AS currency, SUM(SoGiaoDich) AS orders,
+          SUM(TongSoTien) AS amount FROM dbo.vw_DoanhThuNgay
           GROUP BY LoaiTien ORDER BY LoaiTien`),
       ]);
       const counts = await pool.request().query(`SELECT
@@ -416,13 +457,39 @@ export async function openRepo() {
       } catch(e) { await tx.rollback().catch(()=>{}); throw e; }
     },
 
-    async deleteUser(email) {
+    async deleteUser(email, actor = 'system') {
+      // Compatibility endpoint: never issue a physical DELETE against NguoiDung.
+      // Keep the existing HTTP 409 when accounting/orders exist. For unused
+      // accounts, anonymize and soft-delete while retaining a stable PK.
       const orders = await pool.request().input('email', sql.NVarChar(254), email)
-        .query('SELECT TOP(1) MaDonHang FROM dbo.DonHang WHERE EmailKhachHang=@email');
+        .query(`SELECT TOP(1) d.MaDonHang FROM dbo.DonHang d
+          JOIN dbo.NguoiDung u ON u.MaNguoiDung=d.MaNguoiDung
+          WHERE u.Email=@email`);
       if (orders.recordset.length) throw Object.assign(new Error('has_data'), {number:547});
-      const r = await pool.request().input('email', sql.NVarChar(254), email)
-        .query(`DELETE FROM dbo.NguoiDung WHERE Email = @email AND VaiTro = 'user'`);
-      return r.rowsAffected[0] > 0;
+      return repo.anonymizeUser(email, actor);
+    },
+
+    // Explicit admin-only soft deletion; preserves all foreign keys and accounting history.
+    async anonymizeUser(email, actor) {
+      const tx=new sql.Transaction(pool); await tx.begin();
+      try {
+        const account=(await new sql.Request(tx).input('email',sql.NVarChar(254),email)
+          .query(`SELECT MaNguoiDung FROM dbo.NguoiDung WITH(UPDLOCK,HOLDLOCK)
+            WHERE Email=@email AND VaiTro='user' AND NgayXoa IS NULL`)).recordset[0];
+        if(!account){await tx.rollback();return false;}
+        const hash=hashPassword(randomBytes(32).toString('hex'));
+        await new sql.Request(tx).input('id',sql.Int,account.MaNguoiDung).input('hash',sql.VarChar(200),hash)
+          .query(`UPDATE dbo.NguoiDung SET Email=CONCAT('deleted-',MaNguoiDung,'@dubchef.invalid'),
+            HoTen=N'Tài khoản đã ẩn danh', MatKhauBam=@hash,TrangThai='locked',
+            NgayXoa=SYSUTCDATETIME(),NgayCapNhat=SYSUTCDATETIME()
+            WHERE MaNguoiDung=@id AND VaiTro='user';
+            UPDATE dbo.LichSuDangNhap SET DiaChiIP=N'[redacted]' WHERE MaNguoiDung=@id;`);
+        await new sql.Request(tx).input('id',sql.Int,account.MaNguoiDung).input('actor',sql.NVarChar(254),actor)
+          .query(`INSERT dbo.NhatKyQuanTri(Loai,DoiTuong,NguoiThucHien,NguoiThucHienId)
+           SELECT 'user_anonymize',CONCAT(N'user:',@id),@actor,MaNguoiDung
+           FROM dbo.NguoiDung WHERE Email=@actor AND VaiTro='admin'`);
+        await tx.commit();return true;
+      } catch(e){await tx.rollback().catch(()=>{});throw e;}
     },
 
     /** Tạo tài khoản quản trị nếu chưa có (đọc từ biến môi trường khi khởi động). */

@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: đăng ký, đăng nhập, khóa, xóa và quyền quản trị
+ok 1 - đăng ký, đăng nhập, khóa, xóa và quyền quản trị
+  ---
+  duration_ms: 379.019783
+  type: 'test'
+  ...
+# Subtest: ghi lượt truy cập, bỏ qua trang admin, đọc tổng quan
+ok 2 - ghi lượt truy cập, bỏ qua trang admin, đọc tổng quan
+  ---
+  duration_ms: 92.011953
+  type: 'test'
+  ...
+# Subtest: ghi lượt quét mã QR của khách và chỉ admin mới xem được số liệu
+ok 3 - ghi lượt quét mã QR của khách và chỉ admin mới xem được số liệu
+  ---
+  duration_ms: 117.711718
+  type: 'test'
+  ...
+# Subtest: Canonical migrations have unique ascending versions and executable batches
+ok 4 - Canonical migrations have unique ascending versions and executable batches
+  ---
+  duration_ms: 40.854449
+  type: 'test'
+  ...
+# Subtest: SSMS generated script contains exact SHA256 hashes of canonical sources
+ok 5 - SSMS generated script contains exact SHA256 hashes of canonical sources
+  ---
+  duration_ms: 19.06486
+  type: 'test'
+  ...
+# Subtest: Runtime uses canonical runner, not independent hardcoded legacy scripts
+ok 6 - Runtime uses canonical runner, not independent hardcoded legacy scripts
+  ---
+  duration_ms: 1.779083
+  type: 'test'
+  ...
+# Subtest: mật khẩu hỏng hoặc sai định dạng bị từ chối, không ném lỗi
+ok 7 - mật khẩu hỏng hoặc sai định dạng bị từ chối, không ném lỗi
+  ---
+  duration_ms: 156.802806
+  type: 'test'
+  ...
+# Subtest: băm SHA-256 cũ (UTF-16LE) được nhận dạng và kiểm tra đúng
+ok 8 - băm SHA-256 cũ (UTF-16LE) được nhận dạng và kiểm tra đúng
+  ---
+  duration_ms: 0.584852
+  type: 'test'
+  ...
+# Subtest: đăng nhập bằng băm cũ nâng cấp lên scrypt
+ok 9 - đăng nhập bằng băm cũ nâng cấp lên scrypt
+  ---
+  duration_ms: 164.799236
+  type: 'test'
+  ...
+# Subtest: JSON hỏng trả 400 invalid_json; thân quá lớn trả 413 too_large
+ok 10 - JSON hỏng trả 400 invalid_json; thân quá lớn trả 413 too_large
+  ---
+  duration_ms: 42.283303
+  type: 'test'
+  ...
+# Subtest: đăng nhập sai 10 lần bị chặn bằng 429
+ok 11 - đăng nhập sai 10 lần bị chặn bằng 429
+  ---
+  duration_ms: 40.623535
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 961.028778

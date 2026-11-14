@@ -5,7 +5,7 @@ import { createWriteStream } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { Transform } from 'node:stream';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID, timingSafeEqual, createHash } from 'node:crypto';
 import cors from 'cors';
 import { METHODS, newTransactionRef, validateOrder } from './orders.js';
 import { cleanPriceUpdate } from './pricingPolicy.js';
@@ -275,7 +275,11 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
       return res.status(400).json({code:'invalid_reference'});
     if (order.status === 'paid') return res.json({ok:true,alreadyProcessed:true});
     if (order.status !== 'pending') return res.status(409).json({code:'not_payable'});
-    const result = await repo.payOrder(id, {method:'qr',ref:event.reference,source:'payos'});
+    const payloadSha256 = createHash('sha256').update(JSON.stringify(req.body)).digest('hex');
+    const payment={method:'qr',ref:event.reference,source:'payos'};
+    const result = typeof repo.payVerifiedWebhook==='function'
+      ? await repo.payVerifiedWebhook(id,{...payment,verifiedWebhook:{eventId:`payos:${event.reference}`,payloadSha256}})
+      : await repo.payOrder(id,payment); // SQL-less test repositories implement the legacy interface.
     if (!result) return res.json({ok:true,alreadyProcessed:true}); // cuộc đua callback trùng
     res.json({ok:true,paid:true});
   }));
@@ -313,36 +317,35 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.status(201).json({ user: publicUser(user, secret) });
   }));
 
-  const loginFails = new Map();
-  const failsOf = (ip) => {
-    const now = Date.now();
-    const f = loginFails.get(ip);
-    if (!f || f.until < now) { loginFails.delete(ip); return 0; }
+  // SQL-backed lockout in real deployments; the in-memory adapter is only for
+  // isolated unit-test repositories with no SQL interface.
+  const testOnlyFails = typeof repo.getLoginFailureCount === 'function' ? null : new Map();
+  const failsOf = async (ip) => {
+    if (!testOnlyFails) return repo.getLoginFailureCount(ip, secret);
+    const f = testOnlyFails.get(ip);
+    if (!f || f.until < Date.now()) { testOnlyFails.delete(ip); return 0; }
     return f.count;
   };
-  const addFail = (ip) => {
-    const now = Date.now();
-    const f = loginFails.get(ip);
-    loginFails.set(ip, f && f.until >= now ? { count: f.count + 1, until: f.until } : { count: 1, until: now + LOGIN_WINDOW_MS });
-    if (loginFails.size > 10000) {
-      for (const [k, v] of loginFails) if (v.until < now) loginFails.delete(k);
-      if (loginFails.size > 10000) loginFails.delete(loginFails.keys().next().value);
-    }
+  const addFail = async (ip) => {
+    if (!testOnlyFails) return repo.registerLoginFailure(ip, secret);
+    const now=Date.now();const f=testOnlyFails.get(ip);
+    testOnlyFails.set(ip, f && f.until>=now ? {count:f.count+1,until:f.until} : {count:1,until:now+LOGIN_WINDOW_MS});
   };
+  const clearFails = async (ip) => testOnlyFails ? testOnlyFails.delete(ip) : repo.clearLoginFailures(ip, secret);
 
   app.post('/api/auth/login', throttle('login', 60, 15 * 60 * 1000), wrap(async (req, res) => {
     const b = req.body || {};
-    if (failsOf(req.ip) >= LOGIN_MAX_FAILS) return res.status(429).json({ code: 'too_many' });
+    if (await failsOf(req.ip) >= LOGIN_MAX_FAILS) return res.status(429).json({ code: 'too_many' });
     const user = await repo.findUser(String(b.email || '').trim().toLowerCase());
     const password = String(b.password || '');
-    if (!user || !verifyPassword(password, user.hash)) { addFail(req.ip); return res.status(401).json({ code: 'invalid' }); }
+    if (!user || !verifyPassword(password, user.hash)) { await addFail(req.ip); return res.status(401).json({ code: 'invalid' }); }
     if (user.status !== 'active') return res.status(403).json({ code: 'locked' });
     // Băm SHA-256 cũ được nâng lên scrypt ngay sau lần đăng nhập đúng.
     if (isLegacyHash(user.hash) && typeof repo.updatePasswordHash === 'function') {
       const upgraded = hashPassword(password);
       if (await repo.updatePasswordHash(user.email, upgraded, user.hash).catch(() => false)) user.hash = upgraded;
     }
-    loginFails.delete(req.ip); // Một lần đăng nhập hợp lệ đặt lại bộ đếm của IP này.
+    await clearFails(req.ip); // Bỏ khóa IP trong SQL sau khi xác thực thành công.
     if (typeof repo.recordLogin === 'function') {
       await repo.recordLogin(user.id, req.ip).catch(e => console.warn('Lỗi lưu lịch sử đăng nhập:', e.message));
     }
@@ -777,10 +780,18 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.json({ ok: true });
   }));
 
+  app.post('/api/admin/users/anonymize', adminOnly, wrap(async(req,res)=>{
+    const email=String(req.body?.email||'').trim().toLowerCase();
+    if (!EMAIL.test(email) || req.body?.confirmed!==true)
+      return res.status(400).json({code:'confirmation_required'});
+    const ok=await repo.anonymizeUser(email,req.currentUser.email);
+    return ok ? res.json({ok:true}) : res.status(404).json({code:'not_found'});
+  }));
+
   app.delete('/api/admin/users', adminOnly, wrap(async (req, res) => {
     const email = String(req.query.email || '').trim().toLowerCase();
     try {
-      if (!(await repo.deleteUser(email))) return res.status(404).json({ code: 'not_found' });
+      if (!(await repo.deleteUser(email, req.currentUser.email))) return res.status(404).json({ code: 'not_found' });
       res.json({ ok: true });
     } catch (err) {
       if (err.number === 547) return res.status(409).json({ code: 'has_data' });

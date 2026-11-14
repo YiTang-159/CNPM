@@ -34,15 +34,7 @@ const pool = await new sql.ConnectionPool({
 
 try {
   const ok = (await pool.request().query("SELECT OBJECT_ID(N'bc.BaoCaoTongHop', N'V') AS id")).recordset[0].id;
-  if (!ok) {
-    console.log('Chưa có view báo cáo, đang tạo từ db/08-bao-cao-chuyen-nghiep.sql ...');
-    const script = (await readFile(join(ROOT, 'db', '08-bao-cao-chuyen-nghiep.sql'), 'utf8')).replace(/^﻿/, '');
-    for (const batch of script.split(/^\s*GO\s*$/im)) {
-      if (batch.includes('HIỂN THỊ BÁO CÁO')) break; // phần còn lại chỉ là các câu SELECT hiển thị
-      const text = batch.replace(/^\s*USE\s+\w+;\s*$/im, '').trim();
-      if (text && !/^\/\*[\s\S]*\*\/$/.test(text)) await pool.request().batch(text);
-    }
-  }
+  if (!ok) throw new Error('Chưa có bc.BaoCaoTongHop; chạy migrations bằng migration principal trước khi lập báo cáo.');
   const q = async (text) => (await pool.request().query(text)).recordset;
   const now = (await q("SELECT FORMAT(DATEADD(HOUR,7,SYSUTCDATETIME()),'dd/MM/yyyy HH:mm') AS t, DB_NAME() AS db"))[0];
   const html = renderReport({

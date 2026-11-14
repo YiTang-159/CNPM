@@ -54,6 +54,4 @@ IF COL_LENGTH(N'dbo.DonHang',N'DonGiaDichSnapshot') IS NULL
 IF COL_LENGTH(N'dbo.DonHang',N'PhienBanGiaSnapshot') IS NULL
  ALTER TABLE dbo.DonHang ADD PhienBanGiaSnapshot BIGINT NULL;
 GO
-IF NOT EXISTS(SELECT 1 FROM dbo.SchemaMigrations WHERE Version=14)
- INSERT dbo.SchemaMigrations(Version,FileName) VALUES (14,N'014_pricing.sql');
-GO
+-- Migration versioning is handled by scripts/run-migrations.mjs and server/src/migrations.mjs.

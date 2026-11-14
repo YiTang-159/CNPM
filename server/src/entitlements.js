@@ -32,10 +32,11 @@ export async function grantPaidOrder(tx, order, source) {
  * Must be called after lockAccount and inside a SQL transaction.
  */
 export async function charge(tx, userId, videoId, kind, language = '') {
+  const normalizedLanguage = kind === 'upload' ? null : language;
   const used = await new sql.Request(tx).input('video',sql.Int,videoId)
-    .input('kind',sql.VarChar(12),kind).input('lang',sql.VarChar(8),language)
+    .input('kind',sql.VarChar(12),kind).input('lang',sql.VarChar(8),normalizedLanguage)
     .query(`SELECT TOP(1) MaSuDung FROM dbo.SuDungQuyenLoi WITH(UPDLOCK,HOLDLOCK)
-      WHERE MaVideo=@video AND Loai=@kind AND NgonNgu=@lang AND TrangThai='used'`);
+      WHERE MaVideo=@video AND Loai=@kind AND (NgonNgu=@lang OR (NgonNgu IS NULL AND @lang IS NULL)) AND TrangThai='used'`);
   if (used.recordset.length) return false;
   const up = kind === 'upload';
   const total = up ? 'SoVideoDang' : 'SoVideoDich';
@@ -46,10 +47,8 @@ export async function charge(tx, userId, videoId, kind, language = '') {
       ORDER BY NgayCap,MaQuyenLoi`);
   const id = available.recordset[0]?.MaQuyenLoi;
   if (!id) throw new QuotaError(kind);
-  await new sql.Request(tx).input('eid',sql.BigInt,id)
-    .query(`UPDATE dbo.QuyenLoiGoi SET ${consumed}=${consumed}+1 WHERE MaQuyenLoi=@eid AND ${consumed}<${total}`);
   await new sql.Request(tx).input('eid',sql.BigInt,id).input('video',sql.Int,videoId)
-    .input('kind',sql.VarChar(12),kind).input('lang',sql.VarChar(8),language)
+    .input('kind',sql.VarChar(12),kind).input('lang',sql.VarChar(8),normalizedLanguage)
     .query(`INSERT dbo.SuDungQuyenLoi(MaQuyenLoi,MaVideo,Loai,NgonNgu)
       VALUES(@eid,@video,@kind,@lang)`);
   return true;
@@ -61,12 +60,9 @@ export async function refundUnfinishedUpload(tx, videoId) {
   const r = await new sql.Request(tx).input('video',sql.Int,videoId).query(`UPDATE dbo.SuDungQuyenLoi
     SET TrangThai='refunded'
     OUTPUT inserted.MaQuyenLoi AS entitlementId
-    WHERE MaVideo=@video AND Loai='upload' AND NgonNgu='' AND TrangThai='used'`);
-  for (const row of r.recordset) {
-    await new sql.Request(tx).input('eid',sql.BigInt,row.entitlementId)
-      .query(`UPDATE dbo.QuyenLoiGoi SET DaDungVideoDang=DaDungVideoDang-1
-        WHERE MaQuyenLoi=@eid AND DaDungVideoDang>0`);
-  }
+    WHERE MaVideo=@video AND Loai='upload' AND NgonNgu IS NULL AND TrangThai='used'`);
+  // Counter changes are applied atomically by TR_SuDungQuyenLoi_BoDem, not by JS.
+  return r.recordset.length;
 }
 
 export async function balance(pool, userId) {

@@ -2,6 +2,9 @@
 
 # Dubchef thuyết minh video đa ngôn ngữ
 
+> **Lưu ý nâng cấp CSDL (15/11/2026):** Migrations giờ chạy theo một danh sách ở `server/src/migrationPlan.mjs` và có SHA-256 trong `SchemaMigrations`; Docker có bước `migrate` riêng trước API. **ĐỪNG áp dụng trực tiếp vào DubchefDB đang có dữ liệu** trước khi sao lưu/khôi phục thử vào staging và chạy `db/tests/preflight-existing.sql`. Xem `docs/DATABASE.md`, `docs/DATA_DICTIONARY.md`, `docs/DB_AUDIT_REPORT.md`. Một số migration chủ động THROW khi phát hiện đơn hàng/giao dịch lịch sử mâu thuẫn; không xóa hoặc tự sửa tiền. Không dùng `docker compose down -v`.
+
+
 Bản thống nhất React Web, React Native Mobile, Node Express và SQL Server. Bộ sơ đồ UC Activity DFD nằm trong `docs/so-do`; tài liệu đã cập nhật là `docs/Dubchef_FocusedUseCases.docx`.
 
 ## Chạy trên máy Windows

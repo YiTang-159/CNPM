@@ -1,4 +1,4 @@
-﻿/* =====================================================================
+/* =====================================================================
    DUBCHEF - BÁO CÁO QUẢN TRỊ (phiên bản trình bày)
    Cách dùng : mở tệp này trong SSMS, bấm Execute (F5). Chạy lại bao nhiêu lần cũng được.
    An toàn   : chỉ tạo VIEW và đọc dữ liệu; không thêm, sửa, xóa dữ liệu nào.
@@ -27,7 +27,7 @@ FROM (VALUES
  (10, N'Kinh doanh', N'Tổng số đơn hàng',              (SELECT COUNT(*) FROM dbo.DonHang), N''),
  (11, N'Kinh doanh', N'Đơn đã thanh toán',             (SELECT COUNT(*) FROM dbo.DonHang WHERE TrangThai='paid'), N''),
  (12, N'Kinh doanh', N'Đơn chờ thanh toán',            (SELECT COUNT(*) FROM dbo.DonHang WHERE TrangThai='pending'), N''),
- (13, N'Kinh doanh', N'Doanh thu thành công (VND)',    (SELECT ISNULL(SUM(SoTien),0) FROM dbo.GiaoDich WHERE TrangThai='success' AND LoaiTien='VND'), N'Chỉ tính giao dịch thành công'),
+ (13, N'Kinh doanh', N'Doanh thu payOS đã xác minh (VND)',    (SELECT ISNULL(SUM(SoTien),0) FROM dbo.GiaoDich WHERE TrangThai='success' AND NguonXacNhan='payos' AND LoaiTien='VND'), N'Chỉ tính giao dịch thành công'),
  (14, N'Tương tác',  N'Lượt truy cập website',         (SELECT COUNT(*) FROM dbo.LuotTruyCap), N''),
  (15, N'Tương tác',  N'Lượt truy cập 7 ngày gần nhất', (SELECT COUNT(*) FROM dbo.LuotTruyCap WHERE NgayTruyCap >= DATEADD(DAY,-7,SYSUTCDATETIME())), N''),
  (16, N'Tương tác',  N'Lượt quét mã QR',               (SELECT COUNT(*) FROM dbo.LuotQuetQR), N''),
@@ -88,14 +88,12 @@ GO
 
 /* ---- 5. Doanh thu theo ngày ------------------------------------------ */
 CREATE OR ALTER VIEW bc.DoanhThuNgay AS
-SELECT
-    CAST(DATEADD(HOUR,7,g.NgayThanhToan) AS DATE) AS [Ngày],
-    g.LoaiTien AS [Tiền tệ],
-    COUNT(*) AS [Số giao dịch],
-    CAST(SUM(g.SoTien) / CASE WHEN g.LoaiTien='VND' THEN 1.0 ELSE 100.0 END AS DECIMAL(18,2)) AS [Doanh thu]
-FROM dbo.GiaoDich g
-WHERE g.TrangThai='success'
-GROUP BY CAST(DATEADD(HOUR,7,g.NgayThanhToan) AS DATE), g.LoaiTien;
+SELECT v.Ngay AS [Ngày],v.LoaiTien AS [Tiền tệ],
+ v.SoGiaoDich AS [Số giao dịch],
+ CAST(CONVERT(DECIMAL(20,2),v.TongSoTien) / CASE WHEN v.LoaiTien='VND' THEN 1 ELSE 100 END AS DECIMAL(18,2)) AS [Doanh thu],
+ CAST(CONVERT(DECIMAL(20,2),v.TongTienMoPhong) / CASE WHEN v.LoaiTien='VND' THEN 1 ELSE 100 END AS DECIMAL(18,2)) AS [Mô phỏng],
+ CAST(CONVERT(DECIMAL(20,2),v.TongTienChuaXacMinh) / CASE WHEN v.LoaiTien='VND' THEN 1 ELSE 100 END AS DECIMAL(18,2)) AS [Chưa xác minh]
+FROM dbo.vw_DoanhThuNgay v;
 GO
 
 /* ---- 6. Lượt quét QR theo ngày --------------------------------------- */

@@ -41,9 +41,9 @@ test('SQL Server migrations, all Admin modules, private data and restart persist
     const conn=await new sql.ConnectionPool(config(db)).connect();
     try {
       const old=(await conn.request().input('email',sql.NVarChar(254),u.email)
-        .query(`INSERT dbo.DonHang(TenKhachHang,EmailKhachHang,SoVideoDang,SoVideoDich,LoaiTien,SoTien,TrangThai)
+        .query(`INSERT dbo.DonHang(DonCu,TenKhachHang,EmailKhachHang,SoVideoDang,SoVideoDich,LoaiTien,SoTien,TrangThai)
           OUTPUT inserted.MaDonHang AS id
-          VALUES(N'Khách Việt',@email,2,2,'VND',90000,'paid')`)).recordset[0];
+          VALUES(1,N'Khách Việt',@email,2,2,'VND',90000,'paid')`)).recordset[0];
       oldId=old.id;
     }finally{await conn.close();}
     const legacyPath=`/api/admin/orders/${oldId}`;

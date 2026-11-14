@@ -23,6 +23,9 @@
     "monitor": "node scripts/monitor-system.mjs",
     "perf:smoke": "node scripts/perf-smoke.mjs",
     "backup": "node scripts/backup-dubchef.mjs backup",
-    "lan": "node scripts/lan.mjs"
+    "lan": "node scripts/lan.mjs",
+    "db:migrate": "node --env-file=.env server/scripts/run-migrations.mjs",
+    "db:ssms": "node db/scripts/export-ssms.mjs",
+    "db:provision": "node --env-file=.env server/scripts/provision-db-users.mjs"
   }
 }

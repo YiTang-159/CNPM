@@ -63,16 +63,19 @@ export function attachAdminOperations(pool, repo) {
           .input('status', sql.VarChar(12), status).input('editor', sql.NVarChar(254), editor)
           .input('version', sql.Int, nextVersion);
         if (existing) await update.query(`UPDATE ${t.table} SET NoiDung=@content,
-          TrangThaiDuyet=@status, NguoiSua=@editor, PhienBan=@version, NgayCapNhat=SYSUTCDATETIME()
+          TrangThaiDuyet=@status, NguoiSua=@editor,
+          NguoiSuaId=(SELECT TOP(1) MaNguoiDung FROM dbo.NguoiDung WHERE Email=@editor), PhienBan=@version, NgayCapNhat=SYSUTCDATETIME()
           WHERE MaVideo=@videoId AND NgonNgu=@language`);
         else await update.query(`INSERT ${t.table}
-          (MaVideo,NgonNgu,NoiDung,TrangThaiDuyet,NguoiSua,PhienBan)
-          VALUES(@videoId,@language,@content,@status,@editor,@version)`);
+          (MaVideo,NgonNgu,NoiDung,TrangThaiDuyet,NguoiSua,NguoiSuaId,PhienBan)
+          VALUES(@videoId,@language,@content,@status,@editor,
+            (SELECT TOP(1) MaNguoiDung FROM dbo.NguoiDung WHERE Email=@editor),@version)`);
         await base().input('kind', sql.VarChar(12), kind).input('version', sql.Int, nextVersion)
           .input('status', sql.VarChar(12), status).input('content', sql.NVarChar(sql.MAX), content)
           .input('editor', sql.NVarChar(254), editor)
-          .query(`INSERT dbo.LichSuNoiDung(Loai,MaVideo,NgonNgu,PhienBan,TrangThai,NoiDung,NguoiSua)
-            VALUES(@kind,@videoId,@language,@version,@status,@content,@editor)`);
+          .query(`INSERT dbo.LichSuNoiDung(Loai,MaVideo,NgonNgu,PhienBan,TrangThai,NoiDung,NguoiSua,NguoiSuaId)
+            VALUES(@kind,@videoId,@language,@version,@status,@content,@editor,
+              (SELECT TOP(1) MaNguoiDung FROM dbo.NguoiDung WHERE Email=@editor))`);
         await tx.commit();
         return { version: nextVersion, status };
       } catch (e) { await tx.rollback().catch(() => {}); throw e; }
@@ -101,7 +104,9 @@ export function attachAdminOperations(pool, repo) {
           .input('priority', sql.VarChar(8), priority)
           .input('editor', sql.NVarChar(254), editor)
           .query(`UPDATE ${table} SET TrangThai=@status, TraLoi=@reply, UuTien=@priority,
-            NguoiXuLy=@editor, NgayCapNhat=SYSUTCDATETIME(),
+            NguoiXuLy=@editor,
+            NguoiXuLyId=(SELECT TOP(1) MaNguoiDung FROM dbo.NguoiDung WHERE Email=@editor),
+            NgayCapNhat=SYSUTCDATETIME(),
             NgayGiaiQuyet=CASE WHEN @status='resolved' THEN SYSUTCDATETIME() ELSE NULL END
             WHERE ${pk}=@id`);
         if (!r.rowsAffected[0]) { await tx.rollback(); return false; }
@@ -111,8 +116,10 @@ export function attachAdminOperations(pool, repo) {
           .input('reply', sql.NVarChar(2000), reply)
           .input('priority', sql.VarChar(8), priority)
           .input('editor', sql.NVarChar(254), editor)
-          .query(`INSERT dbo.LichSuXuLyPhanHoi(Nguon,MaBanGhi,TrangThai,UuTien,TraLoi,NguoiXuLy)
-            VALUES(@type,@id,@status,@priority,@reply,@editor)`);
+          .query(`INSERT dbo.LichSuXuLyPhanHoi(Nguon,MaBanGhi,MaPhanHoi,MaLienHe,TrangThai,UuTien,TraLoi,NguoiXuLy,NguoiXuLyId)
+            VALUES(@type,@id,CASE WHEN @type='user' THEN @id ELSE NULL END,
+              CASE WHEN @type='contact' THEN @id ELSE NULL END,@status,@priority,@reply,@editor,
+              (SELECT TOP(1) MaNguoiDung FROM dbo.NguoiDung WHERE Email=@editor))`);
         await tx.commit();
         return true;
       } catch (e) { await tx.rollback().catch(() => {}); throw e; }

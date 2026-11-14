@@ -15,6 +15,7 @@ import { produceVoiceover } from './audioExport.js';
 import { createPayosGateway } from './payos.js';
 import { QuotaError } from './entitlements.js';
 import { localTranslate } from './localTranslate.js';
+import { validateLegacyOwnerLink } from './legacyOrders.js';
 
 const MAX_VIDEO = 150 * 1024 * 1024;
 const DEFAULT_UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
@@ -630,6 +631,38 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }));
   app.get('/api/admin/orders', adminOnly, wrap(async (req, res) => {
     res.json({ orders: await repo.adminOrders() });
+  }));
+
+  // Đơn cũ không được tự gán qua email. Chỉ Admin đã xác thực mới được
+  // đề xuất/ghi nhận người sở hữu kèm chứng từ độc lập và nhật ký kiểm toán.
+  const legacyOrderId = value => {
+    if (!/^[1-9]\d*$/.test(value)) return null;
+    const id = Number(value);
+    return Number.isSafeInteger(id) && id <= 2147483647 ? id : null;
+  };
+  const legacyError = (res, err) => {
+    if (err?.code === 'not_found') return res.status(404).json({ code: 'not_found' });
+    if (['already_linked', 'ambiguous_owner', 'email_mismatch'].includes(err?.code))
+      return res.status(409).json({ code: err.code });
+    if (err?.code === 'invalid') return res.status(400).json({ code: 'invalid' });
+    throw err;
+  };
+  app.get('/api/admin/orders/:id/owner-candidates', adminOnly, wrap(async (req, res) => {
+    const id = legacyOrderId(req.params.id);
+    if (!id) return res.status(400).json({ code: 'invalid' });
+    const result = await repo.legacyOwnerCandidates(id);
+    if (!result) return res.status(404).json({ code: 'not_found' });
+    res.set('Cache-Control', 'no-store');
+    res.json(result);
+  }));
+  app.post('/api/admin/orders/:id/link-owner', adminOnly, wrap(async (req, res) => {
+    const id = legacyOrderId(req.params.id);
+    if (!id || !validateLegacyOwnerLink(req.body)) return res.status(400).json({ code: 'invalid' });
+    try {
+      const result = await repo.linkLegacyOwner(id, req.body, req.currentUser.email);
+      res.set('Cache-Control', 'no-store');
+      res.json(result);
+    } catch (err) { return legacyError(res, err); }
   }));
   app.get('/api/admin/audit', adminOnly, wrap(async (req, res) => {
     const count = Math.min(200, Math.max(1, Number.parseInt(req.query.limit, 10) || 50));

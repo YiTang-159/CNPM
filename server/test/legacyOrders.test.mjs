@@ -9,7 +9,7 @@ const proof={userId:1,evidenceType:'payment_reference',evidenceRef:'BANK-REFEREN
 test('legacy owner validation requires explicit independent proof and confirmation',()=>{
   assert.deepEqual(validateLegacyOwnerLink(proof),{userId:1,evidenceType:'payment_reference',evidenceRef:proof.evidenceRef,note:proof.note});
   for (const bad of [
-    {...proof,confirmed:false},{...proof,userId:0},{...proof,evidenceType:'email_only'},
+    {...proof,confirmed:false},{...proof,userId:0},{...proof,userId:2147483648},{...proof,evidenceType:'email_only'},
     {...proof,evidenceRef:'x'},{...proof,note:'short'}, {...proof,userId:'1'},
   ]) assert.equal(validateLegacyOwnerLink(bad),null);
 });
@@ -44,9 +44,16 @@ test('historical order ownership reconciliation is protected by admin role and h
     assert.equal((await request('POST',path+'/link-owner',proof,user)).status,403);
     assert.equal((await request('GET',path+'/owner-candidates',null,admin)).data.candidates[0].id,1);
     assert.equal((await request('POST',path+'/link-owner',{...proof,note:'bad'},admin)).status,400);
-    assert.equal(invoked,1); // server-side repo also validates; invalid request never changes data
+    assert.equal(invoked,0); // HTTP validation rejects invalid evidence before invoking SQL
     assert.equal((await request('POST',path+'/link-owner',proof,admin)).data.creditsGranted,false);
     assert.equal((await request('POST',path+'/link-owner',proof,admin)).status,409);
     assert.equal((await request('GET','/api/admin/orders/900/owner-candidates',null,admin)).status,404);
+    for(const invalidId of ['0','-1','1.5','99999999999999999999999','xyz']) {
+      assert.equal((await request('GET',`/api/admin/orders/${invalidId}/owner-candidates`,null,admin)).status,400);
+      assert.equal((await request('POST',`/api/admin/orders/${invalidId}/link-owner`,proof,admin)).status,400);
+    }
+    assert.equal((await request('GET',path+'/owner-candidates',null,admin)).data.order.userId,1);
+    assert.equal(invoked,2); // one successful write; one retry blocked by the repository
+
   }finally{await new Promise(resolve=>server.close(resolve));}
 });

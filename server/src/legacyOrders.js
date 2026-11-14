@@ -11,7 +11,7 @@ export function validateLegacyOwnerLink(data) {
   const evidenceType = clean(data?.evidenceType);
   const evidenceRef = clean(data?.evidenceRef);
   const note = clean(data?.note);
-  if (!Number.isSafeInteger(userId) || userId < 1 || !EVIDENCE_TYPES.has(evidenceType) ||
+  if (!Number.isSafeInteger(userId) || userId < 1 || userId > 2147483647 || !EVIDENCE_TYPES.has(evidenceType) ||
       evidenceRef.length < 4 || evidenceRef.length > 120 || note.length < 15 || note.length > 500 ||
       data?.confirmed !== true) return null;
   return { userId, evidenceType, evidenceRef, note };

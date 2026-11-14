@@ -58,6 +58,9 @@ test('SQL Server migrations, all Admin modules, private data and restart persist
     assert.equal((await call('POST',legacyPath+'/link-owner',{...proof,userId:other.id},a.token)).status,409);
     assert.equal((await call('POST',legacyPath+'/link-owner',proof,a.token)).status,200);
     assert.equal((await call('POST',legacyPath+'/link-owner',proof,a.token)).status,409);
+    assert.equal((await call('GET',legacyPath+'/owner-candidates',null,a.token)).data.order.userId,u.id);
+    assert.equal((await call('GET',legacyPath+'/owner-candidates',null,other.token)).status,403);
+    assert.equal((await call('GET',legacyPath+'/owner-candidates',null,null)).status,401);
     assert.equal((await call('GET','/api/orders',null,u.token)).data.orders.some(o=>o.id===oldId),true);
     assert.equal((await call('GET','/api/me/entitlements',null,u.token)).data.uploadsRemaining,0,
       'linking a paid legacy order must not grant credits');
@@ -122,6 +125,8 @@ test('SQL Server migrations, all Admin modules, private data and restart persist
       assert.equal((await call('GET',path,null,u.token)).status,403);
     }
     await stop();await start(); // migrations repeat and target the same isolated DB
+    assert.equal((await call('GET',legacyPath+'/owner-candidates',null,a.token)).data.order.userId,u.id,
+      'manual ownership association must survive a restart and migration rerun');
     assert.equal((await call('GET','/api/videos',null,u.token)).data.videos[0].id,id);
     const saved=(await call('GET',`/api/videos/${id}/results`,null,u.token)).data;
     assert.equal(JSON.parse(saved.subtitles.find(x=>x.language==='vi').content)[0].text,'Đun nước đã sửa');

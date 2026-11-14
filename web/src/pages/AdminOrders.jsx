@@ -7,6 +7,7 @@ import { adminHref } from '../utils/adminLinks.js';
 import AdminCustomerContext from '../components/AdminCustomerContext.jsx';
 import AdminActiveFilter from '../components/AdminActiveFilter.jsx';
 import { manageApi } from '../api/workflows.js';
+import LegacyOwnerReview from '../components/LegacyOwnerReview.jsx';
 
 const PAGE=15;
 const labels={pending:'Chờ thanh toán',paid:'Đã thanh toán',cancelled:'Đã hủy'};
@@ -19,6 +20,9 @@ export default function AdminOrders() {
   const [error,setError]=useState('');
   const [query,setQuery]=useState(params.get('email')||params.get('orderId')||'');
   const [selected,setSelected]=useState(null);
+  const [legacyInput,setLegacyInput]=useState('');
+  const [legacyLookupId,setLegacyLookupId]=useState(null);
+  const [legacyInputError,setLegacyInputError]=useState('');
   const [filter,setFilter]=useState(params.get('status')||'all');
   const [page,setPage]=useState(0);
   const load=useCallback(async()=>{
@@ -40,6 +44,26 @@ export default function AdminOrders() {
     <div className="adm-head"><div><h1><AdminT vi={"Quản lý đơn hàng"} /></h1><p><AdminT vi={"Tra cứu đơn theo khách hàng, số tiền và trạng thái. Đối soát giao dịch được tách thành một trang riêng để không nhầm việc quản lý đơn với xác minh thanh toán."} /></p></div>
       <div className="adm-tools"><Link className="btn btn-sm" to="/admin/payments"><AdminT vi={"Đối soát thanh toán"} /></Link><button type="button" className="btn btn-sm" disabled={loading} onClick={load}><AdminT vi={"Làm mới"} /></button></div></div>
     <AdminActiveFilter params={params} base="/admin/orders"/>
+    <section className="panel" style={{padding:16,marginBottom:16}}>
+      <h2><AdminT vi="Tra cứu đơn hàng cũ theo mã" /></h2>
+      <p className="fine"><AdminT vi="Danh sách bên dưới chỉ hiển thị 500 đơn gần nhất. Nhập mã đơn để xác minh đơn cũ không còn xuất hiện trong danh sách." /></p>
+      <form className="adm-toolbar" onSubmit={event=>{
+        event.preventDefault();
+        const id=Number(legacyInput);
+        if(!/^[1-9]\d*$/.test(legacyInput.trim())||!Number.isSafeInteger(id)||id>2147483647){
+          setLegacyInputError('Mã đơn không hợp lệ');setLegacyLookupId(null);return;
+        }
+        setLegacyInputError('');setLegacyLookupId(id);
+      }}>
+        <label className="adm-field"><AdminT vi="Mã đơn hàng cần xác minh" />
+          <input type="text" inputMode="numeric" value={legacyInput} onChange={event=>setLegacyInput(event.target.value)} placeholder="Ví dụ: 123" />
+        </label>
+        <button className="btn btn-primary" type="submit"><AdminT vi="Tra cứu chủ đơn" /></button>
+        {legacyLookupId!=null&&<button className="btn btn-sm" type="button" onClick={()=>setLegacyLookupId(null)}><AdminT vi="Đóng" /></button>}
+      </form>
+      {legacyInputError&&<p role="alert" className="ops-notice">{tr(legacyInputError)}</p>}
+      {legacyLookupId!=null&&<LegacyOwnerReview key={legacyLookupId} order={{id:legacyLookupId}} onLinked={async()=>{setLegacyLookupId(null);await load();}}/>}
+    </section>
     <div className="ops-kpis">
       <div className="ops-kpi"><strong>{rows.length}</strong><span><AdminT vi={"Tổng đơn trong danh sách"} /></span></div>
       <div className="ops-kpi"><strong>{counts.pending||0}</strong><span><AdminT vi={"Chờ thanh toán"} /></span></div>
@@ -67,6 +91,7 @@ export default function AdminOrders() {
           <p><AdminT vi={"Giá trị:"} /> <strong>{formatMinorMoney(row.amount,row.currency)}</strong> <AdminT vi={"· Trạng thái:"} /> <strong>{tr(labels[row.status]||row.status)}</strong></p>
           <p><AdminT vi={"Mã người dùng:"} /> {row.userId??tr('Chưa liên kết')} <AdminT vi={"· Tham chiếu:"} /> {row.paymentRef||tr('Chưa có')}</p>
           <AdminCustomerContext email={row.email}/>
+          {row.userId==null&&<LegacyOwnerReview order={row} onLinked={async()=>{setSelected(null);await load();}}/>}
         </div>)}
       </div>}
       {!loading&&!filtered.length&&<div className="adm-empty-state">{tr(rows.length?'Không tìm thấy đơn hàng phù hợp bộ lọc.':'Chưa có đơn hàng.')}</div>}

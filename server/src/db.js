@@ -7,6 +7,7 @@ import { ACTIVE_MINUTES, dayKey } from './stats.js';
 import { hashPassword } from './auth.js';
 import { attachWorkflows } from './workflows.js';
 import { attachAdminOperations } from './adminOperations.js';
+import { attachLegacyOrders } from './legacyOrders.js';
 import { lockAccount, charge, grantPaidOrder, refundUnfinishedUpload, balance } from './entitlements.js';
 
 const DB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'db');
@@ -126,6 +127,8 @@ export async function openRepo() {
   await runScript(pool, '10-an-toan-don-hang-va-nhat-ky.sql');
   await runScript(pool, '11-nguon-xac-nhan-thanh-toan.sql');
   await runScript(pool, '12-quyen-su-dung-goi.sql');
+  // Idempotent migration; creates only the evidence/audit table, never assigns owners.
+  await runScript(pool, '13-doi-soat-chu-don-hang-cu.sql');
   console.log('SQL Server sẵn sàng.');
 
   const repo = {
@@ -441,5 +444,6 @@ export async function openRepo() {
   };
   attachWorkflows(pool, repo);
   attachAdminOperations(pool, repo);
+  attachLegacyOrders(pool, repo);
   return repo;
 }

@@ -1,6 +1,6 @@
 -- DUBCHEF migration 13: audit of manual association of legacy orders.
 -- Does NOT backfill ownership or mark payments as bank-verified.
--- Can be run repeatedly. Run after migration 10.
+-- Can be run repeatedly. Runs automatically after migrations 10, 11, and 12.
 USE DubchefDB;
 GO
 IF OBJECT_ID(N'dbo.XacMinhChuDonHang', N'U') IS NULL

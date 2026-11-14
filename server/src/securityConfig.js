@@ -1,4 +1,11 @@
 /** Startup checks for Docker/production. No secret is logged. */
+import { createPayosGateway } from './payos.js';
+
+export function isConfiguredAdminPassword(password) {
+  return typeof password === 'string' && password.length >= 12 &&
+    !/^(?:CHANGE_TO_|GENERATE_USING_|REPLACE_WITH_)/.test(password);
+}
+
 const UNSAFE_DB_PASSWORDS = new Set([
   'Dubchef@12345',
   'CHANGE_TO_A_STRONG_UNIQUE_PASSWORD',
@@ -20,15 +27,23 @@ export function parseAllowedOrigins(value) {
 }
 
 export function validateServerEnvironment(env = process.env) {
+  const paymentMode = env.PAYMENT_MODE || 'disabled';
+  if (!['disabled', 'demo', 'payos'].includes(paymentMode)) throw new Error('PAYMENT_MODE không hợp lệ');
+  if (paymentMode === 'payos') createPayosGateway(env);
+  const loopbackDocker = env.LOCAL_DOCKER_INSTALL === 'true' &&
+    ['127.0.0.1','::1'].includes(env.DB_BIND_ADDRESS) &&
+    ['127.0.0.1','::1'].includes(env.API_BIND_ADDRESS);
+  if (paymentMode === 'demo' && env.NODE_ENV === 'production' && !loopbackDocker)
+    throw new Error('PAYMENT_MODE=demo chỉ dùng Docker local bind loopback, không nhận thanh toán thật');
+  if (env.ADMIN_PASSWORD && !isConfiguredAdminPassword(env.ADMIN_PASSWORD))
+    throw new Error('ADMIN_PASSWORD phải là khóa duy nhất >= 12 ký tự, không dùng placeholder');
   const dbPassword = String(env.DB_PASSWORD || '');
   if (!dbPassword) throw new Error('Thiếu DB_PASSWORD. Chạy npm run setup:local và giữ .env riêng.');
   // Existing installations MUST rotate SA password first; changing .env alone does not rotate SQL credentials.
   if (env.NODE_ENV === 'production') {
     // ONLY the existing local Docker installation may keep its original SA password.
     // An internet-facing deployment must rotate it separately (SQL + .env together).
-    const localDockerOnly = env.LOCAL_DOCKER_INSTALL === 'true' &&
-      ['127.0.0.1', '::1'].includes(env.DB_BIND_ADDRESS) &&
-      ['127.0.0.1', '::1'].includes(env.API_BIND_ADDRESS);
+    const localDockerOnly = loopbackDocker;
     if ((dbPassword.length < 12 || UNSAFE_DB_PASSWORDS.has(dbPassword)) && !localDockerOnly)
       throw new Error('DB_PASSWORD là mật khẩu yếu/mẫu; cần đổi mật khẩu SQL Server và cập nhật .env.');
     if (typeof env.TOKEN_SECRET !== 'string' || env.TOKEN_SECRET.length < 32 ||

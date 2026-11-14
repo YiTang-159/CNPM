@@ -77,3 +77,41 @@ test('public registration is capped by IP and reports retry-after', async () => 
     assert.ok(Number(blocked[0].headers.get('retry-after')) > 0);
   } finally { await app.close(); }
 });
+
+
+test('payos mode fails startup if payment credentials or callback URLs are absent', async () => {
+  const {createApp} = await import('../src/app.js');
+  assert.throws(() => createApp({}, {paymentMode:'payos'}), /payos_not_configured/);
+  assert.throws(() => createApp({}, {paymentMode:'typo'}), /PAYMENT_MODE/);
+  assert.doesNotThrow(() => createApp({}, {paymentMode:'disabled'}));
+});
+
+test('bootstrap rejects public example placeholders and short admin credentials', async () => {
+  const {isConfiguredAdminPassword} = await import('../src/securityConfig.js');
+  assert.equal(isConfiguredAdminPassword('GENERATE_USING_NPM_RUN_SETUP_LOCAL'),false);
+  assert.equal(isConfiguredAdminPassword('short'),false);
+  assert.equal(isConfiguredAdminPassword('SomeNewUniquePassword!2026'),true);
+  assert.throws(()=>validateServerEnvironment({...strong,ADMIN_PASSWORD:'GENERATE_USING_NPM_RUN_SETUP_LOCAL'}));
+});
+
+test('translation is rate-limited even for invalid payloads (prevents unauthenticated model flood)', async () => {
+  const {createApp} = await import('../src/app.js');
+  const app = createApp({}, {corsOrigin:'http://localhost:5173',secret:'rate-test'});
+  const server = app.listen(0,'127.0.0.1');
+  await new Promise(resolve=>server.once('listening',resolve));
+  const url=`http://127.0.0.1:${server.address().port}/api/translate`;
+  try {
+    const requests = Array.from({length:41},()=>fetch(url,{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({text:''})}));
+    const replies=await Promise.all(requests);
+    assert.equal(replies.filter(r=>r.status===401).length,40);
+    assert.equal(replies.filter(r=>r.status===429).length,1);
+  } finally {await new Promise(resolve=>server.close(resolve));}
+});
+
+test('production demo mode is refused when SQL or API is exposed beyond loopback', () => {
+  const local={...strong,LOCAL_DOCKER_INSTALL:'true',API_BIND_ADDRESS:'127.0.0.1',DB_BIND_ADDRESS:'127.0.0.1',PAYMENT_MODE:'demo'};
+  assert.doesNotThrow(()=>validateServerEnvironment(local));
+  assert.throws(()=>validateServerEnvironment({...local,API_BIND_ADDRESS:'0.0.0.0'}),/demo/);
+  assert.throws(()=>validateServerEnvironment({...local,DB_BIND_ADDRESS:'0.0.0.0'}),/demo/);
+});

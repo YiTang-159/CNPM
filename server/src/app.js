@@ -32,8 +32,7 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 const publicUser = (u, secret) => ({ id: u.id, name: u.name, email: u.email, role: u.role, token: makeToken(u, secret) });
 
 export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 7, uploadDir = DEFAULT_UPLOAD_DIR, maxUploadBytes = MAX_VIDEO,
-  paymentDemo = process.env.PAYMENT_DEMO === 'true',
-  paymentMode = process.env.PAYMENT_MODE || (paymentDemo ? 'demo' : 'disabled'),
+  paymentMode = process.env.PAYMENT_MODE || 'disabled',
   payosGateway = null } = {}) {
   if (!['demo', 'payos', 'disabled'].includes(paymentMode)) throw new Error('PAYMENT_MODE không hợp lệ');
   if (paymentMode === 'demo' && process.env.NODE_ENV === 'production' && process.env.LOCAL_DOCKER_INSTALL !== 'true')
@@ -41,7 +40,8 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   // Dùng SDK nội bộ có chữ ký. Tránh gọi nhà cung cấp nếu chưa cấu hình.
   let gateway = payosGateway;
   if (paymentMode === 'payos' && !gateway) {
-    try { gateway = createPayosGateway(); } catch (e) { console.warn('payOS chưa cấu hình:', e.message); }
+    // Never start a supposedly real payment environment without valid provider configuration.
+    gateway = createPayosGateway();
   }
   const UPLOAD_DIR = resolve(uploadDir);
   const app = express();
@@ -57,6 +57,8 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
     res.set('X-Frame-Options', 'DENY');
     res.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     res.set('X-Permitted-Cross-Domain-Policies', 'none');
+    if (req.path.startsWith('/api/')) res.set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    if (process.env.NODE_ENV === 'production') res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     if (req.path.startsWith('/api/')) res.set('Cache-Control', 'no-store');
     next();
   });
@@ -147,7 +149,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   // Translation runs on our own Ollama instance, not MyMemory.
   // Rate-limited at request level and payload bounded to protect local model capacity.
   const translationRequests = new Map();
-  app.post('/api/translate', auth, wrap(async (req, res) => {
+  app.post('/api/translate', throttle('translate', 40, 60 * 1000), auth, wrap(async (req, res) => {
     const { text, from, to } = req.body || {};
     if (typeof text !== 'string' || !text.trim() || text.length > 4000 ||
         !PROCESSING_LANGUAGES.has(from) || !PROCESSING_LANGUAGES.has(to))
@@ -186,7 +188,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }));
 
   // Tạo đơn: giá do máy chủ tính, trạng thái "pending"
-  app.post('/api/orders', customerOnly, wrap(async (req, res) => {
+  app.post('/api/orders', throttle('orders', 30, 60 * 1000), customerOnly, wrap(async (req, res) => {
     const v = validateOrder(req.body);
     if (v.error) return res.status(400).json({ code: v.error });
     if (v.value.email !== req.currentUser.email) return res.status(403).json({ code: 'forbidden' });
@@ -215,7 +217,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }));
 
   // Link payOS được tạo bởi máy chủ từ số tiền đã lưu trong SQL. Không được tự gắn 'paid'.
-  app.post('/api/orders/:id/checkout', customerOnly, wrap(async (req, res) => {
+  app.post('/api/orders/:id/checkout', throttle('checkout', 30, 60 * 1000), customerOnly, wrap(async (req, res) => {
     if (paymentMode !== 'payos' || !gateway) return res.status(503).json({code:'payment_unavailable'});
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({code:'invalid'});
@@ -234,7 +236,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
   }));
 
   // Webhook payOS phải có chữ ký HMAC hợp lệ. Browser returnUrl KHÔNG xác nhận thanh toán.
-  app.post('/api/payments/payos/webhook', wrap(async (req, res) => {
+  app.post('/api/payments/payos/webhook', throttle('payos-webhook', 240, 60 * 1000), wrap(async (req, res) => {
     if (paymentMode !== 'payos' || !gateway) return res.status(503).json({code:'payment_unavailable'});
     let event;
     try { event = gateway.verifyWebhook(req.body); }
@@ -257,7 +259,7 @@ export function createApp(repo, { corsOrigin = '*', secret = 'dev-secret', tz = 
 
   // Thanh toán mô phỏng: CHỈ hoạt động khi chủ dự án chủ động bật PAYMENT_MODE=demo.
   // Thanh toán giả lập: không nhận số thẻ, chỉ ghi phương thức và mã giao dịch
-  app.post('/api/orders/:id/pay', customerOnly, wrap(async (req, res) => {
+  app.post('/api/orders/:id/pay', throttle('demo-pay', 30, 60 * 1000), customerOnly, wrap(async (req, res) => {
     const id = Number(req.params.id);
     const method = req.body && req.body.method;
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ code: 'invalid' });

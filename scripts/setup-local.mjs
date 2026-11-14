@@ -6,7 +6,9 @@ let content='';
 try { content=await readFile(target,'utf8'); } catch(e) { if(e.code!=='ENOENT') throw e; }
 const keys=new Map(content.split(/\r?\n/).filter(x=>x.trim()&&!x.trim().startsWith('#')&&x.includes('=')).map(x=>[x.slice(0,x.indexOf('=')).trim(),x.slice(x.indexOf('=')+1).trim()]));
 // Existing SQL credentials and connection settings are preserved byte for byte.
-const defaults={DB_PASSWORD:'Db!'+randomBytes(24).toString('hex'),ADMIN_EMAIL:'admin@dubchef.vn',ADMIN_PASSWORD:'Admin!'+randomBytes(18).toString('hex'),TOKEN_SECRET:randomBytes(48).toString('hex'),PAYMENT_MODE:'disabled',PAYMENT_DEMO:'false',CORS_ORIGIN:'http://localhost:5173,http://127.0.0.1:5173',DB_BIND_ADDRESS:'127.0.0.1',API_BIND_ADDRESS:'127.0.0.1',DB_TRUST_SERVER_CERTIFICATE:'true'};
+const defaults={DB_PASSWORD:'Db!'+randomBytes(24).toString('hex'),ADMIN_EMAIL:'admin@dubchef.vn',ADMIN_PASSWORD:'Admin!'+randomBytes(18).toString('hex'),TOKEN_SECRET:randomBytes(48).toString('hex'),PAYMENT_MODE:keys.get('PAYMENT_DEMO') === 'true' ? 'demo' : 'disabled',CORS_ORIGIN:'http://localhost:5173,http://127.0.0.1:5173',DB_BIND_ADDRESS:'127.0.0.1',API_BIND_ADDRESS:'127.0.0.1',DB_TRUST_SERVER_CERTIFICATE:'true'};
+// Migrate the obsolete demo toggle to the single supported mode, without touching DB secrets.
+content=content.replace(/^PAYMENT_DEMO=.*(?:\r?\n|$)/gm,'');
 for(const [key,value] of Object.entries(defaults)) {
   const existing = keys.get(key);
   // Only replace template placeholders. Never rotate a real existing SQL password automatically.

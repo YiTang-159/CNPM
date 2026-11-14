@@ -46,9 +46,9 @@ Mở `http://localhost:5173`. File `web/.env` trong bản gốc có 3 URL `local
 
 ## 2. Thanh toán theo môi trường (không trộn demo và payOS)
 
-- **Local demo mặc định**: `.env` đặt `PAYMENT_MODE=demo`, `PAYMENT_DEMO=true`. Cảnh báo trên UI; đơn ghi `NguonXacNhan=demo`. Tiền **không đi qua ngân hàng**. Chỉ dùng dữ liệu demo/test, tránh diễn giải là doanh thu đã nhận.
+- **Local demo mặc định**: `.env` đặt `PAYMENT_MODE=demo`, `PAYMENT_MODE=demo`. Cảnh báo trên UI; đơn ghi `NguonXacNhan=demo`. Tiền **không đi qua ngân hàng**. Chỉ dùng dữ liệu demo/test, tránh diễn giải là doanh thu đã nhận.
 - **Dừng thanh toán**: `PAYMENT_MODE=disabled` rồi `docker compose up -d --no-deps --force-recreate api` (không đụng SQL).
-- **payOS thực tế**: chuẩn bị tài khoản payOS và kênh đã xác minh; cấu hình **riêng** `PAYMENT_MODE=payos`, `PAYMENT_DEMO=false`, `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `PAYOS_RETURN_URL` và `PAYOS_CANCEL_URL` là HTTPS đúng domain. Chỉ thay đổi chế độ ở môi trường triển khai thật khi có credentials; **không đưa keys vào ZIP hoặc Git**. Cần backend công khai HTTPS cho webhook `https://TEN-MIEN-BACKEND/api/payments/payos/webhook` và đăng ký/confirm webhook trên payOS. Kiểm tra log và mã ký.
+- **payOS thực tế**: chuẩn bị tài khoản payOS và kênh đã xác minh; cấu hình **riêng** `PAYMENT_MODE=payos`, `PAYMENT_MODE=disabled`, `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `PAYOS_RETURN_URL` và `PAYOS_CANCEL_URL` là HTTPS đúng domain. Chỉ thay đổi chế độ ở môi trường triển khai thật khi có credentials; **không đưa keys vào ZIP hoặc Git**. Cần backend công khai HTTPS cho webhook `https://TEN-MIEN-BACKEND/api/payments/payos/webhook` và đăng ký/confirm webhook trên payOS. Kiểm tra log và mã ký.
 
 payOS **không có sandbox tách biệt**; API của payOS là API production, có giao dịch ngân hàng thật. **Không thử chuyển tiền thật trước khi có tài khoản, URL và khóa hợp lệ.** Website không được đánh dấu `paid` từ `returnUrl`; chỉ webhook HMAC hợp lệ và số tiền/order/currency trùng với SQL mới ghi nhận thanh toán, cấp quyền trong cùng SQL transaction. Thử trả webhook ký sai phải là `400`, tiền sai là `409`, webhook trùng không được cộng quyền hai lần.
 

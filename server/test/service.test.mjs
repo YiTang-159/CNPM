@@ -110,14 +110,14 @@ test('orders reject forged owner, isolate history, payment explicitly enabled an
     assert.equal(f.orders[0].status,'pending');
     assert.equal((await f.call('GET','/api/orders',undefined,1)).data.orders.length,0);
   }finally{await f.close();}
-  const demo=await fixture({paymentDemo:true});try{
+  const demo=await fixture({paymentMode:'demo'});try{
     await demo.call('POST','/api/orders',{name:'One',email:'one@example.com',uploads:1,outs:1,L:0});
     assert.equal((await demo.call('POST','/api/orders/1/pay',{method:'qr'})).status,200);
     assert.equal((await demo.call('POST','/api/orders/1/pay',{method:'qr'})).status,409);
   }finally{await demo.close();}
 });
 test('Admin cannot create a customer order, pay, or access customer checkout history',async()=>{
-  const f=await fixture({paymentDemo:true});
+  const f=await fixture({paymentMode:'demo'});
   try {
     const body={name:'Admin',email:'admin@example.com',uploads:1,outs:1,L:0};
     assert.equal((await f.call('POST','/api/orders',body,2)).status,403);

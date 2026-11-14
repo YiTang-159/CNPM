@@ -32,7 +32,7 @@
 2. Bấm **Xem website**: sang `#/`, có nhãn chế độ xem trước và **Về trang quản trị**. Bấm quay lại và xác nhận hoạt động.
 3. Bấm biểu tượng tài khoản: xem thông tin Admin, vào **Hồ sơ & bảo mật**. Lưu tên và đổi mật khẩu để kiểm tra dữ liệu SQL. Khi đổi mật khẩu thật, cần nhớ mật khẩu mới.
 4. Vào `#/pricing` khi còn đăng nhập Admin: không có nút tạo đơn/thanh toán, có lối về trang quản lý giá.
-5. Đăng xuất → vào tài khoản khách hàng: menu Tính năng, Trải nghiệm, Bảng giá vẫn đầy đủ, đặt hàng thử theo luồng thanh toán mô phỏng nếu `PAYMENT_DEMO=true`.
+5. Đăng xuất → vào tài khoản khách hàng: menu Tính năng, Trải nghiệm, Bảng giá vẫn đầy đủ, đặt hàng thử theo luồng thanh toán mô phỏng nếu `PAYMENT_MODE=demo`.
 6. Kiểm tra không đăng nhập và khách hàng không vào được API quản trị. Admin gọi API tạo đơn phải nhận `403 Forbidden`.
 
 **Kiểm tra tự động:**

@@ -37,7 +37,7 @@ Chạy file `db/bao-cao/08-KiemTraChatLuongSauNangCap.sql`. Nên có:
 - Các đơn *mới tạo bằng tài khoản đăng nhập* có `MaNguoiDung` khác `NULL` và đúng ID của tài khoản.
 - Bốn đơn cũ hiện `NULL` vẫn giữ nguyên; **không tự gán bằng email**. Muốn sửa lịch sử phải đối soát chứng cứ mua hàng thật, mã giao dịch, người tạo và có xác nhận trước khi cập nhật.
 - Sau khi Admin khóa/mở user hoặc đổi trạng thái video, `dbo.NhatKyQuanTri` có dòng tương ứng.
-- Một giao dịch thành công trong SQL khi `PAYMENT_DEMO=true` chỉ xác nhận **giao dịch mô phỏng**, không xác minh ngân hàng.
+- Một giao dịch thành công trong SQL khi `PAYMENT_MODE=demo` chỉ xác nhận **giao dịch mô phỏng**, không xác minh ngân hàng.
 
 ## 4. Kịch bản demo cho giảng viên (10–15 phút)
 
@@ -105,7 +105,7 @@ Lưu bản sao ở ổ ngoài. **VERIFYONLY kiểm tra cấu trúc backup nhưng
 
 ## 7. Việc còn thiếu để tuyên bố hệ thống sẵn sàng kinh doanh
 
-- Kết nối cổng thanh toán thực có chữ ký callback/webhook, xác nhận tiền, idempotency webhook, xử lý hoàn tiền và đối soát ngân hàng. `PAYMENT_DEMO=true` không đủ để nhận thanh toán thật.
+- Kết nối cổng thanh toán thực có chữ ký callback/webhook, xác nhận tiền, idempotency webhook, xử lý hoàn tiền và đối soát ngân hàng. `PAYMENT_MODE=demo` không đủ để nhận thanh toán thật.
 - Dịch máy và TTS thực tế: hiện thuyết minh mới là kịch bản lời đọc; nghe thử trong browser không phải file MP3/WAV có thể tải và đồng bộ server-side.
 - Xác minh email, đổi mật khẩu qua email, quản lý phiên đăng nhập, giới hạn login phân tán nếu mở nhiều API instance, log chống chỉnh sửa, test phục hồi backup và tải video lớn.
 - Kiểm thử end-to-end trên **máy của bạn** với SQL Server thật, chạy bộ test SQL integration và kiểm tra dữ liệu sau restart.

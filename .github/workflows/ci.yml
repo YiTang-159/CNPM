@@ -14,6 +14,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  secret-scan:
+    name: Gitleaks - no secrets in Git history / PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan repository and commits (FAIL on leaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify archive privacy rules
+        run: python3 scripts/package-share.py --check
+
+  dependency-audit:
+    name: Dependency audit - high/critical must fail
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm audit --prefix server --audit-level=high
+      - run: npm audit --prefix web --audit-level=high
+      - run: npm audit --prefix mobile --audit-level=high
+
+  docker-build:
+    name: Build backend image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f server/Dockerfile .
+      - run: docker build -f web/Dockerfile web
+
   shared:
     name: Nội dung dùng chung (test + đồng bộ)
     runs-on: ubuntu-latest
@@ -32,17 +66,43 @@ jobs:
           test -z "$(git status --porcelain)" || (echo "Chạy 'npm run sync' rồi commit lại"; git status --short; exit 1)
 
   server:
-    name: API thanh toán (Node.js)
+    name: API + SQL + REAL MP3/MP4 (no skipped tests)
     runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: IntegrationOnly!2026
+        ports: ['1433:1433']
+    env:
+      DB_INTEGRATION: 'true'
+      MEDIA_INTEGRATION: 'true'
+      RUN_AUDIO_E2E: '1'
+      DB_HOST: 127.0.0.1
+      DB_PORT: '1433'
+      DB_USER: sa
+      DB_PASSWORD: IntegrationOnly!2026
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Cài và kiểm thử toàn bộ Backend
+      - name: Install media engines and reproducible backend dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak-ng
           npm ci --prefix server
-          npm test --prefix server
+      - name: Full backend suite - no skips accepted
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-test-coverage --test-coverage-lines=80 \
+            --test-coverage-include='server/src/entitlements.js' \
+            --test-coverage-include='server/src/orders.js' \
+            --test-coverage-include='server/src/payos.js' \
+            --test server/test/*.test.mjs | tee backend-test.log
+          ! grep -Eq '# skipped [1-9][0-9]*' backend-test.log
 
   web:
     name: Web (React.js)

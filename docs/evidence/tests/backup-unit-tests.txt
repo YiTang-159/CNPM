@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: SHA-256 detects changes to binary backup data
+ok 1 - SHA-256 detects changes to binary backup data
+  ---
+  duration_ms: 7.05045
+  type: 'test'
+  ...
+# Subtest: manifest requires both SQL backup and media archive checksums
+ok 2 - manifest requires both SQL backup and media archive checksums
+  ---
+  duration_ms: 0.307512
+  type: 'test'
+  ...
+# Subtest: production restore is rejected without an explicit confirmation, before Docker is accessed
+ok 3 - production restore is rejected without an explicit confirmation, before Docker is accessed
+  ---
+  duration_ms: 32.841889
+  type: 'test'
+  ...
+# Subtest: upload archive uses Docker Compose service, never a stale sha256 image ID
+ok 4 - upload archive uses Docker Compose service, never a stale sha256 image ID
+  ---
+  duration_ms: 1.542977
+  type: 'test'
+  ...
+# Subtest: verification binds the archive read-only and rejects unknown modes
+ok 5 - verification binds the archive read-only and rejects unknown modes
+  ---
+  duration_ms: 0.575244
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 96.168203

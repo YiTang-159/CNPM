@@ -33,8 +33,8 @@
 | 19 | Admin trả lời, đặt ưu tiên và đã giải quyết | Thiếu trả lời bị chặn; lưu đúng thì thành viên thấy trả lời riêng | PhanHoi/LienHe và LichSuXuLyPhanHoi |
 | 20 | Thành viên B xem danh sách video/đơn/phản hồi | Không đọc được dữ liệu riêng của A | API lọc tài khoản hiện tại |
 | 21 | Tạo đơn số video hợp lệ | Giá do server tính, trạng thái pending | DonHang có đơn mới |
-| 22 | Bật PAYMENT_DEMO=true, xác nhận thanh toán mô phỏng | Một giao dịch success, đơn paid; lần trả lại không tạo giao dịch mới | DonHang và GiaoDich |
-| 23 | Đặt PAYMENT_DEMO=false rồi dựng lại API | Xác nhận mô phỏng trả 503, không đổi pending thành paid | Không có giao dịch success mới |
+| 22 | Bật PAYMENT_MODE=demo, xác nhận thanh toán mô phỏng | Một giao dịch success, đơn paid; lần trả lại không tạo giao dịch mới | DonHang và GiaoDich |
+| 23 | Đặt PAYMENT_MODE=disabled rồi dựng lại API | Xác nhận mô phỏng trả 503, không đổi pending thành paid | Không có giao dịch success mới |
 | 24 | Mở liên kết QR /guest từ thiết bị khác | Thống kê QR tăng; không tự đổi trạng thái thanh toán | LuotQuetQR; tách biệt DonHang |
 | 25 | Mở Tổng hợp, Tổng quan, QR, Đơn hàng | Dữ liệu SQL phù hợp; tiền tách loại tiền; ngày hiển thị Việt Nam | queries.sql và các bảng tương ứng |
 | 26 | Nhập nội dung đang sửa, chờ hơn 15 giây | Không mất nội dung chưa lưu do tự tải lại | Không có lịch sử mới trước khi bấm Lưu |

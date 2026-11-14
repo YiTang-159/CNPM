@@ -40,4 +40,4 @@ SELECT TOP(20) * FROM dbo.LichSuXuLyPhanHoi ORDER BY MaLichSu DESC;
 SELECT TOP(20) * FROM dbo.LichSuDangNhap ORDER BY MaLichSu DESC;
 ```
 
-Trong PhuDe/ThuyetMinh, NoiDung là JSON. Tệp video gốc nằm trong volume uploads; TTS chưa được xuất thành tệp audio. Thời gian lưu UTC, báo cáo hiển thị Việt Nam bằng DATEADD(HOUR,7,...). DonHang và GiaoDich hiện chỉ mô phỏng khi PAYMENT_DEMO=true.
+Trong PhuDe/ThuyetMinh, NoiDung là JSON. Tệp video gốc nằm trong volume uploads; TTS chưa được xuất thành tệp audio. Thời gian lưu UTC, báo cáo hiển thị Việt Nam bằng DATEADD(HOUR,7,...). DonHang và GiaoDich hiện chỉ mô phỏng khi PAYMENT_MODE=demo.

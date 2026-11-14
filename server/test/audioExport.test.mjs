@@ -22,9 +22,8 @@ test('narration export rejects unreasonable durations and text sizes', () => {
   assert.throws(() => parseNarration(JSON.stringify([{text:'a'.repeat(1501),start:0,end:500}]),'en'), {code:'invalid_timeline'});
 });
 
-// Opt-in integration: RUN_AUDIO_E2E=1 TTS_BIN=espeak-ng npm --prefix server test.
-// This test intentionally does not run without binaries in ordinary CI.
-test('eSpeak + FFmpeg create a playable MP3 with an audio stream', {skip:process.env.RUN_AUDIO_E2E !== '1'}, async () => {
+// Mandatory real-media integration test: FAILS if FFmpeg/eSpeak are unavailable.
+test('eSpeak + FFmpeg create a playable MP3 with an audio stream', async () => {
   const result = await produceVoiceover({content:JSON.stringify(line),language:'en',format:'mp3'});
   try {
     assert.ok((await stat(result.output)).size > 1000);

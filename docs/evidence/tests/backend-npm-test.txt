@@ -1,0 +1,368 @@
+
+> dubchef-server@1.0.0 test
+> node --test test/*.test.mjs
+
+TAP version 13
+# Subtest: đoạn phụ đề/thuyết minh phải có thứ tự, không chồng lấn
+ok 1 - đoạn phụ đề/thuyết minh phải có thứ tự, không chồng lấn
+  ---
+  duration_ms: 1.429127
+  type: 'test'
+  ...
+# Subtest: chỉ xuất bản nội dung đã chờ duyệt, không sửa khi xuất bản
+ok 2 - chỉ xuất bản nội dung đã chờ duyệt, không sửa khi xuất bản
+  ---
+  duration_ms: 0.270796
+  type: 'test'
+  ...
+# Subtest: giải quyết phản hồi bắt buộc có câu trả lời
+ok 3 - giải quyết phản hồi bắt buộc có câu trả lời
+  ---
+  duration_ms: 0.269715
+  type: 'test'
+  ...
+# Subtest: mật khẩu băm xong kiểm tra lại đúng, sai thì từ chối
+ok 4 - mật khẩu băm xong kiểm tra lại đúng, sai thì từ chối
+  ---
+  duration_ms: 193.679644
+  type: 'test'
+  ...
+# Subtest: token đúng, hết hạn, bị sửa
+ok 5 - token đúng, hết hạn, bị sửa
+  ---
+  duration_ms: 2.133204
+  type: 'test'
+  ...
+# Subtest: buildStats: ngày thiếu tính 0, hôm nay / hôm qua / đỉnh
+ok 6 - buildStats: ngày thiếu tính 0, hôm nay / hôm qua / đỉnh
+  ---
+  duration_ms: 0.503306
+  type: 'test'
+  ...
+# Subtest: đăng ký, đăng nhập, khóa, xóa và quyền quản trị
+ok 7 - đăng ký, đăng nhập, khóa, xóa và quyền quản trị
+  ---
+  duration_ms: 478.981034
+  type: 'test'
+  ...
+# Subtest: ghi lượt truy cập, bỏ qua trang admin, đọc tổng quan
+ok 8 - ghi lượt truy cập, bỏ qua trang admin, đọc tổng quan
+  ---
+  duration_ms: 127.49086
+  type: 'test'
+  ...
+# Subtest: ghi lượt quét mã QR của khách và chỉ admin mới xem được số liệu
+ok 9 - ghi lượt quét mã QR của khách và chỉ admin mới xem được số liệu
+  ---
+  duration_ms: 177.419194
+  type: 'test'
+  ...
+# Subtest: narration timeline accepts approved timestamped language content
+ok 10 - narration timeline accepts approved timestamped language content
+  ---
+  duration_ms: 7.44339
+  type: 'test'
+  ...
+# Subtest: narration export rejects overlapping or missing timestamp text
+ok 11 - narration export rejects overlapping or missing timestamp text
+  ---
+  duration_ms: 0.895445
+  type: 'test'
+  ...
+# Subtest: narration export rejects unreasonable durations and text sizes
+ok 12 - narration export rejects unreasonable durations and text sizes
+  ---
+  duration_ms: 0.368613
+  type: 'test'
+  ...
+# Subtest: eSpeak + FFmpeg create a playable MP3 with an audio stream
+ok 13 - eSpeak + FFmpeg create a playable MP3 with an audio stream # SKIP
+  ---
+  duration_ms: 0.215464
+  type: 'test'
+  ...
+# Subtest: published voiceover export listing enforces video ownership and hides drafts
+ok 14 - published voiceover export listing enforces video ownership and hides drafts
+  ---
+  duration_ms: 501.703225
+  type: 'test'
+  ...
+# Subtest: production requires strong separate SQL and token secrets, and explicit CORS origins
+ok 15 - production requires strong separate SQL and token secrets, and explicit CORS origins
+  ---
+  duration_ms: 1.768416
+  type: 'test'
+  ...
+# Subtest: keep original SQL password ONLY for loopback-only Docker; never public deployment
+ok 16 - keep original SQL password ONLY for loopback-only Docker; never public deployment
+  ---
+  duration_ms: 0.262414
+  type: 'test'
+  ...
+# Subtest: CORS exact allowlist rejects wildcard, embedded credentials, paths and non-HTTP schemes
+ok 17 - CORS exact allowlist rejects wildcard, embedded credentials, paths and non-HTTP schemes
+  ---
+  duration_ms: 0.942646
+  type: 'test'
+  ...
+# Subtest: API sends security headers and only CORS-whitelists configured origin
+ok 18 - API sends security headers and only CORS-whitelists configured origin
+  ---
+  duration_ms: 69.410258
+  type: 'test'
+  ...
+# Subtest: public registration is capped by IP and reports retry-after
+ok 19 - public registration is capped by IP and reports retry-after
+  ---
+  duration_ms: 91.60663
+  type: 'test'
+  ...
+# Subtest: payos mode fails startup if payment credentials or callback URLs are absent
+ok 20 - payos mode fails startup if payment credentials or callback URLs are absent
+  ---
+  duration_ms: 17.469906
+  type: 'test'
+  ...
+# Subtest: bootstrap rejects public example placeholders and short admin credentials
+ok 21 - bootstrap rejects public example placeholders and short admin credentials
+  ---
+  duration_ms: 0.817198
+  type: 'test'
+  ...
+# Subtest: translation is rate-limited even for invalid payloads (prevents unauthenticated model flood)
+ok 22 - translation is rate-limited even for invalid payloads (prevents unauthenticated model flood)
+  ---
+  duration_ms: 110.768301
+  type: 'test'
+  ...
+# Subtest: package credits: pending buys nothing, pay grants, account isolation, one charge per translation and retry
+ok 23 - package credits: pending buys nothing, pay grants, account isolation, one charge per translation and retry
+  ---
+  duration_ms: 131.249204
+  type: 'test'
+  ...
+# Subtest: legacy owner validation requires explicit independent proof and confirmation
+ok 24 - legacy owner validation requires explicit independent proof and confirmation
+  ---
+  duration_ms: 1.277409
+  type: 'test'
+  ...
+# Subtest: historical order ownership reconciliation is protected by admin role and has errors
+ok 25 - historical order ownership reconciliation is protected by admin role and has errors
+  ---
+  duration_ms: 107.707623
+  type: 'test'
+  ...
+# Subtest: Ollama formats all VI/EN/ZH translation directions without external services
+ok 26 - Ollama formats all VI/EN/ZH translation directions without external services
+  ---
+  duration_ms: 2.326775
+  type: 'test'
+  ...
+# Subtest: model readiness checks reachability and actual model availability
+ok 27 - model readiness checks reachability and actual model availability
+  ---
+  duration_ms: 1.367584
+  type: 'test'
+  ...
+# Subtest: model rejects unsupported language and empty text without contacting Ollama
+ok 28 - model rejects unsupported language and empty text without contacting Ollama
+  ---
+  duration_ms: 0.639281
+  type: 'test'
+  ...
+# Subtest: REAL ffmpeg + espeak-ng renders VI/EN/ZH MP3 and muxes MP4
+ok 29 - REAL ffmpeg + espeak-ng renders VI/EN/ZH MP3 and muxes MP4 # SKIP
+  ---
+  duration_ms: 0.648224
+  type: 'test'
+  ...
+# Subtest: offsite copy requires verified manifest and preserves both SHA-256 values
+ok 30 - offsite copy requires verified manifest and preserves both SHA-256 values
+  ---
+  duration_ms: 18.914851
+  type: 'test'
+  ...
+# Subtest: monitor reports OK/DEGRADED/DOWN without private info
+ok 31 - monitor reports OK/DEGRADED/DOWN without private info
+  ---
+  duration_ms: 1.186713
+  type: 'test'
+  ...
+# Subtest: bounded perf GET-only probe summarizes failures
+ok 32 - bounded perf GET-only probe summarizes failures
+  ---
+  duration_ms: 1.828106
+  type: 'test'
+  ...
+# Subtest: metrics endpoint is locked without explicit token, and counts requests safely
+ok 33 - metrics endpoint is locked without explicit token, and counts requests safely
+  ---
+  duration_ms: 58.440992
+  type: 'test'
+  ...
+# Subtest: đơn hợp lệ được chuẩn hóa tên và email
+ok 34 - đơn hợp lệ được chuẩn hóa tên và email
+  ---
+  duration_ms: 1.736488
+  type: 'test'
+  ...
+# Subtest: nhận số video dạng chuỗi (từ form)
+ok 35 - nhận số video dạng chuỗi (từ form)
+  ---
+  duration_ms: 0.484077
+  type: 'test'
+  ...
+# Subtest: từ chối dữ liệu sai
+ok 36 - từ chối dữ liệu sai
+  ---
+  duration_ms: 0.220682
+  type: 'test'
+  ...
+# Subtest: giá tính ở máy chủ, theo đơn vị nhỏ nhất của từng loại tiền
+ok 37 - giá tính ở máy chủ, theo đơn vị nhỏ nhất của từng loại tiền
+  ---
+  duration_ms: 0.306881
+  type: 'test'
+  ...
+# Subtest: mã giao dịch có tiền tố theo phương thức và không trùng
+ok 38 - mã giao dịch có tiền tố theo phương thức và không trùng
+  ---
+  duration_ms: 4.876204
+  type: 'test'
+  ...
+# Subtest: có phương thức thanh toán quét mã QR
+ok 39 - có phương thức thanh toán quét mã QR
+  ---
+  duration_ms: 0.257537
+  type: 'test'
+  ...
+# Subtest: payOS webhook HMAC official fixture and tampering
+ok 40 - payOS webhook HMAC official fixture and tampering
+  ---
+  duration_ms: 1.747826
+  type: 'test'
+  ...
+# Subtest: payOS hosted link must be signed, amount comes from SQL, rejects a tampered provider response
+ok 41 - payOS hosted link must be signed, amount comes from SQL, rejects a tampered provider response
+  ---
+  duration_ms: 1.898332
+  type: 'test'
+  ...
+# Subtest: customer checkout requires ownership; payOS webhook settles once and rejects fake / mismatched payments
+ok 42 - customer checkout requires ownership; payOS webhook settles once and rejects fake / mismatched payments
+  ---
+  duration_ms: 89.865264
+  type: 'test'
+  ...
+# Subtest: mật khẩu hỏng hoặc sai định dạng bị từ chối, không ném lỗi
+ok 43 - mật khẩu hỏng hoặc sai định dạng bị từ chối, không ném lỗi
+  ---
+  duration_ms: 131.900293
+  type: 'test'
+  ...
+# Subtest: băm SHA-256 cũ (UTF-16LE) được nhận dạng và kiểm tra đúng
+ok 44 - băm SHA-256 cũ (UTF-16LE) được nhận dạng và kiểm tra đúng
+  ---
+  duration_ms: 0.80579
+  type: 'test'
+  ...
+# Subtest: đăng nhập bằng băm cũ nâng cấp lên scrypt
+ok 45 - đăng nhập bằng băm cũ nâng cấp lên scrypt
+  ---
+  duration_ms: 210.261687
+  type: 'test'
+  ...
+# Subtest: JSON hỏng trả 400 invalid_json; thân quá lớn trả 413 too_large
+ok 46 - JSON hỏng trả 400 invalid_json; thân quá lớn trả 413 too_large
+  ---
+  duration_ms: 28.507039
+  type: 'test'
+  ...
+# Subtest: đăng nhập sai 10 lần bị chặn bằng 429
+ok 47 - đăng nhập sai 10 lần bị chặn bằng 429
+  ---
+  duration_ms: 38.168903
+  type: 'test'
+  ...
+# Subtest: canonical videos: owner isolation, locked/deleted/recreated and demoted tokens
+ok 48 - canonical videos: owner isolation, locked/deleted/recreated and demoted tokens
+  ---
+  duration_ms: 82.771899
+  type: 'test'
+  ...
+# Subtest: binary upload: exact size, private access, cleanup, reload and admin preview
+ok 49 - binary upload: exact size, private access, cleanup, reload and admin preview
+  ---
+  duration_ms: 50.178666
+  type: 'test'
+  ...
+# Subtest: video metadata rejects invalid MIME and oversized files
+ok 50 - video metadata rejects invalid MIME and oversized files
+  ---
+  duration_ms: 6.705172
+  type: 'test'
+  ...
+# Subtest: results persist language content and reject reversed, overlapping or partial timestamps
+ok 51 - results persist language content and reject reversed, overlapping or partial timestamps
+  ---
+  duration_ms: 18.332676
+  type: 'test'
+  ...
+# Subtest: orders reject forged owner, isolate history, payment explicitly enabled and idempotent
+ok 52 - orders reject forged owner, isolate history, payment explicitly enabled and idempotent
+  ---
+  duration_ms: 26.487036
+  type: 'test'
+  ...
+# Subtest: Admin cannot create a customer order, pay, or access customer checkout history
+ok 53 - Admin cannot create a customer order, pay, or access customer checkout history
+  ---
+  duration_ms: 9.206368
+  type: 'test'
+  ...
+# Subtest: audit API is restricted to admins
+ok 54 - audit API is restricted to admins
+  ---
+  duration_ms: 12.345964
+  type: 'test'
+  ...
+# Subtest: member feedback uses token identity, private history and replies; guest contacts remain separate
+ok 55 - member feedback uses token identity, private history and replies; guest contacts remain separate
+  ---
+  duration_ms: 19.440571
+  type: 'test'
+  ...
+# Subtest: admin media: permissions, validation, version conflict, review then publish, history
+ok 56 - admin media: permissions, validation, version conflict, review then publish, history
+  ---
+  duration_ms: 12.925105
+  type: 'test'
+  ...
+# Subtest: all routed Admin modules require admin; catalog only exposes supported active languages
+ok 57 - all routed Admin modules require admin; catalog only exposes supported active languages
+  ---
+  duration_ms: 36.23048
+  type: 'test'
+  ...
+# Subtest: malformed token suffix and malformed password never authenticate
+ok 58 - malformed token suffix and malformed password never authenticate
+  ---
+  duration_ms: 47.429973
+  type: 'test'
+  ...
+# Subtest: SQL Server migrations, all Admin modules, private data and restart persistence
+ok 59 - SQL Server migrations, all Admin modules, private data and restart persistence # SKIP
+  ---
+  duration_ms: 1.007304
+  type: 'test'
+  ...
+1..59
+# tests 59
+# suites 0
+# pass 56
+# fail 0
+# cancelled 0
+# skipped 3
+# todo 0
+# duration_ms 2587.711272

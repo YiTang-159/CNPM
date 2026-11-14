@@ -72,7 +72,7 @@
   [
     "Lập đơn và thanh toán mô phỏng",
     "Thành viên trên Web",
-    "Đã đăng nhập; bật PAYMENT_DEMO để mô phỏng",
+    "Đã đăng nhập; bật PAYMENT_MODE để mô phỏng",
     "Chọn số video, loại tiền, phương thức thanh toán",
     "Tính giá ở máy chủ; tạo pending; xác thực chủ đơn; ghi giao dịch và paid trong transaction",
     "Nhận mã giao dịch mô phỏng; SQL có đơn đã thanh toán",

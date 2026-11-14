@@ -1,0 +1,4 @@
+npm warn reify Removing non-directory /mnt/data/dubchef_hardened/CNPM/web/node_modules
+npm error code ENOTCACHED
+npm error request to https://registry.npmjs.org/yocto-queue/-/yocto-queue-0.1.0.tgz failed: cache mode is 'only-if-cached' but no cached response is available.
+npm error A complete log of this run can be found in: /home/oai/.npm/_logs/2026-11-14T13_41_50_806Z-debug-0.log

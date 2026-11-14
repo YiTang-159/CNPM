@@ -10,7 +10,7 @@ function command(program,args){const p=spawnSync(program,args,{encoding:'utf8',t
   assert.equal(p.status,0,`Command ${program} ${args[0]} failed: ${p.stderr||p.error}`);
   return p.stdout.trim();
 }
-test('REAL ffmpeg + espeak-ng renders VI/EN/ZH MP3 and muxes MP4', {skip:process.env.MEDIA_INTEGRATION!=='true',timeout:180000}, async()=>{
+test('REAL ffmpeg + espeak-ng renders VI/EN/ZH MP3 and muxes MP4', {timeout:180000}, async()=>{
   const dir=await mkdtemp(join(tmpdir(),'dubchef-media-ci-'));
   try {
     const video=join(dir,'sample.mp4');

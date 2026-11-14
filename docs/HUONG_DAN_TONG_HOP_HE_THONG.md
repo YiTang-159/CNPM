@@ -31,7 +31,7 @@ Xóa tài khoản có dữ liệu liên kết bị từ chối để bảo toàn
 
 ## Thanh toán mô phỏng
 
-`PAYMENT_DEMO=true` bật API mô phỏng thanh toán phục vụ demo môn học. `false` trả 503, không ghi đơn paid. Quét QR ở ứng dụng ngân hàng không tự xác minh tiền; dự án chưa tích hợp webhook ngân hàng/cổng thanh toán. QR `/guest` là QR trải nghiệm để đếm lượt mở trang, độc lập với thanh toán.
+`PAYMENT_MODE=demo` bật API mô phỏng thanh toán phục vụ demo môn học. `false` trả 503, không ghi đơn paid. Quét QR ở ứng dụng ngân hàng không tự xác minh tiền; dự án chưa tích hợp webhook ngân hàng/cổng thanh toán. QR `/guest` là QR trải nghiệm để đếm lượt mở trang, độc lập với thanh toán.
 
 ## Kiểm thử
 

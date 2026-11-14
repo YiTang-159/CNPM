@@ -20,7 +20,7 @@
 
 ```dotenv
 PAYMENT_MODE=payos
-PAYMENT_DEMO=false
+PAYMENT_MODE=disabled
 PAYOS_CLIENT_ID=<your-client-id>
 PAYOS_API_KEY=<your-api-key>
 PAYOS_CHECKSUM_KEY=<your-checksum-key>
@@ -35,7 +35,7 @@ PAYOS_CANCEL_URL=https://your-website.example/#/pricing
 ```dotenv
 VITE_API_URL=http://localhost:3000
 VITE_PAYMENT_API_URL=http://localhost:3000
-VITE_ENABLE_PAYMENT_DEMO=false
+VITE_ENABLE_PAYMENT_MODE=disabled
 ```
 
 Khi chạy web ngoài Internet, thay địa chỉ localhost của frontend bằng HTTPS API truy cập được từ trình duyệt. Giữ nguyên các cấu hình DB Docker sẵn có.
@@ -72,7 +72,7 @@ Kiểm tra `http://localhost:3000/api/payments/config` phải trả về `{"mode
 - Hiện payOS chỉ áp dụng cho đơn VND. Không cố chuyển giá USD/CNY sang VND mà không có báo giá và quy tắc quy đổi minh bạch.
 - payOS sẽ không xác minh giao dịch nếu chưa có khóa thực, tài khoản/kênh hợp lệ và endpoint HTTPS công khai. Việc có code tích hợp **không chứng minh đã thu tiền thật**.
 - `PAYMENT_MODE=demo` vẫn được giữ cho bài test cũ; chỉ bật khi cần diễn tập và nên dùng database thử nghiệm riêng.
-- Nếu API không kết nối được, frontend **không tự lưu đơn paid ở localStorage** nữa (ngoại trừ bộ test tự động hoặc khi chủ dự án bật `VITE_ENABLE_PAYMENT_DEMO=true`).
+- Nếu API không kết nối được, frontend **không tự lưu đơn paid ở localStorage** nữa (ngoại trừ bộ test tự động hoặc khi chủ dự án bật `VITE_ENABLE_PAYMENT_MODE=demo`).
 - Giá dịch vụ theo tháng đang được giới thiệu trên trang Bảng giá, chưa phải thuê bao tự gia hạn. payOS ở bản này áp dụng cho đơn trả một lần.
 - Hệ thống **chưa cấp/trừ quota sử dụng dịch vụ theo gói**; đây là nghiệp vụ tiếp theo cần triển khai trước khi kinh doanh thực tế.
 - Không đưa `.env`, token, API key vào ZIP nộp bài/GitHub. Nếu đã lộ mật khẩu hoặc token secret, phải thay khóa.

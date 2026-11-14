@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+python3 scripts/package-share.py --check
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo 'SECURITY: install gitleaks before committing; see docs/SECURITY.md' >&2
+  exit 1
+fi
+# Check actual staged patch instead of scanning ignored local secrets.
+git diff --cached --no-ext-diff --binary | gitleaks stdin --redact --exit-code 1

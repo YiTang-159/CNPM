@@ -8,9 +8,9 @@ import sql from 'mssql';
 import { openRepo } from '../src/db.js';
 import { createApp } from '../src/app.js';
 
-// Opt-in SQL test; creates and drops ONLY a new randomized test DB. Never uses the user's DB_NAME.
+// Mandatory SQL integration: creates and drops ONLY a random test DB; never user's DB_NAME.
 test('SQL Server migrations, all Admin modules, private data and restart persistence',{
-  skip:process.env.DB_INTEGRATION!=='true',timeout:180000,
+  timeout:180000,
 },async()=>{
   assert.ok(process.env.DB_PASSWORD,'DB_PASSWORD required');
   const db=`DubchefIntegration_${process.pid}_${randomBytes(6).toString('hex')}`;
@@ -21,7 +21,7 @@ test('SQL Server migrations, all Admin modules, private data and restart persist
   const uploadDir=await mkdtemp(join(tmpdir(),'dubchef-sql-'));
   let repo,server,base;
   const stop=async()=>{if(server){await new Promise(r=>server.close(r));server=null;}if(repo){await repo.close();repo=null;}};
-  const start=async()=>{repo=await openRepo();server=createApp(repo,{secret:'sql-integration-fixed-secret',uploadDir,paymentDemo:true}).listen(0,'127.0.0.1');
+  const start=async()=>{repo=await openRepo();server=createApp(repo,{secret:'sql-integration-fixed-secret',uploadDir,paymentMode:'demo'}).listen(0,'127.0.0.1');
     await new Promise(r=>server.once('listening',r));base='http://127.0.0.1:'+server.address().port;};
   const call=async(method,path,body,token,raw=false,headers={})=>{const r=await fetch(base+path,{method,
     headers:{'Content-Type':raw?'application/octet-stream':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...headers},

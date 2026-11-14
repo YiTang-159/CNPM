@@ -15,6 +15,13 @@ services:
     volumes:
       - dubchef-data:/var/opt/mssql
     restart: unless-stopped
+    healthcheck:
+      # TCP readiness; API itself verifies SQL queries via /api/health.
+      test: ["CMD", "/bin/bash", "-c", "echo > /dev/tcp/127.0.0.1/1433"]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 45s
 
   api:
     build:
@@ -22,7 +29,8 @@ services:
       dockerfile: server/Dockerfile
     container_name: dubchef-api
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       PORT: "3000"
       # Mặc định KHÔNG mô phỏng thu tiền. Chỉ dùng demo khi chủ động bật.
@@ -33,7 +41,6 @@ services:
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
       METRICS_TOKEN: ${METRICS_TOKEN:-}
-      PAYMENT_DEMO: ${PAYMENT_DEMO:-false}
       PAYOS_CLIENT_ID: ${PAYOS_CLIENT_ID:-}
       PAYOS_API_KEY: ${PAYOS_API_KEY:-}
       PAYOS_CHECKSUM_KEY: ${PAYOS_CHECKSUM_KEY:-}
@@ -56,6 +63,29 @@ services:
     ports:
       - "${API_BIND_ADDRESS:-127.0.0.1}:3000:3000"
     restart: on-failure
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 90s
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: dubchef-web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:5173:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # Ollama chạy trên máy người dùng và chỉ truy cập qua Docker network.
   # Model được tải một lần vào volume riêng, không ảnh hưởng SQL/Uploads.

@@ -14,10 +14,13 @@ from zipfile import ZIP_DEFLATED, ZipFile
 ROOT = Path(__file__).resolve().parents[1]
 BLOCKED_DIRS = {
     '.git', '.svn', '.hg', 'node_modules', 'backups', 'uploads', 'coverage', 'dist',
-    'build', '.expo', '.gradle', '.idea', 'secrets', 'private', '__pycache__',
+    'build', '.expo', '.gradle', '.idea', 'secrets', 'private', 'credentials',
+    'backup', 'generated-media', 'recordings', 'exports', '__pycache__',
 }
-BLOCKED_SUFFIXES = {'.bak', '.pem', '.key', '.p12', '.pfx', '.jks', '.keystore', '.sqlite', '.sqlite3', '.db', '.log'}
-BLOCKED_NAMES = {'id_rsa', 'id_ed25519', '.npmrc', '.pypirc', 'google-services.json', 'google-service-info.plist'}
+BLOCKED_SUFFIXES = {'.bak', '.bacpac', '.mdf', '.ndf', '.ldf', '.pem', '.key',
+    '.p12', '.pfx', '.jks', '.keystore', '.sqlite', '.sqlite3', '.db', '.log',
+    '.mp3', '.mp4', '.wav', '.webm', '.mov', '.m4a', '.ogg'}
+BLOCKED_NAMES = {'id_rsa', 'id_ed25519', '.npmrc', '.pypirc', 'google-services.json', 'google-service-info.plist', 'test-errors.txt', 'eas-build.json'}
 CHECK_TEXT = {'.js', '.jsx', '.mjs', '.ts', '.tsx', '.json', '.yml', '.yaml', '.txt', '.md', '.env', '.sql', '.properties', '.xml'}
 PATTERNS = (
     re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
@@ -33,6 +36,9 @@ def is_private(path: Path) -> bool:
     if any(part in BLOCKED_DIRS for part in parts[:-1]):
         return True
     if parts[:2] == ('db', 'data'):
+        return True
+    # Generated media is not publishable; assets under docs are only safe when explicitly non-private.
+    if any(part.lower() in {'uploads', 'media-output', 'media-generated'} for part in parts[:-1]):
         return True
     name = path.name.lower()
     if name in BLOCKED_NAMES or name in {'.env', 'env', '.envrc'}:

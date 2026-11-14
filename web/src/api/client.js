@@ -88,10 +88,8 @@ const norm = (s) => s.trim().toLowerCase();
 
 /** Email của quản trị viên. Đăng ký tài khoản bằng email này để vào trang /admin. */
 export const ADMIN_EMAIL = (import.meta.env && import.meta.env.VITE_ADMIN_EMAIL) || 'admin@dubchef.vn';
-/** Mật khẩu của tài khoản quản trị có sẵn (chỉ dùng khi chưa có Backend, để demo). */
-export const ADMIN_PASSWORD = import.meta.env?.DEV
-  ? (import.meta.env.VITE_ADMIN_PASSWORD || (import.meta.env.MODE === 'test' ? 'test-admin-only' : ''))
-  : ''; // không nhúng mật khẩu Admin vào build production
+/** Synthetic constant for isolated UI unit tests ONLY. Never embed or read real Admin passwords from VITE_* vars. */
+export const ADMIN_PASSWORD = import.meta.env.MODE === 'test' ? 'test-admin-only' : '';
 export const isAdmin = (user) => Boolean(user) && (user.role === 'admin' || (LOCAL_DEV && !BASE && norm(user.email || '') === norm(ADMIN_EMAIL)));
 
 export const api = {

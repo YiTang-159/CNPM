@@ -15,6 +15,9 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// New backups are stored outside the Git worktree by default.
+const backupRoot = resolve(process.env.BACKUP_ROOT || join(root, '..', 'DubchefBackups'));
+if (backupRoot === root || backupRoot.startsWith(root + '/')) throw new Error('BACKUP_ROOT must not be inside the Git project');
 const cli = process.argv[2];
 const selected = process.argv[3];
 const confirm = process.argv[4];
@@ -168,7 +171,7 @@ function performBackup() {
   dockerCheck();
   const id = uniqueId();
   const basename = `dubchef_${id}.bak`;
-  const dir = join(root,'backups',`dubchef_${id}`);
+  const dir = join(backupRoot,`dubchef_${id}`);
   mkdirSync(dir,{recursive:true});
   try {
     pauseApi(() => {

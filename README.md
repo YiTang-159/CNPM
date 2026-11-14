@@ -1,3 +1,5 @@
+[![CI](https://github.com/YiTang-159/CNPM/actions/workflows/ci.yml/badge.svg)](https://github.com/YiTang-159/CNPM/actions/workflows/ci.yml)
+
 # Dubchef thuyết minh video đa ngôn ngữ
 
 Bản thống nhất React Web, React Native Mobile, Node Express và SQL Server. Bộ sơ đồ UC Activity DFD nằm trong `docs/so-do`; tài liệu đã cập nhật là `docs/Dubchef_FocusedUseCases.docx`.
@@ -29,9 +31,17 @@ Admin có: tổng hợp, truy cập, tài khoản, video, thuyết minh, phụ �
 
 Xóa tài khoản có dữ liệu liên kết bị từ chối để bảo toàn lịch sử; dùng khóa tài khoản. Ngôn ngữ ngoài vi/en/zh được lưu danh mục nhưng chưa cài bộ dịch mới. Các mã vi/en/zh được tắt sẽ không được gọi dịch trong lần xử lý tiếp theo; lời thoại gốc vẫn được giữ.
 
+## Kiểm soát secret, triển khai và đóng gói
+
+**Không đưa `.env`, `web/.env`, keystore, file SQL/dữ liệu, backup hay node_modules lên Git.**
+Đọc [quy trình thu hồi/đổi khóa và dọn lịch sử Git](docs/SECURITY.md).
+Đóng gói bằng `python scripts/package-share.py --check` và `python scripts/package-share.py`.
+CI kiểm thử gitleaks và dừng nếu phát hiện secret. Với máy cũ, giữ nguyên `DB_PASSWORD`
+đang sử dụng trong `.env`; không xóa volume SQL để cập nhật code.
+
 ## Thanh toán mô phỏng
 
-`PAYMENT_MODE=demo` mới cho phép thanh toán mô phỏng trong môi trường thử nghiệm; mặc định `PAYMENT_MODE=disabled` trả 503, không ghi đơn paid. Không bật mô phỏng trong môi trường thu tiền thật. Quét QR ở ứng dụng ngân hàng không tự xác minh tiền; dự án chưa tích hợp webhook ngân hàng/cổng thanh toán. QR `/guest` là QR trải nghiệm để đếm lượt mở trang, độc lập với thanh toán.
+`PAYMENT_MODE=demo` mới cho phép thanh toán mô phỏng trong môi trường thử nghiệm; mặc định `PAYMENT_MODE=disabled` trả 503, không ghi đơn paid. Không bật mô phỏng trong môi trường thu tiền thật. Chế độ demo không xác minh tiền; chế độ payOS có xác thực webhook trong backend nhưng giao dịch thật chưa được nghiệm thu trên môi trường công khai. QR `/guest` là QR trải nghiệm để đếm lượt mở trang, độc lập với thanh toán.
 
 ## Kiểm thử
 
@@ -65,3 +75,15 @@ CI chạy Shared, Web, Mobile, toàn bộ Backend và job SQL Server riêng. CD 
 - `docs/KIEM_THU.md`: checklist test Web Mobile Admin SQL.
 - `docs/KET_QUA_KIEM_TRA.md`: kết quả kiểm tra và giới hạn xác minh.
 - `db/README-QUAN-LY-SQL.md`: đường chạy SQL chuẩn và các file tùy chọn.
+
+## Docker local (web + API + SQL Server + Ollama)
+
+1. Máy mới: `npm run setup:local` (tạo `.env` riêng, không đưa lên Git). Máy đã có volume SQL: **giữ `.env` và mật khẩu DB cũ**, chỉ chạy `npm run setup:local` để bổ sung biến thiếu.
+2. Chọn `PAYMENT_MODE=demo` trong `.env` cho bài demo **không có tiền thật**. Chọn `disabled` khi không kiểm thử; `payos` chỉ khi đã có khóa/thông tin webhook hợp lệ.
+3. `docker compose up -d --build`. Web chạy ở `http://localhost:5173`, API `http://localhost:3000/api/health`, SQL Server giữ nguyên port `1433` trên loopback và volume `dubchef-data`.
+4. Kiểm tra Ollama: `docker compose logs ollama-init`; chạy `bash scripts/smoke-test.sh` từ Git Bash/WSL/Linux sau khi model đã tải về.
+5. Dừng bằng `docker compose down` (không thêm `-v`). Truy cập SSMS bằng `127.0.0.1,1433` hoặc `localhost,1433` tùy cấu hình máy.
+
+`npm ci` yêu cầu Internet/registry npm hoạt động. Môi trường máy mới không tự cài Docker, không tự xoay vòng mật khẩu SQL hiện hành. CI kiểm thử độc lập; **không được diễn giải lỗi thiếu công cụ ở máy kiểm tra là PASS**.
+
+**Nếu cập nhật mã vào repository Git cũ:** sao chép mã nguồn đã chỉnh nhưng **KHÔNG xóa `.env` cũ trên máy**. Chạy `powershell -ExecutionPolicy Bypass -File scripts/untrack-private.ps1` (Windows) hoặc `bash scripts/untrack-private.sh` (Git Bash/WSL) từ thư mục gốc để bỏ theo dõi secret; lệnh dùng `git rm --cached`, **không xóa file vật lý**. Tiếp đó kiểm tra `git status`, commit code đã kiểm tra, và thực hiện quy trình xóa lịch sử/đổi khóa trong `docs/SECURITY.md` dưới sự đồng ý của chủ repo. Nếu dùng bản ZIP mới hoàn toàn, chạy `npm run setup:local` trên máy mới để tạo secret mới.
